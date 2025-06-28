@@ -1,6 +1,6 @@
 # Complete Code Repository
 
-All code examples from this series are available in the [Tasker GitHub repository](https://github.com/jcoletaylor/tasker) under the `blog-examples/` directory.
+All code examples from this series are available in the [Tasker GitHub repository](https://github.com/tasker-systems/tasker) under the `blog-examples/` directory.
 
 ## 📁 Repository Structure
 
@@ -31,10 +31,10 @@ Each chapter has a one-line installer that creates a complete working applicatio
 
 ```bash
 # Chapter 1: E-commerce Reliability
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 
 # Chapter 2: Data Pipeline Resilience (Coming Soon)
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/data-pipeline-resilience/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/data-pipeline-resilience/setup.sh | bash
 ```
 
 ### Manual Setup
@@ -43,7 +43,7 @@ If you prefer to explore the code first:
 
 ```bash
 # Clone the repository
-git clone https://github.com/jcoletaylor/tasker.git
+git clone https://github.com/tasker-systems/tasker.git
 cd tasker/blog-examples/
 
 # Explore any chapter
@@ -61,7 +61,7 @@ cat ecommerce-reliability/README.md
 Each chapter includes complete Rails application templates:
 
 - **Task Handlers**: Main workflow definitions
-- **Step Handlers**: Individual step implementations  
+- **Step Handlers**: Individual step implementations
 - **Models**: Supporting data models
 - **Controllers**: API endpoints for testing
 - **Configuration**: YAML workflow definitions
@@ -175,18 +175,18 @@ Interested in contributing new engineering stories?
 ## 🔗 Related Resources
 
 ### Tasker Documentation
-- **[Official Docs](https://github.com/jcoletaylor/tasker/docs/)**: Complete API reference
-- **[Quick Start](https://github.com/jcoletaylor/tasker/docs/QUICK_START.md)**: Basic setup guide
-- **[Developer Guide](https://github.com/jcoletaylor/tasker/docs/DEVELOPER_GUIDE.md)**: Advanced patterns
+- **[Official Docs](https://github.com/tasker-systems/tasker/docs/)**: Complete API reference
+- **[Quick Start](https://github.com/tasker-systems/tasker/docs/QUICK_START.md)**: Basic setup guide
+- **[Developer Guide](https://github.com/tasker-systems/tasker/docs/DEVELOPER_GUIDE.md)**: Advanced patterns
 
 ### Community
-- **[GitHub Discussions](https://github.com/jcoletaylor/tasker/discussions)**: Ask questions and share patterns
-- **[Issues](https://github.com/jcoletaylor/tasker/issues)**: Report bugs and request features
+- **[GitHub Discussions](https://github.com/tasker-systems/tasker/discussions)**: Ask questions and share patterns
+- **[Issues](https://github.com/tasker-systems/tasker/issues)**: Report bugs and request features
 
 ### Learning Resources
-- **[Workflow Patterns](https://github.com/jcoletaylor/tasker/wiki/patterns)**: Common workflow designs
-- **[Best Practices](https://github.com/jcoletaylor/tasker/wiki/best-practices)**: Production deployment tips
-- **[Performance Guide](https://github.com/jcoletaylor/tasker/wiki/performance)**: Optimization techniques
+- **[Workflow Patterns](https://github.com/tasker-systems/tasker/wiki/patterns)**: Common workflow designs
+- **[Best Practices](https://github.com/tasker-systems/tasker/wiki/best-practices)**: Production deployment tips
+- **[Performance Guide](https://github.com/tasker-systems/tasker/wiki/performance)**: Optimization techniques
 
 ---
 

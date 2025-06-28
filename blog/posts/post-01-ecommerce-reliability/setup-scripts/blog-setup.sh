@@ -4,15 +4,15 @@
 # Leverages the existing Tasker install-app pattern to create the blog post example
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 #
 #   Or with options:
-#   curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash -s -- --app-name ecommerce-blog-demo
+#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash -s -- --app-name ecommerce-blog-demo
 
 set -e
 
 # Configuration
-GITHUB_REPO="jcoletaylor/tasker"
+GITHUB_REPO="tasker-systems/tasker"
 BRANCH="main"
 INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/scripts/install-tasker-app.sh"
 

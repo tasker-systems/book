@@ -18,9 +18,9 @@ Sarah had seen this movie before. She knew what was coming.
 
 Three weeks after the "great decomposition," her phone started buzzing again. But this time it wasn't data pipelines - it was something far worse.
 
-> **Alert**: User registration completion rate down 40%  
-> **Symptoms**: Registration starts but never completes  
-> **Services involved**: Users, Billing, Notifications, Preferences  
+> **Alert**: User registration completion rate down 40%
+> **Symptoms**: Registration starts but never completes
+> **Services involved**: Users, Billing, Notifications, Preferences
 > **Debug path**: Good luck.
 
 What used to be a simple user registration flow had become a distributed nightmare spanning 4 services with no coordination, no failure handling, and no visibility when things went wrong.
@@ -38,37 +38,37 @@ class UserRegistrationService
       headers: { 'Content-Type' => 'application/json' },
       timeout: 30
     })
-    
+
     raise "User creation failed" unless user_response.success?
     user_id = user_response.parsed_response['id']
-    
+
     # Step 2: Create billing profile
     billing_response = HTTParty.post("#{BILLING_SERVICE_URL}/profiles", {
       body: { user_id: user_id, plan: 'free' }.to_json,
       headers: { 'Content-Type' => 'application/json' },
       timeout: 30
     })
-    
+
     raise "Billing creation failed" unless billing_response.success?
-    
-    # Step 3: Set up preferences  
+
+    # Step 3: Set up preferences
     prefs_response = HTTParty.post("#{PREFERENCES_SERVICE_URL}/preferences", {
       body: { user_id: user_id, defaults: true }.to_json,
       headers: { 'Content-Type' => 'application/json' },
       timeout: 30
     })
-    
+
     raise "Preferences creation failed" unless prefs_response.success?
-    
+
     # Step 4: Send welcome email
     email_response = HTTParty.post("#{NOTIFICATION_SERVICE_URL}/welcome", {
       body: { user_id: user_id, email: user_params[:email] }.to_json,
       headers: { 'Content-Type' => 'application/json' },
       timeout: 30
     })
-    
+
     raise "Email sending failed" unless email_response.success?
-    
+
     { user_id: user_id, status: 'completed' }
   rescue => e
     # What do we do here? User might be created but billing failed...
@@ -98,9 +98,9 @@ module UserManagement
     TASK_NAME = 'user_registration'
     NAMESPACE = 'user_management'
     VERSION = '1.0.0'
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       templates.define(
         name: 'create_user_account',
@@ -110,7 +110,7 @@ module UserManagement
         retry_limit: 3,
         timeout: 30.seconds
       )
-      
+
       templates.define(
         name: 'setup_billing_profile',
         description: 'Create billing profile in BillingService',
@@ -120,7 +120,7 @@ module UserManagement
         retry_limit: 3,
         timeout: 30.seconds
       )
-      
+
       templates.define(
         name: 'initialize_preferences',
         description: 'Set up user preferences in PreferencesService',
@@ -130,7 +130,7 @@ module UserManagement
         retry_limit: 3,
         timeout: 20.seconds
       )
-      
+
       templates.define(
         name: 'send_welcome_sequence',
         description: 'Send welcome email via NotificationService',
@@ -140,7 +140,7 @@ module UserManagement
         retry_limit: 5,  # Email services are often flaky
         timeout: 15.seconds
       )
-      
+
       templates.define(
         name: 'update_user_status',
         description: 'Mark user registration as complete',
@@ -150,7 +150,7 @@ module UserManagement
         retry_limit: 2
       )
     end
-    
+
     def schema
       {
         type: 'object',
@@ -179,11 +179,11 @@ module UserManagement
   module StepHandlers
     class CreateUserAccountHandler < Tasker::StepHandler::Api
       include CircuitBreakerPattern
-      
+
       def process(task, sequence, step)
         user_data = extract_user_data(task.context)
         correlation_id = task.context['correlation_id'] || generate_correlation_id
-        
+
         response = with_circuit_breaker('user_service') do
           http_client.post("#{user_service_url}/users", {
             body: user_data.to_json,
@@ -195,7 +195,7 @@ module UserManagement
             timeout: 30
           })
         end
-        
+
         case response.code
         when 201
           user_data = response.parsed_response
@@ -231,9 +231,9 @@ module UserManagement
           raise Tasker::NonRetryableError, "Unexpected response: #{response.code} - #{response.body}"
         end
       end
-      
+
       private
-      
+
       def extract_user_data(context)
         {
           email: context['email'],
@@ -241,27 +241,27 @@ module UserManagement
           phone: context['phone']
         }.compact
       end
-      
+
       def get_existing_user(email, correlation_id)
         response = http_client.get("#{user_service_url}/users", {
           query: { email: email },
           headers: { 'X-Correlation-ID' => correlation_id },
           timeout: 15
         })
-        
+
         response.success? ? response.parsed_response : nil
       end
-      
+
       def user_matches?(existing_user, new_user_data)
-        existing_user && 
+        existing_user &&
           existing_user['email'] == new_user_data['email'] &&
           existing_user['name'] == new_user_data['name']
       end
-      
+
       def user_service_url
         ENV.fetch('USER_SERVICE_URL', 'http://localhost:3001')
       end
-      
+
       def generate_correlation_id
         "reg_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
       end
@@ -278,13 +278,13 @@ The breakthrough was implementing correlation ID tracking across all services:
 # app/concerns/circuit_breaker_pattern.rb
 module CircuitBreakerPattern
   extend ActiveSupport::Concern
-  
+
   class CircuitBreakerError < StandardError; end
   class CircuitOpenError < CircuitBreakerError; end
-  
+
   def with_circuit_breaker(service_name)
     breaker = circuit_breaker_for(service_name)
-    
+
     case breaker.state
     when :open
       raise CircuitOpenError, "Circuit breaker is OPEN for #{service_name}"
@@ -299,9 +299,9 @@ module CircuitBreakerPattern
       end
     end
   end
-  
+
   private
-  
+
   def circuit_breaker_for(service_name)
     @circuit_breakers ||= {}
     @circuit_breakers[service_name] ||= CircuitBreaker.new(
@@ -315,11 +315,11 @@ end
 # Service-specific monitoring
 class ServiceMonitor < Tasker::EventSubscriber::Base
   subscribe_to 'step.failed', 'step.completed'
-  
+
   def handle_step_failed(event)
     if microservice_step?(event)
       service_name = extract_service_name(event[:step_name])
-      
+
       # Different alerts for different failure types
       case event[:error]
       when /Circuit breaker is OPEN/
@@ -333,28 +333,28 @@ class ServiceMonitor < Tasker::EventSubscriber::Base
       end
     end
   end
-  
+
   def handle_step_completed(event)
     if microservice_step?(event)
       service_name = extract_service_name(event[:step_name])
       duration = event[:duration] || 0
-      
+
       # Track service performance
       track_service_performance(service_name, duration)
-      
+
       # Alert on slow responses
       if duration > 30_000  # 30 seconds
         notify_slow_response(service_name, duration, event)
       end
     end
   end
-  
+
   private
-  
+
   def microservice_step?(event)
     event[:namespace] == 'user_management'
   end
-  
+
   def extract_service_name(step_name)
     case step_name
     when /user_account/
@@ -408,7 +408,7 @@ The complete microservices orchestration workflow is available:
 
 ```bash
 # One-line setup
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/microservices-coordination/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/microservices-coordination/setup.sh | bash
 
 # Start all services
 cd microservices-demo

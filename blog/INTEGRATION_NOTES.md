@@ -27,7 +27,7 @@ chmod +x setup.sh
 **After (Integrated Pattern)**:
 ```bash
 # One-line setup leveraging existing infrastructure
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 # ~2 minutes, single command
 ```
 
@@ -76,7 +76,7 @@ This pattern scales beautifully for the remaining posts:
 # Post 2: Data Pipeline Resilience
 curl -fsSL .../blog-examples/data-pipeline-resilience/setup.sh | bash -s -- --tasks etl,analytics
 
-# Post 3: Microservices Coordination  
+# Post 3: Microservices Coordination
 curl -fsSL .../blog-examples/microservices-coordination/setup.sh | bash -s -- --tasks user_management,notifications
 
 # Post 4: Team Scaling

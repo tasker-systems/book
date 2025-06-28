@@ -8,7 +8,7 @@ Every chapter in this series follows a proven formula:
 
 1. **The Problem**: A relatable engineering nightmare (3 AM alerts, Black Friday failures)
 2. **Why It Matters**: Technical deep-dive into what goes wrong and why
-3. **The Solution**: Step-by-step Tasker implementation 
+3. **The Solution**: Step-by-step Tasker implementation
 4. **The Results**: Concrete metrics showing the improvement
 5. **Try It Yourself**: Complete, runnable code you can test immediately
 
@@ -18,7 +18,7 @@ Want to see Tasker in action right away? Try our e-commerce reliability example:
 
 ```bash
 # One command setup - complete working demo
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 
 # Start the services
 cd ecommerce-blog-demo

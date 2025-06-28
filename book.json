@@ -22,10 +22,10 @@
   ],
   "pluginsConfig": {
     "github": {
-      "url": "https://github.com/jcoletaylor/tasker"
+      "url": "https://github.com/tasker-systems/tasker"
     },
     "edit-link": {
-      "base": "https://github.com/jcoletaylor/tasker-blog/edit/main",
+      "base": "https://github.com/tasker-systems/tasker-blog/edit/main",
       "label": "Edit This Page"
     },
     "prism": {
@@ -49,8 +49,8 @@
   },
   "variables": {
     "version": "2.5.0",
-    "github_repo": "jcoletaylor/tasker",
-    "install_url": "https://raw.githubusercontent.com/jcoletaylor/tasker/main/scripts/install-tasker-app.sh"
+    "github_repo": "tasker-systems/tasker",
+    "install_url": "https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh"
   },
   "pdf": {
     "pageNumbers": true,

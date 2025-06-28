@@ -77,7 +77,7 @@
 
 ### Installation & Setup
 - **Automated Demo Builder**: One-command setup with real-world examples
-- **Installation Script**: `https://raw.githubusercontent.com/jcoletaylor/tasker/main/scripts/install-tasker-app.sh`
+- **Installation Script**: `https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh`
 - **Demo Applications**: E-commerce, inventory, customer management workflows
 - **External API Integration**: DummyJSON for realistic data scenarios
 

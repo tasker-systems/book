@@ -31,7 +31,7 @@ task_request = Tasker::Types::TaskRequest.new(
   namespace: 'customer_success',
   context: {
     customer_id: 'cust_12345',           # ❌ PII in logs
-    customer_email: 'john@example.com',  # ❌ PII in logs  
+    customer_email: 'john@example.com',  # ❌ PII in logs
     refund_amount: 299.99,               # ❌ Financial data
     reason: 'Product defective',         # ❌ No data classification
     agent_notes: 'Customer very upset'   # ❌ Sensitive notes
@@ -66,21 +66,21 @@ Tasker.configuration do |config|
     auth.provider = :jwt
     auth.jwt_secret = Rails.application.credentials.tasker_jwt_secret
     auth.require_authentication = Rails.env.production?
-    
+
     # Integration with existing auth systems
-    auth.user_resolver = ->(token) { 
-      AuthService.resolve_user_from_token(token) 
+    auth.user_resolver = ->(token) {
+      AuthService.resolve_user_from_token(token)
     }
-    
-    auth.permission_resolver = ->(user, permission) { 
-      PermissionService.user_has_permission?(user, permission) 
+
+    auth.permission_resolver = ->(user, permission) {
+      PermissionService.user_has_permission?(user, permission)
     }
-    
+
     # Role-based access control
     auth.authorization_enabled = true
     auth.default_permissions = []  # Deny by default
   end
-  
+
   # Audit and compliance
   config.audit do |audit|
     audit.enabled = true
@@ -90,14 +90,14 @@ Tasker.configuration do |config|
     audit.include_results = false     # Don't log sensitive results
     audit.pii_fields = ['customer_email', 'customer_phone', 'address']
   end
-  
+
   # Data encryption and classification
   config.security do |security|
     security.encryption_enabled = true
     security.encryption_key = Rails.application.credentials.tasker_encryption_key
     security.encrypt_context = true
     security.encrypt_results = true
-    
+
     # Data classification
     security.data_classification_enabled = true
     security.default_classification = :internal
@@ -115,16 +115,16 @@ module CustomerSuccess
     TASK_NAME = 'process_refund'
     NAMESPACE = 'customer_success'
     VERSION = '2.0.0'
-    
+
     # Define required permissions for this workflow
     requires_permissions 'customer_success.refunds.process'
-    
+
     # Data classification for compliance
     data_classification :confidential
     contains_pii true
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       templates.define(
         name: 'validate_refund_request',
@@ -132,7 +132,7 @@ module CustomerSuccess
         requires_permissions: 'customer_success.refunds.validate',
         audit_level: :detailed
       )
-      
+
       templates.define(
         name: 'get_manager_approval',
         description: 'Route to manager for approval',
@@ -140,7 +140,7 @@ module CustomerSuccess
         requires_permissions: 'customer_success.refunds.approve',
         audit_level: :detailed
       )
-      
+
       templates.define(
         name: 'execute_refund',
         description: 'Execute the refund transaction',
@@ -149,7 +149,7 @@ module CustomerSuccess
         audit_level: :full,  # Full audit for financial transactions
         data_classification: :restricted
       )
-      
+
       templates.define(
         name: 'notify_customer',
         description: 'Send refund confirmation to customer',
@@ -158,42 +158,42 @@ module CustomerSuccess
         contains_pii: true
       )
     end
-    
+
     def schema
       {
         type: 'object',
         required: ['customer_id', 'refund_amount', 'reason'],
         properties: {
-          customer_id: { 
-            type: 'string', 
+          customer_id: {
+            type: 'string',
             'x-data-classification': 'pii-identifier'
           },
-          customer_email: { 
-            type: 'string', 
+          customer_email: {
+            type: 'string',
             format: 'email',
             'x-data-classification': 'pii-contact'
           },
-          refund_amount: { 
+          refund_amount: {
             type: 'number',
             'x-data-classification': 'financial'
           },
-          reason: { 
+          reason: {
             type: 'string',
             'x-data-classification': 'internal'
           },
-          agent_notes: { 
+          agent_notes: {
             type: 'string',
             'x-data-classification': 'confidential'
           }
         }
       }
     end
-    
+
     # Override to add security context
     def initialize_task!(task_request)
       current_user = AuthContext.current_user
       raise Tasker::AuthorizationError unless current_user
-      
+
       required_permission = 'customer_success.refunds.process'
       unless PermissionService.user_has_permission?(current_user, required_permission)
         SecurityAuditLogger.log_unauthorized_access(
@@ -203,9 +203,9 @@ module CustomerSuccess
         )
         raise Tasker::AuthorizationError, "Missing permission: #{required_permission}"
       end
-      
+
       task = super(task_request)
-      
+
       # Add security context for audit trails
       task.annotations.merge!({
         executed_by_user_id: current_user.id,
@@ -217,7 +217,7 @@ module CustomerSuccess
         data_classification: 'confidential',
         contains_pii: true
       })
-      
+
       task
     end
   end
@@ -230,7 +230,7 @@ end
 # app/concerns/pii_safe_logging.rb
 module PIISafeLogging
   extend ActiveSupport::Concern
-  
+
   def sanitize_for_logs(data)
     case data
     when Hash
@@ -243,31 +243,31 @@ module PIISafeLogging
       data
     end
   end
-  
+
   private
-  
+
   def sanitize_string(string)
     return string unless contains_pii?(string)
-    
+
     # Email addresses
     string = string.gsub(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/, '[EMAIL_REDACTED]')
-    
+
     # Phone numbers
     string = string.gsub(/\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/, '[PHONE_REDACTED]')
-    
+
     # Credit card numbers
     string = string.gsub(/\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/, '[CARD_REDACTED]')
-    
+
     string
   end
-  
+
   def contains_pii?(string)
     pii_patterns = [
       /@/,  # Email indicator
       /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/,  # Phone pattern
       /\b\d{4}[-\s]?\d{4}[-\s]?\d{4}[-\s]?\d{4}\b/  # Credit card pattern
     ]
-    
+
     pii_patterns.any? { |pattern| string.match?(pattern) }
   end
 end
@@ -277,11 +277,11 @@ module CustomerSuccess
   module StepHandlers
     class ValidateRefundRequestHandler < Tasker::StepHandler::Base
       include PIISafeLogging
-      
+
       def process(task, sequence, step)
         customer_id = task.context['customer_id']
         refund_amount = task.context['refund_amount']
-        
+
         # Safe logging - no PII exposed
         log_sanitized("Validating refund request", {
           task_id: task.id,
@@ -289,7 +289,7 @@ module CustomerSuccess
           customer_id_hash: Digest::SHA256.hexdigest(customer_id)[0..8],  # Hash for tracking
           step_name: step.name
         })
-        
+
         # Business logic with audit trail
         validation_result = with_audit_trail(
           action: 'validate_refund_eligibility',
@@ -302,7 +302,7 @@ module CustomerSuccess
         ) do
           RefundEligibilityService.validate(customer_id, refund_amount)
         end
-        
+
         unless validation_result.eligible?
           SecurityAuditLogger.log_refund_denial(
             customer_id: customer_id,
@@ -310,10 +310,10 @@ module CustomerSuccess
             denial_reason: validation_result.reason,
             user_id: AuthContext.current_user.id
           )
-          
+
           raise Tasker::NonRetryableError, "Refund not eligible: #{validation_result.reason}"
         end
-        
+
         {
           validated: true,
           eligibility_check_id: validation_result.id,
@@ -322,9 +322,9 @@ module CustomerSuccess
           validated_at: Time.current.iso8601
         }
       end
-      
+
       private
-      
+
       def log_sanitized(message, data)
         Rails.logger.info({
           message: message,
@@ -333,7 +333,7 @@ module CustomerSuccess
           correlation_id: AuthContext.current_correlation_id
         }.to_json)
       end
-      
+
       def with_audit_trail(action:, subject_type:, subject_id:, metadata: {})
         audit_entry = SecurityAuditLogger.start_audit(
           action: action,
@@ -343,15 +343,15 @@ module CustomerSuccess
           ip_address: AuthContext.current_ip,
           metadata: metadata
         )
-        
+
         begin
           result = yield
-          
+
           SecurityAuditLogger.complete_audit(audit_entry, {
             outcome: 'success',
             result_summary: sanitize_for_logs(result.class.name)
           })
-          
+
           result
         rescue => e
           SecurityAuditLogger.complete_audit(audit_entry, {
@@ -359,7 +359,7 @@ module CustomerSuccess
             error: e.class.name,
             error_message: sanitize_for_logs(e.message)
           })
-          
+
           raise
         end
       end
@@ -378,16 +378,16 @@ class GDPRComplianceService
   # Right to be forgotten - remove all PII from workflow data
   def self.process_erasure_request(customer_email)
     customer_id = find_customer_id(customer_email)
-    
+
     # Find all workflows containing this customer's data
     affected_tasks = Tasker::Task.joins(:workflow_steps)
                                  .where("context::text ILIKE ?", "%#{customer_email}%")
                                  .or(Tasker::Task.where("context::text ILIKE ?", "%#{customer_id}%"))
-    
+
     affected_tasks.each do |task|
       anonymize_task_data(task, customer_email, customer_id)
     end
-    
+
     # Update audit logs
     SecurityAuditLogger.log_data_erasure(
       customer_email: customer_email,
@@ -395,38 +395,38 @@ class GDPRComplianceService
       performed_by: AuthContext.current_user.id
     )
   end
-  
+
   # Right of access - export all data for a customer
   def self.generate_data_export(customer_email)
     customer_id = find_customer_id(customer_email)
-    
+
     # Find all workflow data
     workflows = Tasker::Task.where("context::text ILIKE ?", "%#{customer_email}%")
                            .or(Tasker::Task.where("context::text ILIKE ?", "%#{customer_id}%"))
-    
+
     export_data = {
       customer_email: customer_email,
       data_extracted_at: Time.current.iso8601,
       workflows: workflows.map { |task| sanitize_task_for_export(task) }
     }
-    
+
     # Log access request
     SecurityAuditLogger.log_data_access_request(
       customer_email: customer_email,
       export_size: export_data.to_json.bytesize,
       performed_by: AuthContext.current_user.id
     )
-    
+
     export_data
   end
-  
+
   private
-  
+
   def self.anonymize_task_data(task, customer_email, customer_id)
     # Replace PII with anonymized versions
     anonymized_context = task.context.deep_dup
     anonymized_context = replace_pii_in_hash(anonymized_context, customer_email, customer_id)
-    
+
     # Update task with anonymized data
     task.update!(
       context: anonymized_context,
@@ -435,7 +435,7 @@ class GDPRComplianceService
         'original_customer_hash': Digest::SHA256.hexdigest(customer_email)
       })
     )
-    
+
     # Anonymize step results as well
     task.workflow_steps.each do |step|
       if step.result.present?
@@ -444,7 +444,7 @@ class GDPRComplianceService
       end
     end
   end
-  
+
   def self.replace_pii_in_hash(data, email, customer_id)
     case data
     when Hash
@@ -467,13 +467,13 @@ end
 # app/controllers/admin/compliance_controller.rb
 class Admin::ComplianceController < ApplicationController
   before_action :require_compliance_officer_role
-  
+
   def audit_report
     @date_range = parse_date_range(params[:date_range])
     @audit_entries = SecurityAuditLog.includes(:user)
                                     .where(created_at: @date_range)
                                     .order(created_at: :desc)
-    
+
     @summary = {
       total_workflow_executions: @audit_entries.where(action: 'execute_workflow').count,
       unauthorized_attempts: @audit_entries.where(outcome: 'unauthorized').count,
@@ -482,7 +482,7 @@ class Admin::ComplianceController < ApplicationController
       pii_workflows: count_pii_workflows(@date_range)
     }
   end
-  
+
   def data_retention_report
     @retention_policy = {
       audit_logs: '7 years',
@@ -490,7 +490,7 @@ class Admin::ComplianceController < ApplicationController
       workflow_data_without_pii: '5 years',
       anonymized_data: 'indefinite'
     }
-    
+
     @data_volumes = {
       total_tasks: Tasker::Task.count,
       tasks_with_pii: Tasker::Task.where("annotations->>'contains_pii' = 'true'").count,
@@ -498,7 +498,7 @@ class Admin::ComplianceController < ApplicationController
       anonymized_tasks: Tasker::Task.where("annotations ? 'gdpr_anonymized_at'").count
     }
   end
-  
+
   def security_metrics
     @metrics = {
       authentication_failures: count_auth_failures_last_30_days,
@@ -507,15 +507,15 @@ class Admin::ComplianceController < ApplicationController
       users_by_permissions: users_by_workflow_permissions
     }
   end
-  
+
   private
-  
+
   def require_compliance_officer_role
     unless current_user.has_role?('compliance_officer')
       raise Tasker::AuthorizationError, 'Compliance officer role required'
     end
   end
-  
+
   def count_pii_workflows(date_range)
     Tasker::Task.where(created_at: date_range)
                 .where("annotations->>'contains_pii' = 'true'")
@@ -564,7 +564,7 @@ The complete enterprise security workflow examples are available:
 
 ```bash
 # One-line setup with full security stack
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/enterprise-security/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/enterprise-security/setup.sh | bash
 
 # Includes JWT auth, audit logging, and compliance tools
 cd enterprise-security-demo

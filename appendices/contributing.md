@@ -221,7 +221,7 @@ Create `setup-scripts/blog-setup.sh`:
 set -e
 
 # Your Chapter Name Demo Setup
-GITHUB_REPO="jcoletaylor/tasker"
+GITHUB_REPO="tasker-systems/tasker"
 BRANCH="main"
 INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/scripts/install-tasker-app.sh"
 

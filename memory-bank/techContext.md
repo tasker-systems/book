@@ -58,7 +58,7 @@ gem install tasker
 # Or in Gemfile: gem 'tasker', '~> 2.5.0'
 
 # Automated demo application setup
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/scripts/install-tasker-app.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash
 ```
 
 ### Project Structure Integration
@@ -107,8 +107,8 @@ tasker-blog/
   ],
   "variables": {
     "version": "2.5.0",
-    "github_repo": "jcoletaylor/tasker",
-    "install_url": "https://raw.githubusercontent.com/jcoletaylor/tasker/main/scripts/install-tasker-app.sh",
+    "github_repo": "tasker-systems/tasker",
+    "install_url": "https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh",
     "tasker_status": "production-ready",
     "test_success": "1692-passing-tests"
   }

@@ -53,15 +53,15 @@ class CustomerAnalyticsHandler < Tasker::TaskHandler::Base
   define_step_templates do |templates|
     # Parallel data extraction
     templates.define(name: 'extract_orders')
-    templates.define(name: 'extract_users') 
+    templates.define(name: 'extract_users')
     templates.define(name: 'extract_products')
-    
+
     # Dependent transformations
     templates.define(
       name: 'transform_customer_metrics',
       depends_on_step: ['extract_orders', 'extract_users']
     )
-    
+
     # Event-driven monitoring
     templates.define(
       name: 'validate_data_quality',
@@ -75,7 +75,7 @@ end
 ```ruby
 class DataPipelineMonitor < Tasker::EventSubscriber::Base
   subscribe_to 'step.failed', 'task.completed', 'data.quality_check_failed'
-  
+
   def handle_step_failed(event)
     if critical_step?(event[:step_name])
       SlackAPI.post_message(
@@ -131,7 +131,7 @@ Unlike sequential workflows, data pipelines often need to process independent op
 ```ruby
 # Multiple extractions run in parallel
 templates.define(name: 'extract_orders')    # Runs immediately
-templates.define(name: 'extract_users')     # Runs immediately  
+templates.define(name: 'extract_users')     # Runs immediately
 templates.define(name: 'extract_products')  # Runs immediately
 
 # Transformation waits for all extractions
@@ -148,11 +148,11 @@ Long-running data operations need visibility into their progress:
 def process(task, sequence, step)
   total_records = count_records_to_process
   processed = 0
-  
+
   process_in_batches do |batch|
     process_batch(batch)
     processed += batch.size
-    
+
     # Update progress for monitoring
     update_progress(processed, total_records)
   end
@@ -184,7 +184,7 @@ What data pipeline challenges are you facing?
 - **How do you monitor** long-running data processing?
 - **What recovery strategies** work best for your use cases?
 
-Share your experiences in [GitHub Discussions](https://github.com/jcoletaylor/tasker/discussions) to help us create the most valuable content.
+Share your experiences in [GitHub Discussions](https://github.com/tasker-systems/tasker/discussions) to help us create the most valuable content.
 
 ## 🔗 Related Chapters
 

@@ -27,15 +27,15 @@ Here's what their workflow collision looked like:
 class ProcessRefundHandler < Tasker::TaskHandler::Base
   TASK_NAME = 'process_refund'  # ❌ Collision!
   VERSION = '1.0.0'
-  
+
   # Handles payment gateway refunds
 end
 
-# Customer Success Team's workflow  
+# Customer Success Team's workflow
 class ProcessRefundHandler < Tasker::TaskHandler::Base
   TASK_NAME = 'process_refund'  # ❌ Same name!
   VERSION = '1.0.0'
-  
+
   # Handles customer service refunds with approvals
 end
 ```
@@ -68,9 +68,9 @@ module Payments
     TASK_NAME = 'process_refund'
     NAMESPACE = 'payments'          # ✅ Clear ownership
     VERSION = '2.1.0'              # ✅ Semantic versioning
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       templates.define(
         name: 'validate_payment_eligibility',
@@ -101,9 +101,9 @@ module CustomerSuccess
     TASK_NAME = 'process_refund'
     NAMESPACE = 'customer_success'  # ✅ Different namespace
     VERSION = '1.3.0'
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       templates.define(
         name: 'validate_refund_request',
@@ -143,7 +143,7 @@ payments_refund = Tasker::Types::TaskRequest.new(
 # Customer Success team creates a different refund
 cs_refund = Tasker::Types::TaskRequest.new(
   name: 'process_refund',
-  namespace: 'customer_success', 
+  namespace: 'customer_success',
   version: '1.3.0',
   context: { ticket_id: 'cs_456', customer_id: 'cust_789' }
 )
@@ -161,7 +161,7 @@ The namespace system enabled each team to organize their workflows logically:
 # Payments namespace
 payments/
 ├── process_refund (v2.1.0)
-├── process_payment (v3.0.0)  
+├── process_payment (v3.0.0)
 ├── handle_chargeback (v1.2.0)
 ├── reconcile_transactions (v1.1.0)
 └── generate_payment_report (v2.0.0)
@@ -194,9 +194,9 @@ module Payments
     TASK_NAME = 'process_refund'
     NAMESPACE = 'payments'
     VERSION = '2.1.0'  # New version with fraud detection
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       templates.define(
         name: 'validate_payment_eligibility',
@@ -240,7 +240,7 @@ new_refund = Tasker::Types::TaskRequest.new(
 
 # Legacy systems can still use v2.0.0 during transition
 legacy_refund = Tasker::Types::TaskRequest.new(
-  name: 'process_refund', 
+  name: 'process_refund',
   namespace: 'payments',
   version: '2.0.0',  # Older version during migration
   context: { payment_id: 'pay_legacy_456' }
@@ -262,14 +262,14 @@ Tasker.configuration do |config|
       ns.description = 'Payment processing, refunds, and financial workflows'
       ns.requires_approval = false  # Team has full autonomy
     end
-    
+
     policies.define_namespace('customer_success') do |ns|
       ns.owner_team = 'customer_success'
       ns.contact_email = 'cs-team@growthcorp.com'
       ns.description = 'Customer support and success workflows'
       ns.requires_approval = false
     end
-    
+
     # Shared namespaces require approval
     policies.define_namespace('shared') do |ns|
       ns.owner_team = 'platform'
@@ -293,21 +293,21 @@ module CustomerSuccess
     TASK_NAME = 'process_refund'
     NAMESPACE = 'customer_success'
     VERSION = '1.3.0'
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       templates.define(
         name: 'validate_refund_request',
         description: 'Validate customer refund request'
       )
-      
+
       templates.define(
         name: 'get_manager_approval',
         description: 'Get manager approval for refund',
         depends_on_step: 'validate_refund_request'
       )
-      
+
       # Cross-namespace workflow invocation
       templates.define(
         name: 'execute_payment_refund',
@@ -315,7 +315,7 @@ module CustomerSuccess
         depends_on_step: 'get_manager_approval',
         handler_class: 'CustomerSuccess::StepHandlers::ExecutePaymentRefundHandler'
       )
-      
+
       templates.define(
         name: 'update_customer_record',
         description: 'Update customer service records',
@@ -331,7 +331,7 @@ module CustomerSuccess
     class ExecutePaymentRefundHandler < Tasker::StepHandler::Base
       def process(task, sequence, step)
         refund_approval = step_results(sequence, 'get_manager_approval')
-        
+
         # Create a payments workflow request
         payments_request = Tasker::Types::TaskRequest.new(
           name: 'process_refund',
@@ -345,16 +345,16 @@ module CustomerSuccess
             cs_ticket_id: task.context['ticket_id']
           }
         )
-        
+
         # Execute the payments workflow
         payments_task = Tasker::TaskExecutor.execute_sync(payments_request)
-        
+
         case payments_task.status
         when 'completed'
           payment_result = payments_task.workflow_steps
             .find { |step| step.name == 'process_gateway_refund' }
             .result
-            
+
           {
             payment_refund_id: payment_result['refund_id'],
             refund_amount: payment_result['amount'],
@@ -367,9 +367,9 @@ module CustomerSuccess
           raise Tasker::RetryableError, "Payment refund in unexpected state: #{payments_task.status}"
         end
       end
-      
+
       private
-      
+
       def step_results(sequence, step_name)
         step = sequence.steps.find { |s| s.name == step_name }
         step&.result || {}
@@ -417,7 +417,7 @@ The complete team scaling workflow examples are available:
 
 ```bash
 # One-line setup
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/team-scaling/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/team-scaling/setup.sh | bash
 
 # Simulates 4 team namespaces with example workflows
 cd team-scaling-demo

@@ -6,9 +6,9 @@ This documentation hub provides everything you need to master Tasker, from your 
 
 ## 🎯 Quick Navigation
 
-**Just getting started?** → [Quick Start Guide](quick-start.md)  
-**Building your first workflow?** → [Developer Guide](developer-guide.md)  
-**Ready for production?** → [Production Features](production-features.md)  
+**Just getting started?** → [Quick Start Guide](quick-start.md)
+**Building your first workflow?** → [Developer Guide](developer-guide.md)
+**Ready for production?** → [Production Features](production-features.md)
 **Debugging issues?** → [Troubleshooting](troubleshooting.md)
 
 ---
@@ -17,7 +17,7 @@ This documentation hub provides everything you need to master Tasker, from your 
 
 ### Getting Started
 - **[Quick Start Guide](quick-start.md)** - Build your first workflow in 15 minutes
-- **[Installation & Setup](installation.md)** - Complete setup instructions  
+- **[Installation & Setup](installation.md)** - Complete setup instructions
 - **[Core Concepts](core-concepts.md)** - Understanding Tasker's architecture
 
 ### Developer Reference
@@ -28,7 +28,7 @@ This documentation hub provides everything you need to master Tasker, from your 
 
 ### Production Features
 - **[Authentication & Authorization](authentication.md)** - Secure your workflows
-- **[REST API](rest-api.md)** - Complete HTTP API documentation  
+- **[REST API](rest-api.md)** - Complete HTTP API documentation
 - **[Health Monitoring](health-monitoring.md)** - Production health endpoints
 - **[Telemetry & Observability](telemetry.md)** - OpenTelemetry and metrics
 - **[Performance](performance.md)** - High-performance SQL functions
@@ -52,18 +52,18 @@ This documentation hub provides everything you need to master Tasker, from your 
 Learn from detailed engineering stories that show Tasker solving real problems:
 
 ### [Chapter 1: E-commerce Checkout Reliability](../blog/posts/post-01-ecommerce-reliability/)
-**Problem:** Black Friday checkout meltdowns  
-**Solution:** Reliable workflow with automatic retry and dependency management  
+**Problem:** Black Friday checkout meltdowns
+**Solution:** Reliable workflow with automatic retry and dependency management
 **Patterns:** Linear workflow, error handling, monitoring integration
 
-### [Chapter 2: Data Pipeline Resilience](../blog/posts/post-02-data-pipeline-resilience/)  
-**Problem:** 3 AM ETL failures requiring manual intervention  
-**Solution:** Parallel data processing with intelligent retry and progress tracking  
+### [Chapter 2: Data Pipeline Resilience](../blog/posts/post-02-data-pipeline-resilience/)
+**Problem:** 3 AM ETL failures requiring manual intervention
+**Solution:** Parallel data processing with intelligent retry and progress tracking
 **Patterns:** Diamond pattern, parallel execution, progress monitoring
 
 ### More Engineering Stories (Coming Soon)
 - **Chapter 3:** Microservices Coordination - Orchestrating 6 API calls for user registration
-- **Chapter 4:** Team Scaling - Managing workflows across 8 engineering teams  
+- **Chapter 4:** Team Scaling - Managing workflows across 8 engineering teams
 - **Chapter 5:** Production Observability - From black box to complete visibility
 - **Chapter 6:** Enterprise Security - SOC 2 compliance for workflow engines
 
@@ -100,7 +100,7 @@ expect(result.status).to eq('completed')
 task = Tasker::Task.find(task_id)
 puts task.inspect_execution
 
-# Performance analysis  
+# Performance analysis
 Tasker::Analytics.workflow_performance('ecommerce', 'process_order')
 ```
 
@@ -113,8 +113,8 @@ Tasker::Analytics.workflow_performance('ecommerce', 'process_order')
 - [Core Concepts](core-concepts.md) - Understand the architecture
 - [Simple Examples](../blog/posts/post-01-ecommerce-reliability/) - See basic patterns
 
-### 2. **Development Skills** 
-- [Developer Guide](developer-guide.md) - Comprehensive implementation  
+### 2. **Development Skills**
+- [Developer Guide](developer-guide.md) - Comprehensive implementation
 - [YAML Configuration](yaml-configuration.md) - Declarative workflows
 - [Testing Guide](testing-guide.md) - Test your workflows
 
@@ -138,13 +138,13 @@ Tasker::Analytics.workflow_performance('ecommerce', 'process_order')
 
 ## 🔗 External Resources
 
-### Official Documentation  
-- **[GitHub Repository](https://github.com/jcoletaylor/tasker)** - Source code and issues
-- **[Ruby API Docs](https://rubydoc.info/github/jcoletaylor/tasker)** - Complete API reference
-- **[OpenAPI Spec](https://github.com/jcoletaylor/tasker/blob/main/docs/openapi.yml)** - REST API specification
+### Official Documentation
+- **[GitHub Repository](https://github.com/tasker-systems/tasker)** - Source code and issues
+- **[Ruby API Docs](https://rubydoc.info/github/tasker-systems/tasker)** - Complete API reference
+- **[OpenAPI Spec](https://github.com/tasker-systems/tasker/blob/main/docs/openapi.yml)** - REST API specification
 
 ### Community
-- **[GitHub Discussions](https://github.com/jcoletaylor/tasker/discussions)** - Questions and patterns
+- **[GitHub Discussions](https://github.com/tasker-systems/tasker/discussions)** - Questions and patterns
 - **[Stack Overflow](https://stackoverflow.com/questions/tagged/tasker-ruby)** - Tag: `tasker-ruby`
 
 ### Related Tools

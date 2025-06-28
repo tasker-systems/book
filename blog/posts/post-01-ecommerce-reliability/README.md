@@ -9,7 +9,7 @@ Transform a fragile, monolithic checkout flow into a bulletproof workflow engine
 This chapter introduces Tasker's foundational concepts through a scenario every e-commerce engineer recognizes:
 
 - **Atomic workflow steps** that eliminate partial failures
-- **Intelligent retry strategies** for different error types  
+- **Intelligent retry strategies** for different error types
 - **Complete state management** and recovery capabilities
 - **Built-in observability** for debugging and monitoring
 
@@ -18,13 +18,13 @@ This chapter introduces Tasker's foundational concepts through a scenario every 
 Experience the transformation from fragile to reliable in 2 minutes:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 ```
 
 This creates a complete working Rails application demonstrating:
 - 5-step checkout workflow with dependencies
 - Payment processing with retry logic
-- Inventory management with race condition protection  
+- Inventory management with race condition protection
 - Email delivery with exponential backoff
 - Complete failure recovery and visibility
 
@@ -42,7 +42,7 @@ This creates a complete working Rails application demonstrating:
 ### [The Complete Story](blog-post.md)
 The full narrative from Black Friday nightmare to reliable checkout system, including:
 - The monolithic checkout that failed
-- Step-by-step Tasker transformation  
+- Step-by-step Tasker transformation
 - Real code examples with explanations
 - Concrete results and business impact
 
@@ -58,7 +58,7 @@ Complete, production-ready implementations:
 Multiple testing scenarios to explore reliability features:
 - **Success flows**: Normal checkout completion
 - **Retryable failures**: Payment timeouts, service unavailability
-- **Non-retryable failures**: Invalid cards, insufficient funds  
+- **Non-retryable failures**: Invalid cards, insufficient funds
 - **Recovery scenarios**: Workflow restart from failure points
 - **Load testing**: Concurrent checkout stress testing
 
@@ -162,7 +162,7 @@ Built-in visibility into workflow execution:
 
 1. **Break monoliths into atomic steps** - Single responsibility with clear boundaries
 2. **Design for failure** - Assume every external call will fail sometimes
-3. **Make retries intelligent** - Different strategies for different error types  
+3. **Make retries intelligent** - Different strategies for different error types
 4. **Provide complete visibility** - You can't fix what you can't see
 5. **Think workflows, not procedures** - Workflows can pause, retry, and resume
 

@@ -16,9 +16,9 @@ Sarah's heart sank. She knew what was coming.
 
 At 3:17 AM on Thursday, her phone lit up with the text every engineer dreads:
 
-> **DataOps Alert**: Customer analytics pipeline failed  
-> **Impact**: No dashboard data for executive meeting  
-> **ETA**: Manual intervention required  
+> **DataOps Alert**: Customer analytics pipeline failed
+> **Impact**: No dashboard data for executive meeting
+> **ETA**: Manual intervention required
 > **On-call**: YOU
 
 Sarah was the fourth engineer this month to get the 3 AM data pipeline alert. It had become a running joke in the team chat: "Who's turn is it to debug the nightly ETL?"
@@ -36,17 +36,17 @@ class CustomerAnalyticsJob < ApplicationJob
     orders = extract_orders_from_database
     users = extract_users_from_crm
     products = extract_products_from_inventory
-    
+
     # Step 2: Transform and join data
     customer_metrics = calculate_customer_metrics(orders, users)
     product_metrics = calculate_product_metrics(orders, products)
-    
+
     # Step 3: Generate insights
     insights = generate_business_insights(customer_metrics, product_metrics)
-    
+
     # Step 4: Update dashboard
     DashboardService.update_metrics(insights)
-    
+
     # Step 5: Send completion notification
     SlackNotifier.post_message("#data-team", "Analytics pipeline completed")
   rescue => e
@@ -66,7 +66,7 @@ end
 
 During their worst incident, the pipeline failed 3 times in one night:
 1. **11 PM**: CRM API timeout after 2 hours of processing
-2. **1:30 AM**: Database lock timeout after reprocessing for 2.5 hours  
+2. **1:30 AM**: Database lock timeout after reprocessing for 2.5 hours
 3. **4:45 AM**: Out of memory during metrics calculation
 
 Sarah spent the entire night manually restarting processes, watching logs, and explaining to increasingly frustrated executives why their dashboard was empty.
@@ -82,9 +82,9 @@ module DataPipeline
     TASK_NAME = 'customer_analytics'
     NAMESPACE = 'data_pipeline'
     VERSION = '1.0.0'
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       # Parallel data extraction (3 concurrent operations)
       templates.define(
@@ -95,7 +95,7 @@ module DataPipeline
         retry_limit: 3,
         timeout: 30.minutes
       )
-      
+
       templates.define(
         name: 'extract_users',
         description: 'Extract user data from CRM system',
@@ -104,7 +104,7 @@ module DataPipeline
         retry_limit: 5,  # CRM can be flaky
         timeout: 20.minutes
       )
-      
+
       templates.define(
         name: 'extract_products',
         description: 'Extract product data from inventory system',
@@ -113,7 +113,7 @@ module DataPipeline
         retry_limit: 3,
         timeout: 15.minutes
       )
-      
+
       # Dependent transformations (wait for all extractions)
       templates.define(
         name: 'transform_customer_metrics',
@@ -124,7 +124,7 @@ module DataPipeline
         retry_limit: 2,
         timeout: 45.minutes
       )
-      
+
       templates.define(
         name: 'transform_product_metrics',
         description: 'Calculate product performance metrics',
@@ -134,7 +134,7 @@ module DataPipeline
         retry_limit: 2,
         timeout: 30.minutes
       )
-      
+
       # Final aggregation and output
       templates.define(
         name: 'generate_insights',
@@ -143,7 +143,7 @@ module DataPipeline
         handler_class: 'DataPipeline::StepHandlers::GenerateInsightsHandler',
         timeout: 20.minutes
       )
-      
+
       templates.define(
         name: 'update_dashboard',
         description: 'Update executive dashboard with new metrics',
@@ -152,7 +152,7 @@ module DataPipeline
         retryable: true,
         retry_limit: 3
       )
-      
+
       templates.define(
         name: 'send_notifications',
         description: 'Send completion notifications to stakeholders',
@@ -162,7 +162,7 @@ module DataPipeline
         retry_limit: 5
       )
     end
-    
+
     def schema
       {
         type: 'object',
@@ -198,13 +198,13 @@ module DataPipeline
         date_range = task.context['date_range']
         start_date = Date.parse(date_range['start_date'])
         end_date = Date.parse(date_range['end_date'])
-        
+
         # Calculate total records for progress tracking
         total_count = Order.where(created_at: start_date..end_date).count
         processed_count = 0
-        
+
         orders = []
-        
+
         # Process in batches to avoid memory issues
         Order.where(created_at: start_date..end_date).find_in_batches(batch_size: 1000) do |batch|
           begin
@@ -223,17 +223,17 @@ module DataPipeline
                 }
               }
             end
-            
+
             orders.concat(batch_data)
             processed_count += batch.size
-            
+
             # Update progress for monitoring
             progress_percent = (processed_count.to_f / total_count * 100).round(1)
             update_progress_annotation(
-              step, 
+              step,
               "Processed #{processed_count}/#{total_count} orders (#{progress_percent}%)"
             )
-            
+
           rescue ActiveRecord::ConnectionTimeoutError => e
             raise Tasker::RetryableError, "Database connection timeout: #{e.message}"
           rescue StandardError => e
@@ -241,7 +241,7 @@ module DataPipeline
             raise Tasker::RetryableError, "Extraction failed, will retry: #{e.message}"
           end
         end
-        
+
         {
           orders: orders,
           total_count: orders.length,
@@ -252,9 +252,9 @@ module DataPipeline
           extracted_at: Time.current.iso8601
         }
       end
-      
+
       private
-      
+
       def update_progress_annotation(step, message)
         step.annotations.merge!({
           progress_message: message,
@@ -275,29 +275,29 @@ module DataPipeline
       def process(task, sequence, step)
         orders_data = step_results(sequence, 'extract_orders')
         users_data = step_results(sequence, 'extract_users')
-        
+
         orders = orders_data['orders']
         users = users_data['users']
-        
+
         # Create lookup hash for efficient user data access
         users_by_id = users.index_by { |user| user['user_id'] }
-        
+
         # Group orders by customer
         orders_by_customer = orders.group_by { |order| order['customer_id'] }
-        
+
         customer_metrics = []
         processed_customers = 0
         total_customers = orders_by_customer.keys.length
-        
+
         orders_by_customer.each do |customer_id, customer_orders|
           user_info = users_by_id[customer_id]
           next unless user_info  # Skip if user data missing
-          
+
           metrics = calculate_customer_metrics(customer_orders, user_info)
           customer_metrics << metrics
-          
+
           processed_customers += 1
-          
+
           # Update progress every 100 customers
           if processed_customers % 100 == 0
             progress_percent = (processed_customers.to_f / total_customers * 100).round(1)
@@ -307,7 +307,7 @@ module DataPipeline
             )
           end
         end
-        
+
         {
           customer_metrics: customer_metrics,
           total_customers: customer_metrics.length,
@@ -321,22 +321,22 @@ module DataPipeline
           calculated_at: Time.current.iso8601
         }
       end
-      
+
       private
-      
+
       def step_results(sequence, step_name)
         step = sequence.steps.find { |s| s.name == step_name }
         step&.result || {}
       end
-      
+
       def calculate_customer_metrics(customer_orders, user_info)
         total_spent = customer_orders.sum { |order| order['total_amount'] }
         order_count = customer_orders.length
         avg_order_value = order_count > 0 ? total_spent / order_count : 0
-        
+
         last_order_date = customer_orders.map { |order| Date.parse(order['order_date']) }.max
         days_since_last_order = last_order_date ? (Date.current - last_order_date).to_i : nil
-        
+
         {
           customer_id: user_info['user_id'],
           customer_email: user_info['email'],
@@ -350,18 +350,18 @@ module DataPipeline
           calculated_at: Time.current.iso8601
         }
       end
-      
+
       def calculate_order_frequency(orders)
         return 0 if orders.length < 2
-        
+
         order_dates = orders.map { |order| Date.parse(order['order_date']) }.sort
         total_days = order_dates.last - order_dates.first
-        
+
         return 0 if total_days <= 0
-        
+
         (orders.length - 1) / (total_days / 30.0)  # Orders per month
       end
-      
+
       def determine_customer_segment(total_spent, order_count)
         case
         when total_spent >= 1000 && order_count >= 10
@@ -374,7 +374,7 @@ module DataPipeline
           'New'
         end
       end
-      
+
       def update_progress_annotation(step, message)
         step.annotations.merge!({
           progress_message: message,
@@ -396,30 +396,30 @@ The real game-changer was the event-driven monitoring system that gave the team 
 module DataPipeline
   class PipelineMonitor < Tasker::EventSubscriber::Base
     subscribe_to 'step.started', 'step.completed', 'step.failed', 'task.completed', 'task.failed'
-    
+
     def handle_step_started(event)
       if data_pipeline_task?(event)
         notify_step_started(event)
         update_dashboard_progress(event)
       end
     end
-    
+
     def handle_step_completed(event)
       if data_pipeline_task?(event)
         notify_step_completed(event)
         update_dashboard_progress(event)
-        
+
         # Special handling for extraction steps
         if extraction_step?(event[:step_name])
           log_extraction_metrics(event)
         end
       end
     end
-    
+
     def handle_step_failed(event)
       if data_pipeline_task?(event)
         severity = determine_failure_severity(event[:step_name], event[:error])
-        
+
         case severity
         when :critical
           page_on_call_engineer(event)
@@ -432,7 +432,7 @@ module DataPipeline
         end
       end
     end
-    
+
     def handle_task_completed(event)
       if data_pipeline_task?(event)
         notify_pipeline_success(event)
@@ -440,7 +440,7 @@ module DataPipeline
         schedule_next_run(event)
       end
     end
-    
+
     def handle_task_failed(event)
       if data_pipeline_task?(event)
         notify_pipeline_failure(event)
@@ -448,17 +448,17 @@ module DataPipeline
         create_incident_report(event)
       end
     end
-    
+
     private
-    
+
     def data_pipeline_task?(event)
       event[:namespace] == 'data_pipeline'
     end
-    
+
     def extraction_step?(step_name)
       step_name.start_with?('extract_')
     end
-    
+
     def determine_failure_severity(step_name, error)
       case step_name
       when 'extract_orders', 'extract_users'
@@ -474,24 +474,24 @@ module DataPipeline
         :medium
       end
     end
-    
+
     def notify_step_started(event)
       SlackAPI.post_message(
         channel: '#data-pipeline-status',
         text: "🔄 Starting: #{event[:step_name]} (#{event[:task_id]})"
       )
     end
-    
+
     def notify_step_completed(event)
       duration = event[:duration] || 0
       duration_text = duration > 60000 ? "#{(duration/60000).round(1)}min" : "#{(duration/1000).round(1)}s"
-      
+
       SlackAPI.post_message(
         channel: '#data-pipeline-status',
         text: "✅ Completed: #{event[:step_name]} in #{duration_text}"
       )
     end
-    
+
     def page_on_call_engineer(event)
       PagerDutyAPI.trigger_incident(
         summary: "Critical data pipeline failure: #{event[:step_name]}",
@@ -504,7 +504,7 @@ module DataPipeline
         urgency: 'high'
       )
     end
-    
+
     def notify_stakeholders(event)
       # Notify business stakeholders about data availability
       SlackAPI.post_message(
@@ -512,7 +512,7 @@ module DataPipeline
         text: "⚠️ Customer analytics may be delayed due to pipeline failure. Engineering team investigating."
       )
     end
-    
+
     def update_dashboard_progress(event)
       DashboardAPI.update_pipeline_status({
         task_id: event[:task_id],
@@ -521,20 +521,20 @@ module DataPipeline
         last_updated: Time.current.iso8601
       })
     end
-    
+
     def log_extraction_metrics(event)
       result = event[:result] || {}
-      
+
       DatadogAPI.gauge('data_pipeline.extraction.records_count', result['total_count'] || 0, {
         step: event[:step_name],
         date: Date.current.strftime('%Y-%m-%d')
       })
-      
+
       DatadogAPI.gauge('data_pipeline.extraction.duration_seconds', (event[:duration] || 0) / 1000, {
         step: event[:step_name]
       })
     end
-    
+
     def schedule_next_run(event)
       # Schedule next day's pipeline run
       CustomerAnalyticsJob.set(wait_until: tomorrow_at_midnight).perform_later({
@@ -544,7 +544,7 @@ module DataPipeline
         }
       })
     end
-    
+
     def tomorrow_at_midnight
       Date.current.tomorrow.beginning_of_day + 1.hour  # 1 AM start time
     end
@@ -590,7 +590,7 @@ The complete data pipeline workflow is available and can be running in your deve
 
 ```bash
 # One-line setup using Tasker's install pattern
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/data-pipeline-resilience/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/data-pipeline-resilience/setup.sh | bash
 
 # Start the services
 cd data-pipeline-demo

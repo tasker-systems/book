@@ -9,7 +9,7 @@ The primary way to try any chapter example:
 
 ```bash
 # Try Chapter 1: E-commerce Reliability
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 ```
 
 This script:
@@ -23,7 +23,7 @@ If you prefer to explore first:
 
 ```bash
 # Download and examine the script
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh > setup.sh
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh > setup.sh
 
 # Review the script
 cat setup.sh
@@ -95,7 +95,7 @@ curl -X POST http://localhost:3000/checkout \
   -H "Content-Type: application/json" \
   -d '{"checkout": {...}}'
 
-# Monitor workflow execution  
+# Monitor workflow execution
 curl http://localhost:3000/order_status/TASK_ID
 ```
 
@@ -135,7 +135,7 @@ The same pattern scales for all upcoming chapters:
 # Chapter 2: Data Pipeline Resilience (Coming Q1 2024)
 curl -fsSL .../blog-examples/data-pipeline-resilience/setup.sh | bash
 
-# Chapter 3: Microservices Coordination (Coming Q2 2024)  
+# Chapter 3: Microservices Coordination (Coming Q2 2024)
 curl -fsSL .../blog-examples/microservices-coordination/setup.sh | bash
 ```
 
@@ -147,8 +147,8 @@ Each will be a simple wrapper around the main installer with chapter-specific:
 
 ## 📚 Related Documentation
 
-- **[Tasker Application Generator](https://github.com/jcoletaylor/tasker/blob/main/docs/APPLICATION_GENERATOR.md)**: Complete documentation of the underlying generator
-- **[Installation Guide](https://github.com/jcoletaylor/tasker/blob/main/README.md#installation)**: Manual Tasker setup instructions
+- **[Tasker Application Generator](https://github.com/tasker-systems/tasker/blob/main/docs/APPLICATION_GENERATOR.md)**: Complete documentation of the underlying generator
+- **[Installation Guide](https://github.com/tasker-systems/tasker/blob/main/README.md#installation)**: Manual Tasker setup instructions
 - **[Troubleshooting Guide](../appendices/troubleshooting.md)**: Comprehensive problem-solving guide
 
 ---

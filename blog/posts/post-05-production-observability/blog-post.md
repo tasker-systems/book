@@ -12,8 +12,8 @@ Until it wasn't.
 
 At 2:17 AM on a Friday, Sarah got the page that every engineering leader dreads:
 
-> **PagerDuty Alert**: Checkout conversion down 20%  
-> **Impact**: $50K/hour revenue loss  
+> **PagerDuty Alert**: Checkout conversion down 20%
+> **Impact**: $50K/hour revenue loss
 > **Duration**: 45 minutes and counting
 
 Sarah grabbed her laptop and jumped on the incident call. Marcus was already there, frantically checking dashboards.
@@ -63,17 +63,17 @@ Tasker.configuration do |config|
     # Enable structured logging with correlation IDs
     t.structured_logging_enabled = true
     t.correlation_id_header = 'X-Correlation-ID'
-    
+
     # Enable OpenTelemetry tracing
     t.tracing_enabled = true
     t.trace_exporter = :otlp
     t.trace_endpoint = ENV.fetch('JAEGER_ENDPOINT', 'http://localhost:14268/api/traces')
-    
+
     # Enable metrics collection
     t.metrics_enabled = true
     t.metrics_exporter = :prometheus
     t.metrics_endpoint = '/metrics'
-    
+
     # Business context enrichment
     t.context_enrichment_enabled = true
     t.custom_attributes = {
@@ -95,7 +95,7 @@ module Ecommerce
   module StepHandlers
     class ProcessPaymentHandler < Tasker::StepHandler::Base
       include Tasker::Telemetry::Traceable
-      
+
       def process(task, sequence, step)
         # Automatic span creation with business context
         with_tracing_span('process_payment', {
@@ -106,9 +106,9 @@ module Ecommerce
           'business.order_total' => task.context['payment_info']['amount'],
           'business.payment_method' => task.context['payment_info']['method']
         }) do
-          
+
           payment_data = extract_payment_data(task.context)
-          
+
           # Child span for external service call
           payment_result = with_tracing_span('payment_gateway_charge', {
             'external.service' => 'stripe',
@@ -119,7 +119,7 @@ module Ecommerce
           }) do
             PaymentService.charge(payment_data)
           end
-          
+
           case payment_result.status
           when :success
             # Add success attributes to span
@@ -128,7 +128,7 @@ module Ecommerce
               'payment.status' => 'completed',
               'payment.processing_time_ms' => payment_result.processing_time
             })
-            
+
             {
               payment_id: payment_result.id,
               gateway_id: payment_result.gateway_id,
@@ -136,7 +136,7 @@ module Ecommerce
               processing_time: payment_result.processing_time,
               charged_at: Time.current.iso8601
             }
-            
+
           when :failure
             # Add failure context to span
             current_span.set_attributes({
@@ -144,10 +144,10 @@ module Ecommerce
               'payment.error_type' => payment_result.error_type,
               'payment.retry_recommended' => payment_result.retryable?
             })
-            
+
             # Record exception in trace
             current_span.record_exception(payment_result.error)
-            
+
             if payment_result.retryable?
               raise Tasker::RetryableError, "Payment failed: #{payment_result.error}"
             else
@@ -169,7 +169,7 @@ The key innovation was connecting technical workflow metrics with business outco
 # app/subscribers/business_metrics_subscriber.rb
 class BusinessMetricsSubscriber < Tasker::EventSubscriber::Base
   subscribe_to 'task.completed', 'task.failed', 'step.completed', 'step.failed'
-  
+
   def handle_task_completed(event)
     case event[:namespace]
     when 'ecommerce'
@@ -180,25 +180,25 @@ class BusinessMetricsSubscriber < Tasker::EventSubscriber::Base
       track_data_pipeline_metrics(event)
     end
   end
-  
+
   def handle_task_failed(event)
     track_failure_metrics(event)
-    
+
     # Critical business workflows get immediate alerts
     if critical_workflow?(event)
       alert_business_impact(event)
     end
   end
-  
+
   def handle_step_completed(event)
     # Track step-level performance for bottleneck identification
     track_step_performance(event)
   end
-  
+
   def handle_step_failed(event)
     # Correlate step failures with business impact
     business_context = extract_business_context(event)
-    
+
     StatsD.increment('business.step_failures', {
       namespace: event[:namespace],
       step_name: event[:step_name],
@@ -207,53 +207,53 @@ class BusinessMetricsSubscriber < Tasker::EventSubscriber::Base
       order_value_range: business_context[:order_value_range]
     })
   end
-  
+
   private
-  
+
   def track_ecommerce_metrics(event)
     task_result = event[:result]
     context = event[:context]
-    
+
     # Revenue tracking
     if event[:task_name] == 'process_order'
       order_total = context['payment_info']['amount'].to_f
-      
+
       StatsD.gauge('business.revenue.per_order', order_total, {
         customer_segment: determine_customer_segment(context),
         payment_method: context['payment_info']['method']
       })
-      
+
       StatsD.increment('business.orders.completed', {
         customer_segment: determine_customer_segment(context),
         order_value_range: categorize_order_value(order_total)
       })
     end
-    
+
     # Conversion funnel tracking
     StatsD.increment('business.conversions.checkout_completed', {
       traffic_source: context['analytics']['traffic_source'],
       device_type: context['analytics']['device_type']
     })
   end
-  
+
   def track_step_performance(event)
     duration = event[:duration] || 0
-    
+
     StatsD.histogram('workflows.step.duration', duration, {
       namespace: event[:namespace],
       task_name: event[:task_name],
       step_name: event[:step_name]
     })
-    
+
     # Alert on performance degradation
     if duration > expected_duration_for_step(event[:step_name]) * 2
       alert_performance_degradation(event, duration)
     end
   end
-  
+
   def alert_business_impact(event)
     impact_level = assess_business_impact(event)
-    
+
     case impact_level
     when :high
       PagerDutyAPI.trigger_incident(
@@ -272,24 +272,24 @@ class BusinessMetricsSubscriber < Tasker::EventSubscriber::Base
       )
     end
   end
-  
+
   def critical_workflow?(event)
     critical_workflows = {
       'ecommerce' => ['process_order'],
       'customer_success' => ['process_refund'],
       'data_pipeline' => ['customer_analytics']
     }
-    
+
     critical_workflows[event[:namespace]]&.include?(event[:task_name])
   end
-  
+
   def estimate_revenue_impact(event)
     case event[:namespace]
     when 'ecommerce'
       avg_order_value = 85.0  # From historical data
       checkout_rate = 120     # Orders per hour
       duration_hours = ((Time.current - Time.parse(event[:timestamp])) / 1.hour).round(1)
-      
+
       "$#{(avg_order_value * checkout_rate * duration_hours).round(0)}"
     else
       "Impact assessment needed"
@@ -306,22 +306,22 @@ They built a real-time dashboard that correlated technical metrics with business
 # app/controllers/admin/observability_controller.rb
 class Admin::ObservabilityController < ApplicationController
   before_action :require_admin_access
-  
+
   def dashboard
     @current_workflows = current_running_workflows
     @performance_metrics = workflow_performance_summary
     @business_metrics = business_impact_summary
     @recent_failures = recent_workflow_failures
   end
-  
+
   def workflow_trace
     @task = Tasker::Task.find(params[:task_id])
     @trace_data = extract_trace_data(@task)
     @business_context = extract_business_context(@task)
   end
-  
+
   private
-  
+
   def current_running_workflows
     Tasker::Task.where(status: 'running')
                 .includes(:workflow_steps)
@@ -340,7 +340,7 @@ class Admin::ObservabilityController < ApplicationController
                   }
                 }
   end
-  
+
   def workflow_performance_summary
     {
       avg_completion_time: {
@@ -352,7 +352,7 @@ class Admin::ObservabilityController < ApplicationController
       error_rates: calculate_error_rates
     }
   end
-  
+
   def business_impact_summary
     {
       revenue_per_hour: calculate_current_revenue_rate,
@@ -361,11 +361,11 @@ class Admin::ObservabilityController < ApplicationController
       workflow_uptime: calculate_workflow_uptime
     }
   end
-  
+
   def extract_trace_data(task)
     # Connect to OpenTelemetry to get full trace
     trace_id = task.annotations['trace_id']
-    
+
     if trace_id
       JaegerClient.get_trace(trace_id)
     else
@@ -385,61 +385,61 @@ class IntelligentAlertingService
   def self.evaluate_alert(event)
     new(event).evaluate
   end
-  
+
   def initialize(event)
     @event = event
     @context = AlertContext.new(event)
   end
-  
+
   def evaluate
     return :suppress if should_suppress_alert?
     return :escalate if should_escalate_alert?
     return :notify if should_notify_teams?
-    
+
     :log_only
   end
-  
+
   private
-  
+
   def should_suppress_alert?
     # Suppress alerts during maintenance windows
     return true if maintenance_window_active?
-    
+
     # Suppress if error rate is within normal variance
     return true if error_within_normal_variance?
-    
+
     # Suppress known transient issues
     return true if known_transient_issue?
-    
+
     false
   end
-  
+
   def should_escalate_alert?
     # Revenue impact above threshold
     return true if estimated_revenue_impact > 1000
-    
+
     # Customer-facing workflow down
     return true if customer_facing_workflow_down?
-    
+
     # Cascade failure detected
     return true if cascade_failure_detected?
-    
+
     false
   end
-  
+
   def should_notify_teams?
     # Workflow failure affecting business metrics
     return true if business_metric_degradation?
-    
+
     # Performance degradation beyond SLA
     return true if sla_breach_detected?
-    
+
     # New error pattern detected
     return true if novel_error_pattern?
-    
+
     false
   end
-  
+
   def estimated_revenue_impact
     case @event[:namespace]
     when 'ecommerce'
@@ -447,14 +447,14 @@ class IntelligentAlertingService
         avg_order_value = 85.0
         failure_rate = current_failure_rate_for_workflow
         orders_per_hour = 120
-        
+
         avg_order_value * failure_rate * orders_per_hour
       end
     else
       0
     end
   end
-  
+
   def business_metric_degradation?
     # Check if workflow failures correlate with business metric drops
     MetricsCorrelationService.correlation_detected?(
@@ -463,14 +463,14 @@ class IntelligentAlertingService
       time_window: 30.minutes
     )
   end
-  
+
   def cascade_failure_detected?
     # Look for multiple related workflows failing
     related_failures = Tasker::Task.where(
       status: 'failed',
       created_at: 10.minutes.ago..Time.current
     ).where.not(id: @event[:task_id])
-    
+
     related_failures.count > 5
   end
 end
@@ -514,7 +514,7 @@ The complete observability workflow examples are available:
 
 ```bash
 # One-line setup with full observability stack
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/production-observability/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/production-observability/setup.sh | bash
 
 # Includes Jaeger, Prometheus, and Grafana
 cd observability-demo
@@ -527,7 +527,7 @@ curl -X POST http://localhost:3000/demo/generate_traffic
 # View traces in Jaeger
 open http://localhost:16686
 
-# View metrics in Grafana  
+# View metrics in Grafana
 open http://localhost:3000  # admin/admin
 
 # View real-time workflow dashboard

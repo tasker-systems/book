@@ -93,7 +93,7 @@ gitbook build
 ## Section Headers
 Use `##` for main sections within chapters
 
-### Subsections  
+### Subsections
 Use `###` for subsections
 
 **Code Blocks**:
@@ -198,7 +198,7 @@ Use variables in `book.json` for:
 {
   "variables": {
     "version": "2.5.0",
-    "github_repo": "jcoletaylor/tasker",
+    "github_repo": "tasker-systems/tasker",
     "install_url": "https://raw.githubusercontent.com/..."
   }
 }
@@ -300,7 +300,7 @@ Update `book.json` with your tracking IDs:
 
 ---
 
-**🎉 Your GitBook is ready!** 
+**🎉 Your GitBook is ready!**
 
 Start with `gitbook serve` to see your engineering stories come to life, then push to GitBook.com for automatic publishing.
 

@@ -385,10 +385,10 @@ The complete code for this e-commerce checkout workflow is available and can be 
 
 ```bash
 # One-line setup using Tasker's install pattern
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 
 # Or with a custom app name
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash -s -- --app-name my-checkout-demo
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash -s -- --app-name my-checkout-demo
 
 # Start the services
 cd ecommerce-blog-demo  # or your custom name

@@ -21,7 +21,7 @@ Each chapter includes complete, runnable examples you can try in minutes:
 
 ```bash
 # Try any chapter's example with a single command
-curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/[chapter]/setup.sh | bash
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/[chapter]/setup.sh | bash
 ```
 
 ## 🎭 The Stories

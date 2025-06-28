@@ -7,7 +7,7 @@ This guide gets you from zero to a working Tasker workflow quickly. You'll build
 ## Prerequisites
 
 - **Rails application** (7.2+) with PostgreSQL
-- **Ruby 3.2+**  
+- **Ruby 3.2+**
 - **Basic Rails knowledge** (models, controllers, ActiveJob)
 
 ## Installation & Setup (3 minutes)
@@ -16,7 +16,7 @@ This guide gets you from zero to a working Tasker workflow quickly. You'll build
 
 ```ruby
 # Gemfile
-gem 'tasker', git: 'https://github.com/jcoletaylor/tasker.git'
+gem 'tasker', git: 'https://github.com/tasker-systems/tasker.git'
 ```
 
 ### 2. Install and configure
@@ -39,7 +39,7 @@ bundle exec rails db:migrate
 
 Let's create a workflow that:
 1. **Validates** a user exists
-2. **Generates** personalized welcome content  
+2. **Generates** personalized welcome content
 3. **Sends** the welcome email
 
 ### 1. Create the task handler
@@ -51,21 +51,21 @@ module WelcomeUser
     TASK_NAME = 'send_welcome_email'
     NAMESPACE = 'welcome_user'
     VERSION = '1.0.0'
-    
+
     register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
+
     define_step_templates do |templates|
       templates.define(
         name: 'validate_user',
         handler_class: 'WelcomeUser::StepHandler::ValidateUserHandler'
       )
-      
+
       templates.define(
         name: 'generate_content',
         depends_on_step: 'validate_user',
         handler_class: 'WelcomeUser::StepHandler::GenerateContentHandler'
       )
-      
+
       templates.define(
         name: 'send_email',
         depends_on_step: 'generate_content',
@@ -74,7 +74,7 @@ module WelcomeUser
         retry_limit: 3
       )
     end
-    
+
     def schema
       {
         type: 'object',
@@ -98,13 +98,13 @@ module WelcomeUser
     class ValidateUserHandler < Tasker::StepHandler::Base
       def process(task, sequence, step)
         user_id = task.context['user_id']
-        
+
         # Find the user
         user = User.find_by(id: user_id)
         raise Tasker::PermanentError, "User not found: #{user_id}" unless user
-        
+
         Rails.logger.info "Validated user: #{user.name} (#{user.email})"
-        
+
         {
           user_id: user.id,
           user_name: user.name,
@@ -128,13 +128,13 @@ module WelcomeUser
         validate_results = step_results(sequence, 'validate_user')
         user_name = validate_results['user_name']
         user_email = validate_results['user_email']
-        
+
         # Generate personalized content
         subject = "Welcome to our platform, #{user_name}!"
         body = generate_welcome_body(user_name)
-        
+
         Rails.logger.info "Generated welcome content for #{user_name}"
-        
+
         {
           subject: subject,
           body: body,
@@ -143,22 +143,22 @@ module WelcomeUser
           generated_at: Time.current.iso8601
         }
       end
-      
+
       private
-      
+
       def generate_welcome_body(name)
         <<~BODY
           Hi #{name},
-          
+
           Welcome to our platform! We're excited to have you on board.
-          
+
           Here are some things you can do to get started:
           • Complete your profile
           • Explore our features
           • Join our community
-          
+
           If you have any questions, don't hesitate to reach out.
-          
+
           Best regards,
           The Team
         BODY
@@ -177,7 +177,7 @@ module WelcomeUser
       def process(task, sequence, step)
         # Get email content from previous step
         content_results = step_results(sequence, 'generate_content')
-        
+
         begin
           # Simulate email sending (replace with real email service)
           send_welcome_email(
@@ -186,15 +186,15 @@ module WelcomeUser
             subject: content_results['subject'],
             body: content_results['body']
           )
-          
+
           Rails.logger.info "Welcome email sent to #{content_results['to_email']}"
-          
+
           {
             email_sent: true,
             sent_to: content_results['to_email'],
             sent_at: Time.current.iso8601
           }
-          
+
         rescue Net::SMTPServerBusy => e
           # Temporary failure - retry
           raise Tasker::RetryableError, "SMTP server busy: #{e.message}"
@@ -203,9 +203,9 @@ module WelcomeUser
           raise Tasker::PermanentError, "Invalid email address: #{e.message}"
         end
       end
-      
+
       private
-      
+
       def send_welcome_email(to:, name:, subject:, body:)
         # For demo purposes, just log the email
         # In production, use ActionMailer or your email service
@@ -215,7 +215,7 @@ module WelcomeUser
           Subject: #{subject}
           Body: #{body}
         EMAIL
-        
+
         # Simulate potential SMTP delays
         sleep(0.1)
       end
@@ -234,7 +234,7 @@ User.create!(
 )
 
 User.create!(
-  name: "Jane Smith", 
+  name: "Jane Smith",
   email: "jane@example.com"
 )
 ```
@@ -285,7 +285,7 @@ end
 You should see logs like:
 ```
 Validated user: John Doe (john@example.com)
-Generated welcome content for John Doe  
+Generated welcome content for John Doe
 📧 EMAIL SENT:
 To: john@example.com
 Subject: Welcome to our platform, John Doe!
@@ -297,10 +297,10 @@ Welcome email sent to john@example.com
 
 **🎉 Congratulations!** You've created a production-ready workflow with:
 
-✅ **Step Dependencies**: `generate_content` waits for `validate_user`  
-✅ **Error Handling**: Permanent vs. retryable errors  
-✅ **Data Flow**: Results pass between steps  
-✅ **Retry Logic**: Email sending retries automatically  
+✅ **Step Dependencies**: `generate_content` waits for `validate_user`
+✅ **Error Handling**: Permanent vs. retryable errors
+✅ **Data Flow**: Results pass between steps
+✅ **Retry Logic**: Email sending retries automatically
 ✅ **Logging**: Full observability into execution
 
 ## Key Concepts Demonstrated
@@ -334,7 +334,7 @@ Welcome email sent to john@example.com
 
 ### 🚀 Build More Complex Workflows
 - Add parallel steps (multiple steps depending on the same parent)
-- Create diamond patterns (multiple paths that converge)  
+- Create diamond patterns (multiple paths that converge)
 - Add API integration steps
 
 ### 🔧 Add Production Features
@@ -358,7 +358,7 @@ Welcome email sent to john@example.com
 bundle exec rails server
 ```
 
-**"Step handler not found"**  
+**"Step handler not found"**
 - Check file paths match the class names exactly
 - Ensure all files are saved and the server is restarted
 

@@ -17,7 +17,7 @@ echo "================================="
 echo -n "Ruby version: "
 ruby -v 2>/dev/null || echo "❌ Ruby not found"
 
-# Check Rails version  
+# Check Rails version
 echo -n "Rails version: "
 rails -v 2>/dev/null || echo "❌ Rails not found"
 
@@ -100,7 +100,7 @@ docker run -d -p 5432:5432 -e POSTGRES_PASSWORD=password postgres:13
 # macOS with Homebrew
 brew services start redis
 
-# Ubuntu/Debian  
+# Ubuntu/Debian
 sudo systemctl start redis-server
 
 # Docker (alternative)
@@ -119,7 +119,7 @@ docker run -d -p 6379:6379 redis:7
 ping google.com
 
 # Try alternative download
-wget https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh
+wget https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh
 chmod +x setup.sh
 ./setup.sh
 ```
@@ -131,8 +131,8 @@ chmod +x setup.sh
 **Solution**:
 ```bash
 # Use HTTPS instead of SSH
-git clone https://github.com/jcoletaylor/tasker.git
-# Instead of: git clone git@github.com:jcoletaylor/tasker.git
+git clone https://github.com/tasker-systems/tasker.git
+# Instead of: git clone git@github.com:tasker-systems/tasker.git
 ```
 
 ### Application Setup Problems
@@ -330,17 +330,17 @@ ip addr show eth0
 
 ### Where to Get Help
 
-1. **GitHub Issues**: [Create a new issue](https://github.com/jcoletaylor/tasker/issues)
+1. **GitHub Issues**: [Create a new issue](https://github.com/tasker-systems/tasker/issues)
    - Include diagnostic output
    - Share error messages
    - Describe what you were trying to do
 
-2. **GitHub Discussions**: [Ask the community](https://github.com/jcoletaylor/tasker/discussions)
+2. **GitHub Discussions**: [Ask the community](https://github.com/tasker-systems/tasker/discussions)
    - General questions about workflows
    - Best practices
    - Use case discussions
 
-3. **Documentation**: Check the [official Tasker docs](https://github.com/jcoletaylor/tasker/docs/)
+3. **Documentation**: Check the [official Tasker docs](https://github.com/tasker-systems/tasker/docs/)
 
 ### Creating Good Bug Reports
 

@@ -33,7 +33,7 @@ echo "📦 Installing required gems..."
 cat >> Gemfile << 'EOF'
 
 # Tasker workflow engine
-gem 'tasker', git: 'https://github.com/jcoletaylor/tasker.git'
+gem 'tasker', git: 'https://github.com/tasker-systems/tasker.git'
 
 # Background job processing
 gem 'sidekiq'
@@ -113,21 +113,21 @@ step_templates:
     retryable: true
     retry_limit: 3
     timeout: 1800000  # 30 minutes in ms
-    
+
   - name: extract_users
     description: 'Extract user data from CRM system'
     handler_class: 'DataPipeline::StepHandlers::ExtractUsersHandler'
     retryable: true
     retry_limit: 5
     timeout: 1200000  # 20 minutes in ms
-    
+
   - name: extract_products
     description: 'Extract product data from inventory system'
     handler_class: 'DataPipeline::StepHandlers::ExtractProductsHandler'
     retryable: true
     retry_limit: 3
     timeout: 900000   # 15 minutes in ms
-    
+
   - name: transform_customer_metrics
     description: 'Calculate customer behavior metrics'
     depends_on_step: ['extract_orders', 'extract_users']
@@ -135,7 +135,7 @@ step_templates:
     retryable: true
     retry_limit: 2
     timeout: 2700000  # 45 minutes in ms
-    
+
   - name: transform_product_metrics
     description: 'Calculate product performance metrics'
     depends_on_step: ['extract_orders', 'extract_products']
@@ -143,20 +143,20 @@ step_templates:
     retryable: true
     retry_limit: 2
     timeout: 1800000  # 30 minutes in ms
-    
+
   - name: generate_insights
     description: 'Generate business insights and recommendations'
     depends_on_step: ['transform_customer_metrics', 'transform_product_metrics']
     handler_class: 'DataPipeline::StepHandlers::GenerateInsightsHandler'
     timeout: 1200000  # 20 minutes in ms
-    
+
   - name: update_dashboard
     description: 'Update executive dashboard with new metrics'
     depends_on_step: 'generate_insights'
     handler_class: 'DataPipeline::StepHandlers::UpdateDashboardHandler'
     retryable: true
     retry_limit: 3
-    
+
   - name: send_notifications
     description: 'Send completion notifications to stakeholders'
     depends_on_step: 'update_dashboard'
@@ -241,7 +241,7 @@ products = Product.all
     status: ['completed', 'pending', 'shipped'].sample,
     payment_method: ['credit_card', 'paypal', 'apple_pay'].sample
   )
-  
+
   # Add 1-5 items to each order
   subtotal = 0
   rand(1..5).times do
@@ -250,7 +250,7 @@ products = Product.all
     unit_price = product.price
     line_total = quantity * unit_price
     subtotal += line_total
-    
+
     OrderItem.create!(
       order: order,
       product: product,
@@ -259,12 +259,12 @@ products = Product.all
       line_total: line_total
     )
   end
-  
+
   # Update order totals
   tax_amount = subtotal * 0.08
   shipping_amount = subtotal > 50 ? 0 : 9.99
   total_amount = subtotal + tax_amount + shipping_amount
-  
+
   order.update!(
     subtotal: subtotal,
     tax_amount: tax_amount,
@@ -290,13 +290,13 @@ cat > app/tasks/data_pipeline/event_subscribers/pipeline_monitor.rb << 'EOF'
 module DataPipeline
   class PipelineMonitor < Tasker::EventSubscriber::Base
     subscribe_to 'step.started', 'step.completed', 'step.failed', 'task.completed', 'task.failed'
-    
+
     def handle_step_started(event)
       if data_pipeline_task?(event)
         puts "🔄 Starting: #{event[:step_name]} (#{event[:task_id]})"
       end
     end
-    
+
     def handle_step_completed(event)
       if data_pipeline_task?(event)
         duration = event[:duration] || 0
@@ -304,27 +304,27 @@ module DataPipeline
         puts "✅ Completed: #{event[:step_name]} in #{duration_text}"
       end
     end
-    
+
     def handle_step_failed(event)
       if data_pipeline_task?(event)
         puts "❌ Failed: #{event[:step_name]} - #{event[:error]}"
       end
     end
-    
+
     def handle_task_completed(event)
       if data_pipeline_task?(event)
         puts "🎉 Analytics pipeline completed successfully!"
       end
     end
-    
+
     def handle_task_failed(event)
       if data_pipeline_task?(event)
         puts "💥 Analytics pipeline failed: #{event[:error]}"
       end
     end
-    
+
     private
-    
+
     def data_pipeline_task?(event)
       event[:namespace] == 'data_pipeline'
     end
@@ -351,9 +351,9 @@ class AnalyticsController < ApplicationController
         notification_channels: params[:notification_channels] || ['#data-team']
       }
     )
-    
+
     task_id = Tasker::HandlerFactory.instance.run_task(task_request)
-    
+
     render json: {
       status: 'started',
       task_id: task_id,
@@ -361,11 +361,11 @@ class AnalyticsController < ApplicationController
       monitor_url: "/analytics/status/#{task_id}"
     }
   end
-  
+
   def status
     task_id = params[:id]
     task = Tasker::Task.find(task_id)
-    
+
     sequence = task.workflow_step_sequences.last
     steps = sequence.steps.order(:created_at).map do |step|
       {
@@ -377,7 +377,7 @@ class AnalyticsController < ApplicationController
         duration: step.duration_ms
       }
     end
-    
+
     render json: {
       task_id: task_id,
       status: task.status,
@@ -387,15 +387,15 @@ class AnalyticsController < ApplicationController
       steps: steps
     }
   end
-  
+
   def results
     task_id = params[:id]
     task = Tasker::Task.find(task_id)
-    
+
     if task.status == 'completed'
       sequence = task.workflow_step_sequences.last
       insights_step = sequence.steps.find { |s| s.name == 'generate_insights' }
-      
+
       render json: insights_step&.result || { error: 'No results available' }
     else
       render json: { error: 'Task not completed yet', status: task.status }
@@ -406,7 +406,7 @@ EOF
 
 # Add routes
 cat >> config/routes.rb << 'EOF'
-  
+
   # Analytics Demo Routes
   post '/analytics/start', to: 'analytics#start'
   get '/analytics/status/:id', to: 'analytics#status'
@@ -425,7 +425,7 @@ puts "==========================="
 # Start the analytics pipeline
 task_request = Tasker::Types::TaskRequest.new(
   name: 'customer_analytics',
-  namespace: 'data_pipeline', 
+  namespace: 'data_pipeline',
   version: '1.0.0',
   context: {
     date_range: {
@@ -445,14 +445,14 @@ puts "\nMonitoring progress..."
 loop do
   task = Tasker::Task.find(task_id)
   puts "Status: #{task.status}"
-  
+
   if task.status == 'completed'
     puts "🎉 Pipeline completed successfully!"
-    
+
     # Get results
     sequence = task.workflow_step_sequences.last
     insights_step = sequence.steps.find { |s| s.name == 'generate_insights' }
-    
+
     if insights_step&.result
       puts "\n📊 Results Summary:"
       executive_summary = insights_step.result['executive_summary']
@@ -499,10 +499,10 @@ This demo application showcases the data pipeline resilience patterns from the b
    curl -X POST http://localhost:3000/analytics/start \
      -H "Content-Type: application/json" \
      -d '{"start_date": "2024-01-01", "end_date": "2024-01-07"}'
-   
+
    # Check status (replace TASK_ID with actual ID)
    curl http://localhost:3000/analytics/status/TASK_ID
-   
+
    # Get results
    curl http://localhost:3000/analytics/results/TASK_ID
    ```
