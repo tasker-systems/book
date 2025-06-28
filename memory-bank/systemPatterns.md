@@ -68,10 +68,11 @@ flowchart TD
 ```
 
 ### Code Example Strategy
-- **Immediate Runnable**: Every example works with single command
-- **Production Quality**: Real error handling, logging, monitoring
-- **Progressive Complexity**: Simple → Advanced → Enterprise patterns
-- **Consistent Domain**: E-commerce scenarios throughout
+- **Immediate Runnable**: Every example works with automated demo builder
+- **Production Quality**: Enterprise-grade patterns with thread-safe operations
+- **Progressive Complexity**: Basic workflows → Distributed coordination → Enterprise features
+- **Consistent Domain**: E-commerce scenarios with real API integration
+- **Current Architecture**: Namespace organization, semantic versioning, event-driven patterns
 
 ## GitBook Configuration Patterns
 
@@ -106,17 +107,19 @@ flowchart TD
 6. **Community Review**: Feedback integration and refinement
 
 ### Code Quality Standards
-- **Working Examples**: All code must run immediately
-- **Error Handling**: Production-quality error management
-- **Documentation**: Inline comments explaining Tasker patterns
-- **Testing**: Comprehensive test coverage with failure scenarios
-- **Monitoring**: Built-in observability and debugging
+- **Working Examples**: All code must run with one-command setup
+- **Enterprise Patterns**: Thread-safe registry systems, structured logging
+- **Current Features**: Namespace organization, semantic versioning, REST/GraphQL APIs
+- **Authentication**: JWT and custom provider integration examples
+- **Observability**: OpenTelemetry integration, comprehensive event system
+- **Testing**: Production-ready patterns with 1,692 passing tests validation
 
 ### Release Strategy
 - **Sequential Rollout**: Chapters released individually for feedback
 - **Preview System**: Unreleased chapters show coming soon content
 - **Feedback Integration**: Community input shapes subsequent chapters
-- **Version Consistency**: All examples use same Tasker version
+- **Version Consistency**: All examples use Tasker v2.5.0 (production-ready)
+- **Demo Applications**: Automated setup with real-world integration patterns
 
 ## Repository Exclusion Patterns
 

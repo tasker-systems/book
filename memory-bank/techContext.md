@@ -10,11 +10,12 @@
 - **JSON**: Configuration and metadata
 
 ### Tasker Engine Integration
-- **Ruby 3.0+**: Required for Tasker examples
+- **Tasker v2.5.0**: Production-ready workflow orchestration engine
+- **Ruby 3.2+**: Required for Tasker examples (updated requirement)
 - **Rails 7.0+**: Web framework for Tasker
-- **PostgreSQL**: Database for Tasker's SQL functions
-- **Redis**: Background job processing
-- **Sidekiq**: Job queue system
+- **PostgreSQL**: Database for Tasker's high-performance SQL functions
+- **Redis**: Background job processing and caching
+- **Sidekiq**: Job queue system for async processing
 
 ### Development Tools
 - **Git**: Version control
@@ -47,14 +48,17 @@ gitbook build
 ### Tasker Example Environment
 ```bash
 # Prerequisites
-ruby -v    # 3.0+
+ruby -v    # 3.2+
 rails -v   # 7.0+
 psql --version
 redis-server --version
 
-# Tasker installation
+# Tasker installation (production-ready v2.5.0)
 gem install tasker
 # Or in Gemfile: gem 'tasker', '~> 2.5.0'
+
+# Automated demo application setup
+curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/scripts/install-tasker-app.sh | bash
 ```
 
 ### Project Structure Integration
@@ -77,10 +81,13 @@ tasker-blog/
 - **Navigation Depth**: Limited nesting levels in SUMMARY.md
 
 ### Tasker Requirements
-- **Database**: PostgreSQL required for SQL functions
-- **Ruby Version**: Minimum Ruby 3.0 for modern syntax
+- **Database**: PostgreSQL required for high-performance SQL functions
+- **Ruby Version**: Minimum Ruby 3.2+ for current Tasker features
 - **Rails Version**: Rails 7.0+ for current ActiveRecord features
 - **Background Jobs**: Redis/Sidekiq required for async processing
+- **Enterprise Features**: Thread-safe registry systems, structured logging
+- **Observability**: OpenTelemetry integration, comprehensive event system
+- **API Access**: REST API and GraphQL endpoints for workflow management
 
 ### Repository Exclusions
 - **Development Files**: `.cursor/`, `memory-bank/`, `.ruby-lsp/`
@@ -101,7 +108,9 @@ tasker-blog/
   "variables": {
     "version": "2.5.0",
     "github_repo": "jcoletaylor/tasker",
-    "install_url": "https://raw.githubusercontent.com/jcoletaylor/tasker/main/scripts/install-tasker-app.sh"
+    "install_url": "https://raw.githubusercontent.com/jcoletaylor/tasker/main/scripts/install-tasker-app.sh",
+    "tasker_status": "production-ready",
+    "test_success": "1692-passing-tests"
   }
 }
 ```
