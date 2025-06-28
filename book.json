@@ -63,5 +63,16 @@
       "top": 56,
       "bottom": 56
     }
-  }
+  },
+  "ignore": [
+    ".cursor",
+    "memory-bank",
+    ".ruby-lsp",
+    "_book",
+    "node_modules",
+    ".git",
+    "*.log",
+    "*.tmp",
+    ".DS_Store"
+  ]
 }
