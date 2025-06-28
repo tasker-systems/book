@@ -1,0 +1,27 @@
+{
+  "name": "tasker-engineering-stories",
+  "version": "1.0.0",
+  "description": "Real-world engineering stories showcasing Tasker workflow orchestration",
+  "scripts": {
+    "serve": "gitbook serve",
+    "build": "gitbook build",
+    "install": "gitbook install"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jcoletaylor/tasker-blog.git"
+  },
+  "keywords": [
+    "workflow",
+    "orchestration",
+    "engineering",
+    "reliability",
+    "microservices",
+    "devops"
+  ],
+  "author": "Tasker Team",
+  "license": "MIT",
+  "devDependencies": {
+    "gitbook-cli": "^2.3.2"
+  }
+}

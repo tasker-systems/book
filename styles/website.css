@@ -1,0 +1,108 @@
+/* Custom GitBook Styles */
+
+/* Code blocks with better syntax highlighting */
+.book .book-body .page-wrapper .page-inner section.normal pre > code {
+    font-size: 14px;
+    line-height: 1.4;
+    padding: 16px;
+    border-radius: 6px;
+    background: #2d3748;
+    color: #e2e8f0;
+}
+
+/* Highlight bash commands */
+.book .book-body .page-wrapper .page-inner section.normal pre > code.lang-bash {
+    background: #1a202c;
+    color: #68d391;
+}
+
+/* Ruby code highlighting */
+.book .book-body .page-wrapper .page-inner section.normal pre > code.lang-ruby {
+    background: #2d3748;
+    color: #f7fafc;
+}
+
+/* Callout boxes for tips and warnings */
+.book .book-body .page-wrapper .page-inner section.normal blockquote {
+    border-left: 4px solid #4299e1;
+    background: #ebf8ff;
+    padding: 16px 20px;
+    margin: 20px 0;
+    border-radius: 0 6px 6px 0;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal blockquote p {
+    margin: 0;
+    color: #2b6cb0;
+}
+
+/* Success/completion checkboxes */
+.book .book-body .page-wrapper .page-inner section.normal ul li.task-list-item {
+    list-style: none;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal ul li.task-list-item input[type="checkbox"] {
+    margin-right: 8px;
+}
+
+/* Table styling for comparison tables */
+.book .book-body .page-wrapper .page-inner section.normal table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 20px 0;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal table th,
+.book .book-body .page-wrapper .page-inner section.normal table td {
+    border: 1px solid #e2e8f0;
+    padding: 12px 16px;
+    text-align: left;
+}
+
+.book .book-body .page-wrapper .page-inner section.normal table th {
+    background: #f7fafc;
+    font-weight: 600;
+    color: #2d3748;
+}
+
+/* Copy code button styling */
+.copy-code-button {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border: none;
+    color: #e2e8f0;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.copy-code-button:hover {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+/* Navigation improvements */
+.book-summary ul.summary li a {
+    padding: 8px 15px;
+    line-height: 1.4;
+}
+
+.book-summary ul.summary li.active > a {
+    color: #4299e1;
+    background: #ebf8ff;
+    border-right: 3px solid #4299e1;
+}
+
+/* Mobile responsive improvements */
+@media (max-width: 768px) {
+    .book .book-body .page-wrapper .page-inner section.normal pre > code {
+        font-size: 12px;
+        padding: 12px;
+    }
+    
+    .book .book-body .page-wrapper .page-inner section.normal table {
+        font-size: 14px;
+    }
+}

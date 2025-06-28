@@ -1,75 +1,95 @@
-# Blog Post 1: E-commerce Checkout Reliability
+# Chapter 1: E-commerce Checkout Reliability
 
-This directory contains all the content and code for the first blog post in the Tasker series: **"When Your E-commerce Checkout Became a House of Cards"**.
+> **The Story**: "It's Black Friday. Your checkout is failing 15% of the time. Credit cards are charged but orders aren't created. Customer support has 200 tickets and counting."
 
-## 📁 Directory Structure
+Transform a fragile, monolithic checkout flow into a bulletproof workflow engine using Tasker's reliability patterns.
 
+## 🎯 What You'll Learn
+
+This chapter introduces Tasker's foundational concepts through a scenario every e-commerce engineer recognizes:
+
+- **Atomic workflow steps** that eliminate partial failures
+- **Intelligent retry strategies** for different error types  
+- **Complete state management** and recovery capabilities
+- **Built-in observability** for debugging and monitoring
+
+## 🚀 Try It Now
+
+Experience the transformation from fragile to reliable in 2 minutes:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/jcoletaylor/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
 ```
-post-01-ecommerce-reliability/
-├── blog-post.md              # Complete blog post content
-├── TESTING.md               # Comprehensive testing guide
-├── code-examples/           # Complete working code
-│   ├── task_handler/        # Main workflow handler
-│   ├── step_handlers/       # Individual step implementations
-│   ├── models/              # Product, Order, and supporting models
-│   ├── demo/                # Controller, simulator, sample data
-│   └── config/              # YAML workflow configuration
-└── setup-scripts/           # Installation and generation scripts
-    ├── setup.sh            # Quick setup script
-    └── ecommerce_workflow_generator.rb  # Rails generator
-```
 
-## 🎯 Blog Post Objectives
+This creates a complete working Rails application demonstrating:
+- 5-step checkout workflow with dependencies
+- Payment processing with retry logic
+- Inventory management with race condition protection  
+- Email delivery with exponential backoff
+- Complete failure recovery and visibility
 
-**Problem Focus**: Checkout reliability and failure recovery  
-**Target Audience**: Backend engineers dealing with fragile e-commerce flows  
-**Tasker Features Introduced**:
-- Basic task and step creation
+## 📊 The Results
+
+| Metric | Before Tasker | After Tasker |
+|--------|---------------|--------------|
+| **Checkout failure rate** | 15% during peak | 0.2% |
+| **Manual recovery time** | 6 hours | 0 (automatic) |
+| **Debugging time** | Hours per incident | Minutes |
+| **Customer support tickets** | 200+ during failures | <5 |
+
+## 🏗️ What's Inside
+
+### [The Complete Story](blog-post.md)
+The full narrative from Black Friday nightmare to reliable checkout system, including:
+- The monolithic checkout that failed
+- Step-by-step Tasker transformation  
+- Real code examples with explanations
+- Concrete results and business impact
+
+### [Working Code Examples](code-examples/README.md)
+Complete, production-ready implementations:
+- **Task Handler**: Main checkout workflow coordination
+- **Step Handlers**: Cart validation, payment processing, inventory updates, order creation, email confirmation
+- **Models**: Product, Order, and supporting data structures
+- **Demo Infrastructure**: Controllers, payment simulator, sample data
+- **Configuration**: YAML workflow definitions with environment-specific settings
+
+### [Comprehensive Testing Guide](TESTING.md)
+Multiple testing scenarios to explore reliability features:
+- **Success flows**: Normal checkout completion
+- **Retryable failures**: Payment timeouts, service unavailability
+- **Non-retryable failures**: Invalid cards, insufficient funds  
+- **Recovery scenarios**: Workflow restart from failure points
+- **Load testing**: Concurrent checkout stress testing
+
+### [Quick Setup Scripts](setup-scripts/README.md)
+Multiple installation options:
+- **One-line installer**: Uses Tasker's proven `curl | sh` pattern
+- **Manual setup**: Step-by-step for exploration
+- **Rails generator**: For integrating into existing projects
+
+## 🎓 Learning Path
+
+This chapter provides the foundation for the entire series:
+
+### **Concepts Introduced**
+- Task and step handlers
 - Dependency management
 - Retry logic and error handling
 - State management and recovery
-- Workflow visibility and debugging
+- Workflow observability
 
-## 🚀 Quick Demo
+### **Builds Toward**
+- **Chapter 2**: Parallel execution and event systems
+- **Chapter 3**: API integration and circuit breakers
+- **Chapter 4**: Namespace organization and versioning
+- **Chapter 5**: Production telemetry and metrics
+- **Chapter 6**: Authentication and enterprise security
 
-Want to see this in action? Here's the 5-minute setup:
+## 🧪 Key Examples
 
-```bash
-# 1. Create a new Rails app (if needed)
-rails new tasker_ecommerce_demo --database=postgresql
-cd tasker_ecommerce_demo
-
-# 2. Add Tasker to Gemfile
-echo 'gem "tasker", "~> 2.5.0"' >> Gemfile
-bundle install
-
-# 3. Copy our setup script and run it
-curl -o setup.sh https://raw.githubusercontent.com/your-repo/tasker-blog/main/post-01-ecommerce-reliability/setup-scripts/setup.sh
-chmod +x setup.sh
-./setup.sh
-
-# 4. Start the demo
-rails server
-bundle exec sidekiq  # In another terminal
-
-# 5. Test a checkout
-curl -X POST http://localhost:3000/checkout \
-  -H "Content-Type: application/json" \
-  -d '{
-    "checkout": {
-      "cart_items": [{"product_id": 1, "quantity": 2}],
-      "payment_info": {"token": "test_success_visa", "amount": 100.00},
-      "customer_info": {"email": "test@example.com", "name": "Test Customer"}
-    }
-  }'
-```
-
-## 📚 Key Code Examples
-
-### The Problem: Fragile Monolithic Checkout
-
+### Before: Fragile Monolithic Checkout
 ```ruby
-# Before: Everything fails together
 def process_order(cart_items, payment_info, customer_info)
   validated_items = validate_cart_items(cart_items)
   totals = calculate_order_totals(validated_items)
@@ -85,10 +105,8 @@ rescue => e
 end
 ```
 
-### The Solution: Reliable Workflow Steps
-
+### After: Reliable Workflow Steps
 ```ruby
-# After: Each step is atomic, retryable, and recoverable
 class OrderProcessingHandler < Tasker::TaskHandler::Base
   define_step_templates do |templates|
     templates.define(
@@ -117,98 +135,55 @@ class OrderProcessingHandler < Tasker::TaskHandler::Base
 end
 ```
 
-## 🔧 What Makes This Reliable
+## 🔍 Deep Dive Topics
 
-### 1. Atomic Steps with Clear Dependencies
-- Each step does one thing and does it well
-- Dependencies ensure correct execution order
-- Failed steps don't affect completed ones
+### Atomic Step Design
+Each workflow step is independent and retryable:
+- **Single responsibility**: One step, one purpose
+- **Clear boundaries**: Defined inputs and outputs
+- **State persistence**: Results saved for recovery
+- **Idempotent operations**: Safe to retry
 
-### 2. Intelligent Retry Logic
-- Different retry strategies for different error types
-- Exponential backoff prevents service overload
-- Non-retryable errors fail fast
+### Intelligent Retry Logic
+Different strategies for different failure types:
+- **Payment timeouts**: Exponential backoff with jitter
+- **Inventory conflicts**: Linear retry with shorter delays
+- **Email delivery**: High retry count with longer intervals
+- **Invalid data**: Immediate failure, no retries
 
-### 3. Complete State Management
-- Know exactly where failures occurred
-- Resume from failure point, not from beginning
-- Full audit trail of all attempts
+### Complete Observability
+Built-in visibility into workflow execution:
+- **Real-time status**: Current step and progress
+- **Execution history**: Complete step-by-step timeline
+- **Error context**: Detailed failure information
+- **Performance metrics**: Duration and retry statistics
 
-### 4. Built-in Observability
-- Real-time workflow status
-- Step-by-step execution details
-- Error context for debugging
-
-## 🎓 Learning Path
-
-This blog post introduces foundational concepts that build toward more advanced topics:
-
-1. **Next: Data Pipelines** - Parallel execution and event monitoring
-2. **Then: Microservices** - API integration and circuit breakers  
-3. **Later: Enterprise** - Namespaces, versioning, security
-
-## 📊 Results Comparison
-
-| Metric | Before Tasker | After Tasker |
-|--------|---------------|--------------|
-| Checkout failure rate | 15% during peak | 0.2% |
-| Manual recovery time | 6 hours | 0 (automatic) |
-| Debugging time | Hours per incident | Minutes |
-| Customer support tickets | 200+ during failures | <5 |
-
-> **Setup Note**: The blog setup leverages Tasker's existing `curl | sh` application generator pattern rather than creating a separate installation process. This ensures consistency with Tasker's established tooling and reduces maintenance overhead.
-
-## 🧪 Try Different Scenarios
-
-The example includes multiple test scenarios:
-
-```bash
-# Successful checkout
-curl -X POST .../checkout -d '{"payment_info": {"token": "test_success_visa"}}'
-
-# Payment failure (retryable)
-curl -X POST .../checkout -d '{"payment_info": {"token": "test_timeout_gateway"}}'
-
-# Payment failure (non-retryable) 
-curl -X POST .../checkout -d '{"payment_info": {"token": "test_insufficient_funds"}}'
-
-# Inventory conflict
-curl -X POST .../checkout -d '{"cart_items": [{"product_id": 1, "quantity": 999}]}'
-```
-
-## 💡 Key Takeaways for Readers
+## 💡 Key Takeaways
 
 1. **Break monoliths into atomic steps** - Single responsibility with clear boundaries
-2. **Design for failure** - Assume every external call will fail sometimes  
-3. **Make retries intelligent** - Different strategies for different error types
+2. **Design for failure** - Assume every external call will fail sometimes
+3. **Make retries intelligent** - Different strategies for different error types  
 4. **Provide complete visibility** - You can't fix what you can't see
 5. **Think workflows, not procedures** - Workflows can pause, retry, and resume
 
-## ✅ Blog Post Success Metrics
+## ✅ Success Criteria
 
-**Technical Validation**:
-- [ ] All code examples run without modification
-- [ ] Setup completes in under 5 minutes (leveraging existing install pattern)
-- [ ] All test scenarios work as described
-- [ ] Error scenarios demonstrate retry behavior
-- [ ] Integration with existing Tasker tooling works seamlessly
+After completing this chapter, you should be able to:
 
-**Reader Engagement**:
-- [ ] Clear problem statement readers recognize
-- [ ] Progressive complexity building understanding
-- [ ] Concrete before/after comparison
-- [ ] Actionable next steps provided
+- [ ] **Identify workflow opportunities** in your own systems
+- [ ] **Design atomic, retryable steps** for complex processes
+- [ ] **Implement intelligent retry strategies** based on error types
+- [ ] **Build complete observability** into workflow execution
+- [ ] **Handle dependencies and ordering** between workflow steps
 
 ## 🔗 What's Next
 
-This post sets the foundation for the entire series. Readers who successfully complete this example will be ready for:
+This foundation enables you to tackle more advanced scenarios:
 
-- **Post 2**: Data pipeline reliability with parallel execution
-- **Post 3**: Microservices coordination without chaos
-- **Post 4**: Organization and versioning at scale
-- **Post 5**: Production observability and monitoring
-- **Post 6**: Enterprise security and compliance
+- **[Chapter 2: Data Pipeline Resilience](../post-02-data-pipeline-resilience/README.md)** - Parallel execution and event-driven monitoring
+- **[Chapter 3: Microservices Coordination](../post-03-microservices-coordination/README.md)** - API integration without the chaos
+- **[Complete Series Overview](../../README.md)** - See all planned chapters
 
 ---
 
-*This example demonstrates Tasker's core value proposition: transforming fragile, monolithic processes into reliable, observable workflows that handle real-world failure scenarios gracefully.*
+*Ready to transform your own fragile processes into reliable workflows? Start with the [complete story](blog-post.md) or jump straight to the [working example](setup-scripts/README.md).*
