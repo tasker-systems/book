@@ -16,7 +16,7 @@ Instead of creating a separate blog-specific setup system, we've successfully in
 # Multi-step manual process
 rails new tasker_ecommerce_demo --database=postgresql
 cd tasker_ecommerce_demo
-echo 'gem "tasker", "~> 2.5.0"' >> Gemfile
+echo 'gem "tasker", "~> 2.6.0"' >> Gemfile
 bundle install
 curl -o setup.sh .../setup.sh
 chmod +x setup.sh

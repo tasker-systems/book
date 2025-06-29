@@ -4,58 +4,86 @@ This directory contains setup scripts and tools for quickly trying the blog exam
 
 ## 🚀 Quick Start
 
-### Blog Setup Script
-The primary way to try any chapter example:
+### Option 1: Docker Setup (Recommended) 🐳
+The fastest way to try the example with zero local dependencies:
 
 ```bash
-# Try Chapter 1: E-commerce Reliability
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+# Docker with observability stack (Jaeger + Prometheus)
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name ecommerce-reliability-demo \
+  --tasks ecommerce \
+  --docker \
+  --with-observability \
+  --non-interactive
+
+cd ecommerce-reliability-demo
+./bin/docker-dev up-full
 ```
 
-This script:
-1. **Leverages existing infrastructure**: Uses Tasker's proven `curl | sh` installer pattern
-2. **Creates complete applications**: Full Rails app with working examples
-3. **Provides chapter-specific context**: Tailored instructions and test scenarios
-4. **Maintains consistency**: Same quality and patterns as main Tasker tooling
+**Includes:**
+- Rails app with live code reloading
+- PostgreSQL 15 database
+- Redis 7 for background jobs
+- Jaeger tracing UI (http://localhost:16686)
+- Prometheus metrics (http://localhost:9090)
 
-### Manual Setup
-If you prefer to explore first:
+### Option 2: Traditional Setup
+For users who prefer local development:
 
 ```bash
-# Download and examine the script
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh > setup.sh
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name ecommerce-reliability-demo \
+  --tasks ecommerce \
+  --non-interactive
+```
 
-# Review the script
-cat setup.sh
+**Requirements:** Ruby 3.2+, Rails 7.2+, PostgreSQL, Redis
 
-# Run when ready
-chmod +x setup.sh
-./setup.sh
+### Interactive Setup
+Use our interactive setup script for more control:
+
+```bash
+# Download our Chapter 1 setup script
+curl -fsSL https://raw.githubusercontent.com/your-gitbook-repo/main/blog/posts/post-01-ecommerce-reliability/setup-scripts/setup.sh | bash
+
+# This script offers:
+# 1. Traditional Rails setup
+# 2. Docker-based setup
+# 3. Docker with full observability stack
 ```
 
 ## 🛠️ How It Works
 
-### Integration with Existing Tooling
+### Integration with Tasker v2.6.0 Application Generator
 
-Instead of creating separate blog-specific installers, we use a thin wrapper around Tasker's established application generator:
+We leverage Tasker's production-ready application generator with new Docker support:
 
 ```bash
-# Our script calls the main installer with specific parameters
-curl -fsSL "$INSTALL_SCRIPT_URL" | bash -s -- \
-    --app-name "ecommerce-blog-demo" \
+# Traditional setup
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+    --app-name ecommerce-reliability-demo \
     --tasks ecommerce \
+    --non-interactive
+
+# Docker setup with observability
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+    --app-name ecommerce-reliability-demo \
+    --tasks ecommerce \
+    --docker \
+    --with-observability \
     --non-interactive
 ```
 
-### Benefits of This Approach
+### Benefits of Docker vs Traditional Setup
 
-| Aspect | Custom Setup | Integrated Pattern |
-|--------|--------------|-------------------|
-| **Setup Time** | 10+ minutes | 2-3 minutes |
-| **Commands Required** | 8-10 commands | 1 command |
-| **Maintenance** | High (duplicate logic) | Low (reuses existing) |
-| **Consistency** | Custom patterns | Standard Tasker patterns |
-| **Error Handling** | Need to reimplement | Inherits proven reliability |
+| Aspect | Traditional Setup | Docker Setup | Docker + Observability |
+|--------|------------------|--------------|----------------------|
+| **Local Dependencies** | Ruby, Rails, PostgreSQL, Redis | Docker only | Docker only |
+| **Setup Time** | 5-10 minutes | 2-3 minutes | 3-4 minutes |
+| **Commands to Start** | 3-4 terminals | 1 command | 1 command |
+| **Observability** | Manual setup | Not included | Built-in (Jaeger, Prometheus) |
+| **Cleanup** | Manual | `./bin/docker-dev clean` | `./bin/docker-dev clean` |
+| **Cross-Platform** | Varies by OS | Identical everywhere | Identical everywhere |
 
 ## 📋 What Gets Created
 
@@ -81,37 +109,65 @@ Each setup script creates a complete Rails application with:
 
 ## 🧪 Testing the Setup
 
-After running any setup script:
-
+### Docker Environment
 ```bash
-# Start the services
-cd [app-name]
-redis-server &
-bundle exec sidekiq &
-bundle exec rails server
+cd ecommerce-reliability-demo
+
+# Start all services (includes observability)
+./bin/docker-dev up-full
 
 # Test the workflow
 curl -X POST http://localhost:3000/checkout \
   -H "Content-Type: application/json" \
   -d '{"checkout": {...}}'
 
-# Monitor workflow execution
-curl http://localhost:3000/order_status/TASK_ID
+# Monitor with built-in tools
+# Jaeger UI: http://localhost:16686 (trace workflows)
+# Prometheus: http://localhost:9090 (metrics)
+# GraphQL: http://localhost:3000/tasker/graphql
+
+# Stop all services
+./bin/docker-dev down
 ```
 
-Each chapter includes comprehensive testing guides with multiple scenarios.
+### Traditional Environment
+```bash
+cd ecommerce-reliability-demo
+
+# Start services in separate terminals
+redis-server
+bundle exec sidekiq
+bundle exec rails server
+
+# Test the same endpoints
+curl -X POST http://localhost:3000/checkout ...
+```
+
+Each chapter includes comprehensive testing guides with multiple failure scenarios.
 
 ## 🔧 Troubleshooting
 
-### Common Issues
+### Docker Issues
 
-**"Setup script fails to download"**
-- Check internet connectivity
-- Try downloading manually: `curl -O [script-url]`
-- Use `wget` as alternative: `wget [script-url]`
+**"Docker setup fails"**
+- Ensure Docker is installed and running: `docker --version`
+- Check Docker daemon: `docker ps`
+- Free up disk space: `docker system prune`
+
+**"Services won't start"**
+- Check port conflicts: `./bin/docker-dev status`
+- View service logs: `./bin/docker-dev logs`
+- Restart services: `./bin/docker-dev restart`
+
+**"Can't access observability UIs"**
+- Verify full stack is running: `./bin/docker-dev up-full`
+- Check if ports are available: `lsof -i :16686,9090`
+- Wait for services to initialize (30-60 seconds)
+
+### Traditional Setup Issues
 
 **"Rails app creation fails"**
-- Ensure Ruby 3.0+ and Rails 7.0+ are installed
+- Ensure Ruby 3.2+ and Rails 7.2+ are installed
 - Check PostgreSQL is running
 - Verify all dependencies in diagnostic output
 
@@ -129,21 +185,31 @@ Each chapter includes comprehensive testing guides with multiple scenarios.
 
 ## 🔮 Future Chapters
 
-The same pattern scales for all upcoming chapters:
+All upcoming chapters will support both traditional and Docker-based setup:
 
 ```bash
-# Chapter 2: Data Pipeline Resilience (Coming Q1 2024)
-curl -fsSL .../blog-examples/data-pipeline-resilience/setup.sh | bash
+# Chapter 2: Data Pipeline Resilience (Coming Soon)
+# Docker with observability
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name data-pipeline-demo \
+  --tasks data_processing \
+  --docker \
+  --with-observability
 
-# Chapter 3: Microservices Coordination (Coming Q2 2024)
-curl -fsSL .../blog-examples/microservices-coordination/setup.sh | bash
+# Chapter 3: Microservices Coordination (Planned)
+# Docker setup
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name microservices-demo \
+  --tasks inventory,notifications,integrations \
+  --docker
 ```
 
-Each will be a simple wrapper around the main installer with chapter-specific:
-- Template selection (`--tasks parameter`)
-- Contextual documentation
-- Testing scenarios
-- Sample data
+**Each chapter provides:**
+- **Docker-first approach** with zero local dependencies
+- **Built-in observability** (Jaeger + Prometheus)
+- **Chapter-specific task templates**
+- **Comprehensive testing scenarios**
+- **Production-ready examples**
 
 ## 📚 Related Documentation
 

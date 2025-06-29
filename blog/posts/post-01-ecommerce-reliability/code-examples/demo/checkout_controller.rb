@@ -30,10 +30,9 @@ class CheckoutController < ApplicationController
 
     render json: {
       success: true,
-      task_id: task.id,
-      status: task.current_state,
-      checkout_url: order_status_path(task_id: task.id),
-      correlation_id: task.correlation_id
+      task_id: task.task_id,
+      status: task.status,
+      checkout_url: order_status_path(task_id: task.task_id)
     }
   rescue Tasker::ValidationError => e
     render json: {
@@ -53,9 +52,9 @@ class CheckoutController < ApplicationController
   def order_status
     task = Tasker::Task.find(params[:task_id])
 
-    case task.current_state
-    when 'completed'
-      order_step = task.workflow_step_sequences.last.workflow_steps.find_by(name: 'create_order')
+    case task.status
+    when 'complete'
+      order_step = task.get_step_by_name('create_order')
       order_id = order_step.results['order_id']
 
       render json: {
@@ -64,39 +63,39 @@ class CheckoutController < ApplicationController
         order_number: order_step.results['order_number'],
         total_amount: order_step.results['total_amount'],
         redirect_url: order_path(order_id),
-        correlation_id: task.correlation_id
+        task_id: task.task_id
       }
-    when 'failed'
-      failed_step = task.workflow_step_sequences.last.workflow_steps.where(current_state: 'failed').first
+    when 'error'
+      failed_steps = task.workflow_steps.where("status = 'error'")
+      failed_step = failed_steps.first
 
       render json: {
         status: 'failed',
-        error: task.error_summary,
         failed_step: failed_step&.name,
-        step_error: failed_step&.error_message,
-        retry_url: retry_checkout_path(task_id: task.id),
-        correlation_id: task.correlation_id
+        failed_steps: failed_steps.map(&:name),
+        retry_url: retry_checkout_path(task_id: task.task_id),
+        task_id: task.task_id
       }
-    when 'running'
-      current_step = task.workflow_step_sequences.last.workflow_steps.where(current_state: 'running').first
-      completed_steps = task.workflow_step_sequences.last.workflow_steps.where(current_state: 'completed').count
-      total_steps = task.workflow_step_sequences.last.workflow_steps.count
+    when 'processing'
+      # Use workflow summary for accurate progress
+      summary = task.workflow_summary
+      in_progress_steps = task.workflow_steps.where("status = 'processing'")
 
       render json: {
         status: 'processing',
-        current_step: current_step&.name,
+        current_step: in_progress_steps.first&.name,
         progress: {
-          completed: completed_steps,
-          total: total_steps,
-          percentage: (completed_steps.to_f / total_steps * 100).round
+          completed: summary[:completed],
+          total: summary[:total_steps],
+          percentage: summary[:completion_percentage]
         },
-        correlation_id: task.correlation_id
+        task_id: task.task_id
       }
     else
       render json: {
-        status: task.current_state,
-        message: "Order is #{task.current_state}",
-        correlation_id: task.correlation_id
+        status: task.status,
+        message: "Order is #{task.status}",
+        task_id: task.task_id
       }
     end
   rescue ActiveRecord::RecordNotFound
@@ -109,19 +108,22 @@ class CheckoutController < ApplicationController
   def retry_checkout
     task = Tasker::Task.find(params[:task_id])
 
-        if task.current_state == 'failed'
-      task.retry!
+    if task.status == 'error'
+      # Use the Tasker orchestration to retry the task
+      task.update!(status: 'pending')
+      Tasker::TaskRunnerJob.perform_later(task.task_id)
+      
       render json: {
         success: true,
         message: 'Checkout retry initiated',
-        status: task.current_state,
-        correlation_id: task.correlation_id
+        status: task.status,
+        task_id: task.task_id
       }
     else
       render json: {
         success: false,
-        error: "Cannot retry task in #{task.current_state} status",
-        correlation_id: task.correlation_id
+        error: "Cannot retry task in #{task.status} status",
+        task_id: task.task_id
       }, status: :unprocessable_entity
     end
   rescue ActiveRecord::RecordNotFound
@@ -134,27 +136,24 @@ class CheckoutController < ApplicationController
   def workflow_details
     task = Tasker::Task.find(params[:task_id])
 
-    steps_detail = task.workflow_step_sequences.last.workflow_steps.map do |step|
+    steps_detail = task.workflow_steps.map do |step|
       {
         name: step.name,
-        status: step.current_state,
-        duration_ms: step.duration,
-        result: step.results,
-        error: step.error_message,
-        retry_count: step.retry_count,
-        started_at: step.started_at,
-        completed_at: step.completed_at,
-        correlation_id: step.correlation_id
+        status: step.status,
+        results: step.results,
+        attempts: step.attempts,
+        processed_at: step.processed_at,
+        inputs: step.inputs
       }
     end
 
+    # Get comprehensive workflow summary
+    summary = task.workflow_summary
+
     render json: {
-      task_id: task.id,
-      status: task.current_state,
-      started_at: task.started_at,
-      completed_at: task.completed_at,
-      total_duration_ms: task.duration,
-      correlation_id: task.correlation_id,
+      task_id: task.task_id,
+      status: task.status,
+      workflow_summary: summary,
       steps: steps_detail,
       annotations: task.annotations
     }

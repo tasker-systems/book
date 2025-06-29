@@ -197,7 +197,7 @@ Use variables in `book.json` for:
 ```json
 {
   "variables": {
-    "version": "2.5.0",
+    "version": "2.6.0",
     "github_repo": "tasker-systems/tasker",
     "install_url": "https://raw.githubusercontent.com/..."
   }

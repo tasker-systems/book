@@ -1682,7 +1682,7 @@ strategy = Tasker::CacheStrategy.detect
   "component": "cache_strategy",
   "message": "Cache strategy detected",
   "environment": "production",
-  "tasker_version": "2.5.0",
+  "tasker_version": "2.6.0",
   "store_class": "MyAwesomeCacheStore",
   "coordination_strategy": "distributed_atomic",
   "capabilities": {
@@ -2315,7 +2315,7 @@ Validates OpenTelemetry distributed tracing integration:
 
 **Sample Results**:
 ```
-🎯 Tasker 2.5.0 - Jaeger Integration Validator
+🎯 Tasker 2.6.0 - Jaeger Integration Validator
 ✅ Jaeger Connection: PASS - Successfully connected to Jaeger
 ✅ Workflow Execution: PASS - Created and executed 3 workflows
 ✅ Trace Collection: PASS - Successfully collected 13 spans
@@ -2346,7 +2346,7 @@ Validates metrics collection and Prometheus integration:
 
 **Sample Results**:
 ```
-🎯 Tasker 2.5.0 - Prometheus Integration Validator
+🎯 Tasker 2.6.0 - Prometheus Integration Validator
 ✅ MetricsSubscriber registered successfully
 ✅ Prometheus Connection: PASS - Successfully connected to Prometheus
 ✅ Metrics Endpoint: PASS - Tasker metrics endpoint accessible
@@ -2523,7 +2523,7 @@ The validation scripts provide comprehensive diagnostics:
 ```
 
 **Common Issues & Solutions**:
-- **No Metrics Collected**: Ensure `MetricsSubscriber` is registered (automatic in Tasker 2.5.0+)
+- **No Metrics Collected**: Ensure `MetricsSubscriber` is registered (automatic in Tasker 2.6.0+)
 - **Missing Spans**: Verify OpenTelemetry exporter configuration
 - **Connection Failures**: Check service ports and network connectivity
 - **Query Failures**: Validate Prometheus data retention and configuration

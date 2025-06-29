@@ -8,8 +8,7 @@ module Ecommerce
         amount_to_charge = cart_validation['total']
 
         Rails.logger.info "Processing payment", {
-          task_id: task.id,
-          correlation_id: task.correlation_id,
+          task_id: task.task_id,
           amount: amount_to_charge
         }
 
@@ -28,7 +27,7 @@ module Ecommerce
         case result.status
         when :success
           Rails.logger.info "Payment processed successfully", {
-            task_id: task.id,
+            task_id: task.task_id,
             payment_id: result.id,
             amount_charged: result.amount
           }
@@ -69,7 +68,7 @@ module Ecommerce
 
       def step_results(sequence, step_name)
         step = sequence.steps.find { |s| s.name == step_name }
-        step&.result || {}
+        step&.results || {}
       end
     end
   end

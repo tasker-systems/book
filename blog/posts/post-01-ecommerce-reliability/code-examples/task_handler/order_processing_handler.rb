@@ -24,7 +24,7 @@ module Ecommerce
     def update_annotations(task, sequence, steps)
       # Track order processing metrics for business intelligence
       payment_step = steps.find { |s| s.name == 'process_payment' }
-      if payment_step&.current_state == 'completed'
+      if payment_step&.status == 'complete'
         payment_results = payment_step.results
 
         task.annotations.create!(
@@ -32,15 +32,15 @@ module Ecommerce
           content: {
             payment_id: payment_results['payment_id'],
             amount_charged: payment_results['amount_charged'],
-            processing_time_ms: payment_step.duration,
+            processing_time_ms: calculate_step_duration(payment_step),
             payment_method_type: payment_results['payment_method_type']
           }
         )
       end
 
       # Track completion metrics
-      if task.current_state == 'completed'
-        total_duration = steps.sum { |s| s.duration || 0 }
+      if task.status == 'complete'
+        total_duration = steps.sum { |s| calculate_step_duration(s) }
         task.annotations.create!(
           annotation_type: 'checkout_completed',
           content: {
@@ -55,15 +55,14 @@ module Ecommerce
       end
 
       # Track failure analysis
-      if task.current_state == 'failed'
-        failed_step = steps.find { |s| s.current_state == 'failed' }
+      if task.status == 'error'
+        failed_step = steps.find { |s| s.status == 'error' }
         if failed_step
           task.annotations.create!(
             annotation_type: 'checkout_failed',
             content: {
               failed_step: failed_step.name,
-              error_message: failed_step.error_message,
-              retry_count: failed_step.retry_count,
+              attempts: failed_step.attempts,
               customer_email: task.context['customer_info']['email']
             }
           )
@@ -75,8 +74,14 @@ module Ecommerce
 
     # Helper method to extract step results (updated for current API)
     def step_results(sequence, step_name)
-      step = sequence.workflow_steps.find { |s| s.name == step_name }
+      step = sequence.steps.find { |s| s.name == step_name }
       step&.results || {}
+    end
+
+    # Helper method to calculate step duration (processed_at is the completion time)
+    def calculate_step_duration(step)
+      return 0 unless step.processed_at && step.created_at
+      ((step.processed_at - step.created_at) * 1000).round
     end
   end
 end

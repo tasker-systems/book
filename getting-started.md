@@ -56,7 +56,7 @@ Each chapter includes business impact metrics and team productivity improvements
 
 ### System Requirements
 
-- **Ruby 3.0+** and **Rails 7.0+**
+- **Ruby 3.2+** and **Rails 7.2+**
 - **PostgreSQL** (required for Tasker's SQL functions)
 - **Redis** (for background job processing)
 - **Git** (for downloading examples)
@@ -77,7 +77,7 @@ Each chapter example uses Tasker's one-line installer, but you can also add it t
 
 ```ruby
 # In your Gemfile
-gem 'tasker', '~> 2.5.0'
+gem 'tasker', '~> 2.6.0'
 
 # Then run
 bundle install

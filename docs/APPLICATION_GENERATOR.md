@@ -10,7 +10,7 @@ curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/
 ```
 
 This will:
-1. Check your system dependencies (Ruby 3.0+, Rails 7+, Git)
+1. Check your system dependencies (Ruby 3.2+, Rails 7.2+, Git)
 2. Download the application generator and templates
 3. Run an interactive setup to customize your application
 4. Create a complete Rails application with Tasker integration

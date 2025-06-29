@@ -63,7 +63,7 @@ module Ecommerce
       private
 
       def step_results(sequence, step_name)
-        step = sequence.workflow_steps.find { |s| s.name == step_name }
+        step = sequence.steps.find { |s| s.name == step_name }
         step&.results || {}
       end
 

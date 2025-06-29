@@ -47,7 +47,7 @@ echo "If any items show ❌, install them before proceeding."
 
 #### "Ruby version not supported"
 
-**Error**: `Ruby 3.0+ is required. Found: 2.x.x`
+**Error**: `Ruby 3.2+ is required. Found: 3.0.x`
 
 **Solution**:
 ```bash
@@ -351,7 +351,7 @@ Include this information:
 - OS: [macOS 13.0, Ubuntu 22.04, etc.]
 - Ruby version: [3.2.0]
 - Rails version: [7.0.4]
-- Tasker version: [2.5.0]
+- Tasker version: [2.6.0]
 
 **What I was trying to do**:
 [Describe the goal]
