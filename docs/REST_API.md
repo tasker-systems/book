@@ -1,4 +1,4 @@
-# Tasker REST API Guide
+# REST API Reference
 
 ## Overview
 
@@ -22,6 +22,7 @@ end
 All API endpoints support the same authentication system configured for your Tasker installation:
 
 ### JWT Authentication
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      -H "Content-Type: application/json" \
@@ -29,6 +30,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 ```
 
 ### Custom Authentication
+
 If you've configured a custom authenticator, use the authentication method appropriate for your setup:
 
 ```ruby
@@ -41,6 +43,84 @@ Tasker.configuration do |config|
 end
 ```
 
+## OpenAPI 3.0 Reference
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/handlers" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/handlers/{namespace}" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/handlers/{namespace}/{name}" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/health/ready" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/health/live" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/health/status" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/metrics" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}/task_diagrams" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks" method="post" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}" method="put" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}" method="delete" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}" method="patch" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}/workflow_steps" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}/workflow_steps/{step_id}" method="get" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}/workflow_steps/{step_id}" method="put" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}/workflow_steps/{step_id}" method="delete" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
+{% openapi-operation spec="tasker-systems-api" path="/tasker/tasks/{task_id}/workflow_steps/{step_id}" method="patch" %}
+[OpenAPI tasker-systems-api](https://gitbook-x-prod-openapi.4401d86825a13bf607936cc3a9f3897a.r2.cloudflarestorage.com/raw/500cf63ea0a0c839de0bf4bb54a0462c12e8eeeedac8faded1bc23fed1c87187.txt?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Content-Sha256=UNSIGNED-PAYLOAD&X-Amz-Credential=dce48141f43c0191a2ad043a6888781c%2F20250629%2Fauto%2Fs3%2Faws4_request&X-Amz-Date=20250629T004226Z&X-Amz-Expires=172800&X-Amz-Signature=ac316eeb24880d41b89e780903288e9146ca12052e79ca2839549e351220b484&X-Amz-SignedHeaders=host&x-amz-checksum-mode=ENABLED&x-id=GetObject)
+{% endopenapi-operation %}
+
 ## Handler Discovery API
 
 The handler discovery API provides comprehensive information about available task handlers, their configurations, and dependency graphs.
@@ -52,12 +132,14 @@ The handler discovery API provides comprehensive information about available tas
 **Description**: Returns all namespaces with handler counts and metadata.
 
 **Example Request**:
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      https://your-app.com/tasker/handlers
 ```
 
 **Example Response**:
+
 ```json
 {
   "namespaces": [
@@ -90,15 +172,18 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 **Description**: Returns all handlers available in a specific namespace.
 
 **Parameters**:
-- `namespace` (path) - The namespace name (e.g., "payments", "inventory")
+
+* `namespace` (path) - The namespace name (e.g., "payments", "inventory")
 
 **Example Request**:
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      https://your-app.com/tasker/handlers/payments
 ```
 
 **Example Response**:
+
 ```json
 {
   "namespace": "payments",
@@ -130,17 +215,20 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 **Description**: Returns detailed handler information including step templates, configuration, and dependency graph.
 
 **Parameters**:
-- `namespace` (path) - The namespace name
-- `name` (path) - The handler name
-- `version` (query, optional) - Specific version to retrieve (defaults to latest)
+
+* `namespace` (path) - The namespace name
+* `name` (path) - The handler name
+* `version` (query, optional) - Specific version to retrieve (defaults to latest)
 
 **Example Request**:
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      https://your-app.com/tasker/handlers/payments/process_payment?version=2.1.0
 ```
 
 **Example Response**:
+
 ```json
 {
   "id": "process_payment",
@@ -212,6 +300,7 @@ The task management API supports creating and managing tasks with full namespace
 **Description**: Creates a new task with namespace and version support.
 
 **Request Body**:
+
 ```json
 {
   "name": "process_payment",
@@ -227,6 +316,7 @@ The task management API supports creating and managing tasks with full namespace
 ```
 
 **Example Request**:
+
 ```bash
 curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      -H "Content-Type: application/json" \
@@ -245,6 +335,7 @@ curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 ```
 
 **Example Response**:
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -271,19 +362,22 @@ curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 **Description**: Lists tasks with optional filtering by namespace, version, and status.
 
 **Query Parameters**:
-- `namespace` (optional) - Filter by namespace
-- `version` (optional) - Filter by version
-- `status` (optional) - Filter by task status
-- `page` (optional) - Page number for pagination
-- `per_page` (optional) - Items per page (default: 25, max: 100)
+
+* `namespace` (optional) - Filter by namespace
+* `version` (optional) - Filter by version
+* `status` (optional) - Filter by task status
+* `page` (optional) - Page number for pagination
+* `per_page` (optional) - Items per page (default: 25, max: 100)
 
 **Example Request**:
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      "https://your-app.com/tasker/tasks?namespace=payments&version=2.1.0&status=pending&page=1&per_page=10"
 ```
 
 **Example Response**:
+
 ```json
 {
   "tasks": [
@@ -315,16 +409,19 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 **Description**: Returns detailed information about a specific task.
 
 **Parameters**:
-- `id` (path) - The task ID
-- `include_dependencies` (query, optional) - Include dependency graph analysis
+
+* `id` (path) - The task ID
+* `include_dependencies` (query, optional) - Include dependency graph analysis
 
 **Example Request**:
+
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      https://your-app.com/tasker/tasks/550e8400-e29b-41d4-a716-446655440000?include_dependencies=true
 ```
 
 **Example Response**:
+
 ```json
 {
   "id": "550e8400-e29b-41d4-a716-446655440000",
@@ -374,14 +471,14 @@ The API uses standard HTTP status codes and provides detailed error information:
 
 ### HTTP Status Codes
 
-- `200 OK` - Successful request
-- `201 Created` - Resource created successfully
-- `400 Bad Request` - Invalid request parameters
-- `401 Unauthorized` - Authentication required
-- `403 Forbidden` - Insufficient permissions
-- `404 Not Found` - Resource not found
-- `422 Unprocessable Entity` - Validation errors
-- `500 Internal Server Error` - Server error
+* `200 OK` - Successful request
+* `201 Created` - Resource created successfully
+* `400 Bad Request` - Invalid request parameters
+* `401 Unauthorized` - Authentication required
+* `403 Forbidden` - Insufficient permissions
+* `404 Not Found` - Resource not found
+* `422 Unprocessable Entity` - Validation errors
+* `500 Internal Server Error` - Server error
 
 ### Error Response Format
 
@@ -402,6 +499,7 @@ The API uses standard HTTP status codes and provides detailed error information:
 ### Common Error Scenarios
 
 **Handler Not Found**:
+
 ```json
 {
   "error": {
@@ -413,6 +511,7 @@ The API uses standard HTTP status codes and provides detailed error information:
 ```
 
 **Namespace Not Found**:
+
 ```json
 {
   "error": {
@@ -424,6 +523,7 @@ The API uses standard HTTP status codes and provides detailed error information:
 ```
 
 **Authentication Error**:
+
 ```json
 {
   "error": {
@@ -435,6 +535,7 @@ The API uses standard HTTP status codes and provides detailed error information:
 ```
 
 **Authorization Error**:
+
 ```json
 {
   "error": {
@@ -460,21 +561,23 @@ end
 
 Tasker automatically generates OpenAPI documentation for all endpoints. The API documentation is available at:
 
-- **Swagger UI**: `https://your-app.com/tasker/api-docs`
-- **OpenAPI Spec**: `https://your-app.com/tasker/api-docs.json`
+* **Swagger UI**: `https://your-app.com/tasker/api-docs`
+* **OpenAPI Spec**: `https://your-app.com/tasker/api-docs.json`
 
 The documentation includes:
-- Complete endpoint specifications
-- Request/response schemas
-- Authentication requirements
-- Error response formats
-- Interactive API testing interface
+
+* Complete endpoint specifications
+* Request/response schemas
+* Authentication requirements
+* Error response formats
+* Interactive API testing interface
 
 ## SDK and Client Libraries
 
 ### cURL Examples
 
 **Complete Handler Discovery Workflow**:
+
 ```bash
 # 1. List all namespaces
 curl -H "Authorization: Bearer $TOKEN" \
@@ -558,29 +661,34 @@ const task = await tasker.createTask('process_payment', 'payments', '2.1.0', { p
 ## Best Practices
 
 ### 1. Version Management
-- Always specify versions in production integrations
-- Use semantic versioning for handler versions
-- Test version compatibility before deployment
+
+* Always specify versions in production integrations
+* Use semantic versioning for handler versions
+* Test version compatibility before deployment
 
 ### 2. Error Handling
-- Implement proper error handling for all API calls
-- Use exponential backoff for retryable errors
-- Log API errors for monitoring and debugging
+
+* Implement proper error handling for all API calls
+* Use exponential backoff for retryable errors
+* Log API errors for monitoring and debugging
 
 ### 3. Authentication
-- Use secure token storage and rotation
-- Implement proper token refresh mechanisms
-- Never log authentication tokens
+
+* Use secure token storage and rotation
+* Implement proper token refresh mechanisms
+* Never log authentication tokens
 
 ### 4. Performance
-- Use pagination for large result sets
-- Cache handler discovery results when appropriate
-- Monitor API response times and implement timeouts
+
+* Use pagination for large result sets
+* Cache handler discovery results when appropriate
+* Monitor API response times and implement timeouts
 
 ### 5. Monitoring
-- Track API usage and performance metrics
-- Set up alerts for error rates and response times
-- Monitor task creation and completion rates
+
+* Track API usage and performance metrics
+* Set up alerts for error rates and response times
+* Monitor task creation and completion rates
 
 ## Integration Examples
 
@@ -627,6 +735,6 @@ const loadTestHandlers = async () => {
 };
 ```
 
----
+***
 
 This REST API provides comprehensive access to Tasker's handler discovery and task management capabilities, enabling enterprise-scale workflow orchestration with full namespace and version support.
