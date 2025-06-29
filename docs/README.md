@@ -1,55 +1,59 @@
 # Tasker Developer Documentation Hub
 
-> **Complete reference for building production workflows with Tasker**
+[![GitHub Repository](https://img.shields.io/badge/GitHub-tasker--systems%2Ftasker-blue?logo=github)](https://github.com/tasker-systems/tasker)
+[![Ruby](https://img.shields.io/badge/Ruby-3.2%2B-red.svg)](https://github.com/tasker-systems/tasker)
+[![Rails](https://img.shields.io/badge/Rails-7.2%2B-red.svg)](https://github.com/tasker-systems/tasker)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/tasker-systems/tasker/blob/main/LICENSE)
 
-This documentation hub provides everything you need to master Tasker, from your first workflow to enterprise-scale implementations. Use this alongside the [engineering stories](../blog/) to see patterns in action.
+> **Complete reference for building production workflows with the [Tasker Rails Engine](https://github.com/tasker-systems/tasker)**
+
+This documentation hub provides everything you need to master **[Tasker](https://github.com/tasker-systems/tasker)**, from your first workflow to enterprise-scale implementations. Use this alongside the [engineering stories](../blog/) to see patterns in action.
 
 ## 🎯 Quick Navigation
 
-**Just getting started?** → [Quick Start Guide](quick-start.md)
-**Building your first workflow?** → [Developer Guide](developer-guide.md)
-**Ready for production?** → [Production Features](production-features.md)
-**Debugging issues?** → [Troubleshooting](troubleshooting.md)
+**Just getting started?** → [Quick Start Guide](QUICK_START.md)
+**Building your first workflow?** → [Developer Guide](DEVELOPER_GUIDE.md)
+**Ready for production?** → [Production Operations](#production-operations)
+**Debugging issues?** → [Troubleshooting](TROUBLESHOOTING.md)
 
 ---
 
 ## 📚 Documentation Sections
 
 ### Getting Started
-- **[Quick Start Guide](quick-start.md)** - Build your first workflow in 15 minutes
-- **[Installation & Setup](installation.md)** - Complete setup instructions
+- **[System Overview](OVERVIEW.md)** - Complete system architecture and capabilities
+- **[Quick Start Guide](QUICK_START.md)** - Build your first workflow in 15 minutes
 - **[Core Concepts](core-concepts.md)** - Understanding Tasker's architecture
 
 ### Developer Reference
-- **[Developer Guide](developer-guide.md)** - Comprehensive implementation guide
-- **[API Reference](api-reference.md)** - Complete class and method documentation
-- **[YAML Configuration](yaml-configuration.md)** - Declarative workflow definition
-- **[Testing Guide](testing-guide.md)** - Testing workflows and step handlers
+- **[Developer Guide](DEVELOPER_GUIDE.md)** - Comprehensive implementation guide (80KB, 2542 lines)
+- **[REST API Reference](REST_API.md)** - Complete HTTP API documentation
+- **[SQL Functions Reference](SQL_FUNCTIONS.md)** - Extensive SQL functions reference (39KB)
+- **[Application Generator](APPLICATION_GENERATOR.md)** - Application generation guide
+- **[Workflow Patterns](workflow-patterns.md)** - Common workflow designs
 
-### Production Features
-- **[Authentication & Authorization](authentication.md)** - Secure your workflows
-- **[REST API](rest-api.md)** - Complete HTTP API documentation
-- **[Health Monitoring](health-monitoring.md)** - Production health endpoints
-- **[Telemetry & Observability](telemetry.md)** - OpenTelemetry and metrics
-- **[Performance](performance.md)** - High-performance SQL functions
+### Configuration & Setup
+- **[🚀 YAML Configuration](EXECUTION_CONFIGURATION.md)** - Declarative workflow definition
+- **[Authentication & Authorization](AUTH.md)** - Comprehensive security guide (49KB)
+- **[Event System](EVENT_SYSTEM.md)** - Observability and integrations
+- **[Registry Systems](REGISTRY_SYSTEMS.md)** - Handler organization and discovery
+
+### Production Operations
+- **[Health Monitoring](HEALTH.md)** - Production health endpoints
+- **[Metrics & Performance](METRICS.md)** - Performance monitoring and optimization
+- **[Telemetry & Observability](TELEMETRY.md)** - OpenTelemetry and comprehensive monitoring (29KB)
+- **[Troubleshooting](TROUBLESHOOTING.md)** - Common issues and solutions
 
 ### Advanced Topics
-- **[Event System](event-system.md)** - Observability and integrations
-- **[Registry Systems](registry-systems.md)** - Handler organization and discovery
-- **[Workflow Patterns](workflow-patterns.md)** - Common workflow designs
-- **[Namespace & Versioning](namespace-versioning.md)** - Enterprise organization
-
-### Troubleshooting & Maintenance
-- **[Troubleshooting](troubleshooting.md)** - Common issues and solutions
-- **[Debugging Guide](debugging.md)** - Debug workflows and step handlers
-- **[Migration Guide](migration-guide.md)** - Upgrading between versions
-- **[Best Practices](best-practices.md)** - Production deployment guidelines
+- **[System Flow Charts](FLOW_CHART.md)** - Visual workflow representation
+- **[Task Diagrams](TASK_DIAGRAM.md)** - Task execution visualization
+- **[Project Roadmap](ROADMAP.md)** - Future development plans
 
 ---
 
 ## 🚀 Real-World Examples
 
-Learn from detailed engineering stories that show Tasker solving real problems:
+Learn from detailed engineering stories that show **[Tasker](https://github.com/tasker-systems/tasker)** solving real problems:
 
 ### [Chapter 1: E-commerce Checkout Reliability](../blog/posts/post-01-ecommerce-reliability/)
 **Problem:** Black Friday checkout meltdowns
@@ -109,50 +113,53 @@ Tasker::Analytics.workflow_performance('ecommerce', 'process_order')
 ## 🎯 Learning Path
 
 ### 1. **Foundation (Start Here)**
-- [Quick Start Guide](quick-start.md) - Build your first workflow
+- [System Overview](OVERVIEW.md) - Complete system architecture
+- [Quick Start Guide](QUICK_START.md) - Build your first workflow
 - [Core Concepts](core-concepts.md) - Understand the architecture
 - [Simple Examples](../blog/posts/post-01-ecommerce-reliability/) - See basic patterns
 
 ### 2. **Development Skills**
-- [Developer Guide](developer-guide.md) - Comprehensive implementation
-- [YAML Configuration](yaml-configuration.md) - Declarative workflows
-- [Testing Guide](testing-guide.md) - Test your workflows
+- [Developer Guide](DEVELOPER_GUIDE.md) - Comprehensive implementation (80KB guide)
+- [YAML Configuration](EXECUTION_CONFIGURATION.md) - Declarative workflows
+- [Application Generator](APPLICATION_GENERATOR.md) - Rapid development tools
 
 ### 3. **Advanced Patterns**
 - [Workflow Patterns](workflow-patterns.md) - Diamond, parallel, conditional
-- [Event System](event-system.md) - Monitoring and integrations
+- [Event System](EVENT_SYSTEM.md) - Monitoring and integrations
 - [Complex Examples](../blog/posts/post-02-data-pipeline-resilience/) - Data pipelines
 
 ### 4. **Production Deployment**
-- [Authentication](authentication.md) - Secure your workflows
-- [REST API](rest-api.md) - HTTP API integration
-- [Health Monitoring](health-monitoring.md) - Production readiness
-- [Performance](performance.md) - Scale and optimize
+- [Authentication & Authorization](AUTH.md) - Comprehensive security (49KB guide)
+- [REST API](REST_API.md) - HTTP API integration
+- [Health Monitoring](HEALTH.md) - Production readiness
+- [Metrics & Performance](METRICS.md) - Scale and optimize
 
 ### 5. **Enterprise Features**
-- [Namespace & Versioning](namespace-versioning.md) - Multi-team organization
-- [Telemetry](telemetry.md) - Observability and tracing
-- [Best Practices](best-practices.md) - Production guidelines
+- [Registry Systems](REGISTRY_SYSTEMS.md) - Multi-team organization
+- [Telemetry & Observability](TELEMETRY.md) - Complete observability (29KB guide)
+- [SQL Functions](SQL_FUNCTIONS.md) - High-performance operations (39KB reference)
 
 ---
 
-## 🔗 External Resources
+## 🔗 Tasker Resources
 
-### Official Documentation
-- **[GitHub Repository](https://github.com/tasker-systems/tasker)** - Source code and issues
-- **[Ruby API Docs](https://rubydoc.info/github/tasker-systems/tasker)** - Complete API reference
-- **[OpenAPI Spec](https://github.com/tasker-systems/tasker/blob/main/docs/openapi.yml)** - REST API specification
+### Official Repository & Documentation
+- **[📦 Main Repository](https://github.com/tasker-systems/tasker)** - Source code, issues, and releases
+- **[📖 Ruby API Documentation](https://rubydoc.info/github/tasker-systems/tasker)** - Complete API reference
+- **[📋 OpenAPI Specification](https://github.com/tasker-systems/tasker/blob/main/docs/openapi.yml)** - REST API specification
+- **[🚀 Installation Scripts](https://github.com/tasker-systems/tasker/tree/main/scripts)** - Quick setup tools
 
-### Community
-- **[GitHub Discussions](https://github.com/tasker-systems/tasker/discussions)** - Questions and patterns
-- **[Stack Overflow](https://stackoverflow.com/questions/tagged/tasker-ruby)** - Tag: `tasker-ruby`
+### Community & Support
+- **[👥 GitHub Discussions](https://github.com/tasker-systems/tasker/discussions)** - Questions and patterns
+- **[🐛 Issue Tracker](https://github.com/tasker-systems/tasker/issues)** - Bug reports and feature requests
+- **[📚 Stack Overflow](https://stackoverflow.com/questions/tagged/tasker-ruby)** - Tag: `tasker-ruby`
 
-### Related Tools
+### Related Tools & Integrations
 - **[Sidekiq](https://sidekiq.org/)** - Recommended background processor
-- **[PostgreSQL](https://postgresql.org/)** - Required database
-- **[OpenTelemetry](https://opentelemetry.io/)** - Distributed tracing
+- **[PostgreSQL](https://postgresql.org/)** - Required database (SQL functions)
+- **[OpenTelemetry](https://opentelemetry.io/)** - Distributed tracing integration
 - **[Prometheus](https://prometheus.io/)** - Metrics collection
 
 ---
 
-*This documentation hub integrates content from the official Tasker engine with practical examples from real engineering challenges. Start with the Quick Start Guide and work your way through the learning path.*
+*This documentation hub integrates content from the official **[Tasker Rails Engine](https://github.com/tasker-systems/tasker)** with practical examples from real engineering challenges. Start with the [System Overview](OVERVIEW.md) or [Quick Start Guide](QUICK_START.md) and work your way through the learning path.*

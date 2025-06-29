@@ -75,3 +75,12 @@
 * [Complete Code Repository](appendices/code-repository.md)
 * [Setup Troubleshooting](appendices/troubleshooting.md)
 * [Contributing](appendices/contributing.md)
+
+---
+
+## Tasker Resources
+
+* [📦 Main Repository](https://github.com/tasker-systems/tasker)
+* [📖 API Documentation](https://rubydoc.info/github/tasker-systems/tasker)
+* [👥 Community Discussions](https://github.com/tasker-systems/tasker/discussions)
+* [🐛 Issues & Feature Requests](https://github.com/tasker-systems/tasker/issues)
