@@ -73,96 +73,104 @@ Sarah spent the entire night manually restarting processes, watching logs, and e
 
 ## The Reliable Alternative
 
-After their data pipeline nightmare, Sarah's team rebuilt it as a resilient, observable workflow using the same Tasker patterns that had saved their checkout system:
+After their data pipeline nightmare, Sarah's team rebuilt it as a resilient, observable workflow using the same Tasker patterns that had saved their checkout system.
+
+The key insight was separating **business-critical operations** (step handlers) from **observability operations** (event subscribers):
+
+- **Step Handlers**: Extract, transform, and load data - must succeed for the pipeline to complete
+- **Event Subscribers**: Monitoring, alerting, analytics - failures don't block the main workflow
+
+### The YAML Configuration
+
+```yaml
+# config/customer_analytics_handler.yaml
+task_name: customer_analytics
+namespace: data_pipeline
+version: "2.0.0"
+description: "Resilient customer analytics pipeline with parallel processing"
+
+# Enterprise annotations for monitoring
+annotations:
+  team: "data-engineering"
+  criticality: "high"
+  sla_hours: 8
+  dependencies: ["postgresql", "redis", "crm_api"]
+
+# Parallel data extraction phase
+step_templates:
+  - name: extract_orders
+    description: "Extract order data from transactional database"
+    handler_class: "DataPipeline::StepHandlers::ExtractOrdersHandler"
+    timeout_seconds: 1800  # 30 minutes
+    max_retries: 3
+    retry_backoff: exponential
+
+  - name: extract_users
+    description: "Extract user data from CRM system"
+    handler_class: "DataPipeline::StepHandlers::ExtractUsersHandler"
+    timeout_seconds: 1200  # 20 minutes - CRM can be flaky
+    max_retries: 5
+    retry_backoff: exponential
+
+  - name: extract_products
+    description: "Extract product data from inventory system"
+    handler_class: "DataPipeline::StepHandlers::ExtractProductsHandler"
+    timeout_seconds: 900   # 15 minutes
+    max_retries: 3
+    retry_backoff: exponential
+
+  # Dependent transformations (wait for all extractions)
+  - name: transform_customer_metrics
+    description: "Calculate customer behavior metrics"
+    handler_class: "DataPipeline::StepHandlers::TransformCustomerMetricsHandler"
+    depends_on: ["extract_orders", "extract_users"]
+    timeout_seconds: 2700  # 45 minutes
+    max_retries: 2
+
+  - name: transform_product_metrics
+    description: "Calculate product performance metrics"
+    handler_class: "DataPipeline::StepHandlers::TransformProductMetricsHandler"
+    depends_on: ["extract_orders", "extract_products"]
+    timeout_seconds: 1800  # 30 minutes
+    max_retries: 2
+
+  # Final aggregation and output
+  - name: generate_insights
+    description: "Generate business insights and recommendations"
+    handler_class: "DataPipeline::StepHandlers::GenerateInsightsHandler"
+    depends_on: ["transform_customer_metrics", "transform_product_metrics"]
+    timeout_seconds: 1200  # 20 minutes
+
+  - name: update_dashboard
+    description: "Update executive dashboard with new metrics"
+    handler_class: "DataPipeline::StepHandlers::UpdateDashboardHandler"
+    depends_on: ["generate_insights"]
+    max_retries: 3
+    retry_backoff: exponential
+
+  - name: send_notifications
+    description: "Send completion notifications to stakeholders"
+    handler_class: "DataPipeline::StepHandlers::SendNotificationsHandler"
+    depends_on: ["update_dashboard"]
+    max_retries: 5
+    retry_backoff: exponential
+
+# Custom events for this pipeline
+custom_events:
+  - name: "data_extraction_started"
+    description: "Fired when any extraction step begins"
+  - name: "data_extraction_completed"
+    description: "Fired when extraction step completes with metrics"
+  - name: "pipeline_milestone_reached"
+    description: "Fired at key pipeline milestones"
+```
+
+### The Modern Task Handler
 
 ```ruby
 # app/tasks/data_pipeline/customer_analytics_handler.rb
 module DataPipeline
-  class CustomerAnalyticsHandler < Tasker::TaskHandler::Base
-    TASK_NAME = 'customer_analytics'
-    NAMESPACE = 'data_pipeline'
-    VERSION = '1.0.0'
-
-    register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-
-    define_step_templates do |templates|
-      # Parallel data extraction (3 concurrent operations)
-      templates.define(
-        name: 'extract_orders',
-        description: 'Extract order data from transactional database',
-        handler_class: 'DataPipeline::StepHandlers::ExtractOrdersHandler',
-        retryable: true,
-        retry_limit: 3,
-        timeout: 30.minutes
-      )
-
-      templates.define(
-        name: 'extract_users',
-        description: 'Extract user data from CRM system',
-        handler_class: 'DataPipeline::StepHandlers::ExtractUsersHandler',
-        retryable: true,
-        retry_limit: 5,  # CRM can be flaky
-        timeout: 20.minutes
-      )
-
-      templates.define(
-        name: 'extract_products',
-        description: 'Extract product data from inventory system',
-        handler_class: 'DataPipeline::StepHandlers::ExtractProductsHandler',
-        retryable: true,
-        retry_limit: 3,
-        timeout: 15.minutes
-      )
-
-      # Dependent transformations (wait for all extractions)
-      templates.define(
-        name: 'transform_customer_metrics',
-        description: 'Calculate customer behavior metrics',
-        depends_on_step: ['extract_orders', 'extract_users'],
-        handler_class: 'DataPipeline::StepHandlers::TransformCustomerMetricsHandler',
-        retryable: true,
-        retry_limit: 2,
-        timeout: 45.minutes
-      )
-
-      templates.define(
-        name: 'transform_product_metrics',
-        description: 'Calculate product performance metrics',
-        depends_on_step: ['extract_orders', 'extract_products'],
-        handler_class: 'DataPipeline::StepHandlers::TransformProductMetricsHandler',
-        retryable: true,
-        retry_limit: 2,
-        timeout: 30.minutes
-      )
-
-      # Final aggregation and output
-      templates.define(
-        name: 'generate_insights',
-        description: 'Generate business insights and recommendations',
-        depends_on_step: ['transform_customer_metrics', 'transform_product_metrics'],
-        handler_class: 'DataPipeline::StepHandlers::GenerateInsightsHandler',
-        timeout: 20.minutes
-      )
-
-      templates.define(
-        name: 'update_dashboard',
-        description: 'Update executive dashboard with new metrics',
-        depends_on_step: 'generate_insights',
-        handler_class: 'DataPipeline::StepHandlers::UpdateDashboardHandler',
-        retryable: true,
-        retry_limit: 3
-      )
-
-      templates.define(
-        name: 'send_notifications',
-        description: 'Send completion notifications to stakeholders',
-        depends_on_step: 'update_dashboard',
-        handler_class: 'DataPipeline::StepHandlers::SendNotificationsHandler',
-        retryable: true,
-        retry_limit: 5
-      )
-    end
-
+  class CustomerAnalyticsHandler < Tasker::ConfiguredTask
     def schema
       {
         type: 'object',
@@ -172,22 +180,60 @@ module DataPipeline
             properties: {
               start_date: { type: 'string', format: 'date' },
               end_date: { type: 'string', format: 'date' }
-            }
+            },
+            required: ['start_date', 'end_date']
           },
           force_refresh: { type: 'boolean', default: false },
           notification_channels: {
             type: 'array',
             items: { type: 'string' },
             default: ['#data-team']
+          },
+          processing_mode: {
+            type: 'string',
+            enum: ['standard', 'high_memory', 'distributed'],
+            default: 'standard'
           }
-        }
+        },
+        required: ['date_range']
       }
+    end
+
+    # Runtime behavior customization based on data volume
+    def configure_runtime_behavior(context)
+      date_range = context['date_range']
+      start_date = Date.parse(date_range['start_date'])
+      end_date = Date.parse(date_range['end_date'])
+      days_span = (end_date - start_date).to_i + 1
+
+      # Adjust timeouts and batch sizes based on date range
+      if days_span > 30
+        # Large date range - increase timeouts and enable distributed mode
+        override_step_config('extract_orders', {
+          timeout_seconds: 3600,  # 1 hour
+          max_retries: 5
+        })
+        override_step_config('transform_customer_metrics', {
+          timeout_seconds: 5400   # 90 minutes
+        })
+      elsif days_span > 7
+        # Medium date range - moderate adjustments
+        override_step_config('extract_orders', {
+          timeout_seconds: 2700   # 45 minutes
+        })
+      end
+
+      # High memory mode for large datasets
+      if context['processing_mode'] == 'high_memory'
+        add_annotation('memory_profile', 'high_memory_optimized')
+        add_annotation('batch_size_multiplier', '2.0')
+      end
     end
   end
 end
 ```
 
-Now let's look at how they implemented the intelligent step handlers with progress tracking:
+Now let's look at how they implemented the intelligent step handlers with clear separation of concerns:
 
 ```ruby
 # app/tasks/data_pipeline/step_handlers/extract_orders_handler.rb
@@ -199,14 +245,20 @@ module DataPipeline
         start_date = Date.parse(date_range['start_date'])
         end_date = Date.parse(date_range['end_date'])
 
+        # Fire custom event for monitoring
+        publish_event('data_extraction_started', {
+          step_name: 'extract_orders',
+          date_range: date_range,
+          estimated_records: estimate_record_count(start_date, end_date)
+        })
+
         # Calculate total records for progress tracking
         total_count = Order.where(created_at: start_date..end_date).count
         processed_count = 0
-
         orders = []
 
         # Process in batches to avoid memory issues
-        Order.where(created_at: start_date..end_date).find_in_batches(batch_size: 1000) do |batch|
+        Order.where(created_at: start_date..end_date).find_in_batches(batch_size: batch_size) do |batch|
           begin
             batch_data = batch.map do |order|
               {
@@ -227,160 +279,85 @@ module DataPipeline
             orders.concat(batch_data)
             processed_count += batch.size
 
-            # Update progress for monitoring
-            progress_percent = (processed_count.to_f / total_count * 100).round(1)
-            update_progress_annotation(
-              step,
-              "Processed #{processed_count}/#{total_count} orders (#{progress_percent}%)"
-            )
+            # Update progress annotation for monitoring
+            update_progress(step, processed_count, total_count)
 
           rescue ActiveRecord::ConnectionTimeoutError => e
-            raise Tasker::RetryableError, "Database connection timeout: #{e.message}"
+            # Log the error but let Tasker handle retries
+            log_structured_error("Database connection timeout during order extraction", {
+              error: e.message,
+              batch_size: batch.size,
+              processed_so_far: processed_count
+            })
+            raise e  # Let Tasker retry with backoff
           rescue StandardError => e
-            Rails.logger.error "Order extraction error: #{e.message}"
-            raise Tasker::RetryableError, "Extraction failed, will retry: #{e.message}"
+            log_structured_error("Order extraction error", {
+              error: e.message,
+              batch_size: batch.size,
+              processed_so_far: processed_count
+            })
+            raise e  # Let Tasker handle retries
           end
         end
 
-        {
+        result = {
           orders: orders,
           total_count: orders.length,
           date_range: {
             start_date: start_date.iso8601,
             end_date: end_date.iso8601
           },
-          extracted_at: Time.current.iso8601
+          extracted_at: Time.current.iso8601,
+          processing_stats: {
+            batches_processed: (processed_count.to_f / batch_size).ceil,
+            batch_size: batch_size
+          }
         }
+
+        # Fire completion event with metrics
+        publish_event('data_extraction_completed', {
+          step_name: 'extract_orders',
+          records_extracted: orders.length,
+          processing_time_seconds: step.duration_seconds,
+          date_range: date_range
+        })
+
+        result
       end
 
       private
 
-      def update_progress_annotation(step, message)
+      def batch_size
+        # Adjust batch size based on memory profile annotation
+        base_size = 1000
+        multiplier = task.annotations['batch_size_multiplier']&.to_f || 1.0
+        (base_size * multiplier).to_i
+      end
+
+      def estimate_record_count(start_date, end_date)
+        # Quick estimate without full count for monitoring
+        sample_day = Order.where(created_at: start_date..start_date.end_of_day).count
+        days_span = (end_date - start_date).to_i + 1
+        sample_day * days_span
+      end
+
+      def update_progress(step, processed, total)
+        progress_percent = (processed.to_f / total * 100).round(1)
         step.annotations.merge!({
-          progress_message: message,
+          progress_message: "Processed #{processed}/#{total} orders (#{progress_percent}%)",
+          progress_percent: progress_percent,
           last_updated: Time.current.iso8601
         })
         step.save!
       end
-    end
-  end
-end
-```
 
-```ruby
-# app/tasks/data_pipeline/step_handlers/transform_customer_metrics_handler.rb
-module DataPipeline
-  module StepHandlers
-    class TransformCustomerMetricsHandler < Tasker::StepHandler::Base
-      def process(task, sequence, step)
-        orders_data = step_results(sequence, 'extract_orders')
-        users_data = step_results(sequence, 'extract_users')
-
-        orders = orders_data['orders']
-        users = users_data['users']
-
-        # Create lookup hash for efficient user data access
-        users_by_id = users.index_by { |user| user['user_id'] }
-
-        # Group orders by customer
-        orders_by_customer = orders.group_by { |order| order['customer_id'] }
-
-        customer_metrics = []
-        processed_customers = 0
-        total_customers = orders_by_customer.keys.length
-
-        orders_by_customer.each do |customer_id, customer_orders|
-          user_info = users_by_id[customer_id]
-          next unless user_info  # Skip if user data missing
-
-          metrics = calculate_customer_metrics(customer_orders, user_info)
-          customer_metrics << metrics
-
-          processed_customers += 1
-
-          # Update progress every 100 customers
-          if processed_customers % 100 == 0
-            progress_percent = (processed_customers.to_f / total_customers * 100).round(1)
-            update_progress_annotation(
-              step,
-              "Processed #{processed_customers}/#{total_customers} customers (#{progress_percent}%)"
-            )
-          end
-        end
-
-        {
-          customer_metrics: customer_metrics,
-          total_customers: customer_metrics.length,
-          metrics_calculated: %w[
-            total_lifetime_value
-            average_order_value
-            order_frequency
-            days_since_last_order
-            customer_segment
-          ],
-          calculated_at: Time.current.iso8601
-        }
-      end
-
-      private
-
-      def step_results(sequence, step_name)
-        step = sequence.steps.find { |s| s.name == step_name }
-        step&.result || {}
-      end
-
-      def calculate_customer_metrics(customer_orders, user_info)
-        total_spent = customer_orders.sum { |order| order['total_amount'] }
-        order_count = customer_orders.length
-        avg_order_value = order_count > 0 ? total_spent / order_count : 0
-
-        last_order_date = customer_orders.map { |order| Date.parse(order['order_date']) }.max
-        days_since_last_order = last_order_date ? (Date.current - last_order_date).to_i : nil
-
-        {
-          customer_id: user_info['user_id'],
-          customer_email: user_info['email'],
-          total_lifetime_value: total_spent,
-          average_order_value: avg_order_value.round(2),
-          total_orders: order_count,
-          order_frequency: calculate_order_frequency(customer_orders),
-          days_since_last_order: days_since_last_order,
-          customer_segment: determine_customer_segment(total_spent, order_count),
-          acquisition_date: user_info['created_at'],
-          calculated_at: Time.current.iso8601
-        }
-      end
-
-      def calculate_order_frequency(orders)
-        return 0 if orders.length < 2
-
-        order_dates = orders.map { |order| Date.parse(order['order_date']) }.sort
-        total_days = order_dates.last - order_dates.first
-
-        return 0 if total_days <= 0
-
-        (orders.length - 1) / (total_days / 30.0)  # Orders per month
-      end
-
-      def determine_customer_segment(total_spent, order_count)
-        case
-        when total_spent >= 1000 && order_count >= 10
-          'VIP'
-        when total_spent >= 500 || order_count >= 5
-          'Regular'
-        when total_spent >= 100 || order_count >= 2
-          'Occasional'
-        else
-          'New'
-        end
-      end
-
-      def update_progress_annotation(step, message)
-        step.annotations.merge!({
-          progress_message: message,
-          last_updated: Time.current.iso8601
-        })
-        step.save!
+      def log_structured_error(message, context)
+        Rails.logger.error({
+          message: message,
+          correlation_id: task.correlation_id,
+          step_name: 'extract_orders',
+          context: context
+        }.to_json)
       end
     end
   end
@@ -389,67 +366,139 @@ end
 
 ## The Magic: Event-Driven Monitoring
 
-The real game-changer was the event-driven monitoring system that gave the team complete visibility into their data pipeline:
+The real game-changer was the event-driven monitoring system that gave the team complete visibility into their data pipeline. **Critically, these are event subscribers - they handle observability without blocking the main business logic:**
 
 ```ruby
 # app/tasks/data_pipeline/pipeline_monitor.rb
 module DataPipeline
   class PipelineMonitor < Tasker::EventSubscriber::Base
-    subscribe_to 'step.started', 'step.completed', 'step.failed', 'task.completed', 'task.failed'
+    # Subscribe to core Tasker events + custom pipeline events
+    subscribe_to 'step.started', 'step.completed', 'step.failed',
+                 'task.completed', 'task.failed',
+                 'data_extraction_started', 'data_extraction_completed',
+                 'pipeline_milestone_reached'
 
     def handle_step_started(event)
-      if data_pipeline_task?(event)
+      return unless data_pipeline_task?(event)
+
+      # These are observability actions - they don't block the pipeline
+      safely_execute do
         notify_step_started(event)
         update_dashboard_progress(event)
+        log_step_metrics(event)
       end
     end
 
     def handle_step_completed(event)
-      if data_pipeline_task?(event)
+      return unless data_pipeline_task?(event)
+
+      safely_execute do
         notify_step_completed(event)
         update_dashboard_progress(event)
 
-        # Special handling for extraction steps
+        # Log extraction metrics for monitoring
         if extraction_step?(event[:step_name])
           log_extraction_metrics(event)
+          check_extraction_thresholds(event)
         end
       end
     end
 
     def handle_step_failed(event)
-      if data_pipeline_task?(event)
+      return unless data_pipeline_task?(event)
+
+      safely_execute do
         severity = determine_failure_severity(event[:step_name], event[:error])
 
         case severity
         when :critical
           page_on_call_engineer(event)
           notify_stakeholders(event)
+          create_incident_ticket(event)
         when :high
           notify_data_team(event)
           schedule_retry_notification(event)
         when :medium
           log_for_review(event)
         end
+
+        # Always update monitoring dashboards
+        update_failure_metrics(event)
+      end
+    end
+
+    def handle_data_extraction_started(event)
+      safely_execute do
+        # Custom event handling for extraction monitoring
+        DatadogAPI.increment('data_pipeline.extraction.started', 1, {
+          step: event[:step_name],
+          estimated_records: event[:estimated_records]
+        })
+
+        # Start extraction timeout monitoring
+        schedule_extraction_timeout_check(event)
+      end
+    end
+
+    def handle_data_extraction_completed(event)
+      safely_execute do
+        # Record extraction performance metrics
+        DatadogAPI.gauge('data_pipeline.extraction.records_count',
+                        event[:records_extracted], {
+          step: event[:step_name],
+          date: Date.current.strftime('%Y-%m-%d')
+        })
+
+        DatadogAPI.gauge('data_pipeline.extraction.duration_seconds',
+                        event[:processing_time_seconds], {
+          step: event[:step_name]
+        })
+
+        # Check if extraction volume is within expected ranges
+        validate_extraction_volume(event)
       end
     end
 
     def handle_task_completed(event)
-      if data_pipeline_task?(event)
+      return unless data_pipeline_task?(event)
+
+      safely_execute do
         notify_pipeline_success(event)
         update_dashboard_status('completed')
         schedule_next_run(event)
+        record_pipeline_completion_metrics(event)
       end
     end
 
     def handle_task_failed(event)
-      if data_pipeline_task?(event)
+      return unless data_pipeline_task?(event)
+
+      safely_execute do
         notify_pipeline_failure(event)
         update_dashboard_status('failed')
         create_incident_report(event)
+        record_pipeline_failure_metrics(event)
       end
     end
 
     private
+
+    # Critical: All monitoring operations are wrapped in safe execution
+    # Event subscriber failures should NEVER impact the main pipeline
+    def safely_execute
+      yield
+    rescue => e
+      # Log the monitoring failure but don't raise
+      Rails.logger.error({
+        message: "Pipeline monitoring error - this does not affect pipeline execution",
+        error: e.message,
+        backtrace: e.backtrace.first(5),
+        subscriber: self.class.name
+      }.to_json)
+
+      # Optionally send to error tracking
+      Sentry.capture_exception(e) if defined?(Sentry)
+    end
 
     def data_pipeline_task?(event)
       event[:namespace] == 'data_pipeline'
@@ -462,13 +511,13 @@ module DataPipeline
     def determine_failure_severity(step_name, error)
       case step_name
       when 'extract_orders', 'extract_users'
-        # Core data failures are critical
+        # Core data failures are critical - business can't function without this data
         :critical
       when 'transform_customer_metrics', 'transform_product_metrics'
-        # Processing failures are high priority
+        # Processing failures are high priority - analytics are important
         :high
       when 'update_dashboard', 'send_notifications'
-        # Output failures are medium priority
+        # Output failures are medium priority - data exists, just not displayed
         :medium
       else
         :medium
@@ -478,17 +527,19 @@ module DataPipeline
     def notify_step_started(event)
       SlackAPI.post_message(
         channel: '#data-pipeline-status',
-        text: "🔄 Starting: #{event[:step_name]} (#{event[:task_id]})"
+        text: "🔄 Starting: #{event[:step_name]} (#{event[:task_id]})",
+        correlation_id: event[:correlation_id]
       )
     end
 
     def notify_step_completed(event)
-      duration = event[:duration] || 0
-      duration_text = duration > 60000 ? "#{(duration/60000).round(1)}min" : "#{(duration/1000).round(1)}s"
+      duration = event[:duration_seconds] || 0
+      duration_text = duration > 60 ? "#{(duration/60).round(1)}min" : "#{duration.round(1)}s"
 
       SlackAPI.post_message(
         channel: '#data-pipeline-status',
-        text: "✅ Completed: #{event[:step_name]} in #{duration_text}"
+        text: "✅ Completed: #{event[:step_name]} in #{duration_text}",
+        correlation_id: event[:correlation_id]
       )
     end
 
@@ -499,6 +550,7 @@ module DataPipeline
           step: event[:step_name],
           error: event[:error],
           task_id: event[:task_id],
+          correlation_id: event[:correlation_id],
           timestamp: event[:timestamp]
         },
         urgency: 'high'
@@ -509,7 +561,8 @@ module DataPipeline
       # Notify business stakeholders about data availability
       SlackAPI.post_message(
         channel: '#executive-alerts',
-        text: "⚠️ Customer analytics may be delayed due to pipeline failure. Engineering team investigating."
+        text: "⚠️ Customer analytics may be delayed due to pipeline failure. Engineering team investigating.",
+        correlation_id: event[:correlation_id]
       )
     end
 
@@ -518,6 +571,7 @@ module DataPipeline
         task_id: event[:task_id],
         current_step: event[:step_name],
         status: event[:type],
+        correlation_id: event[:correlation_id],
         last_updated: Time.current.iso8601
       })
     end
@@ -525,19 +579,21 @@ module DataPipeline
     def log_extraction_metrics(event)
       result = event[:result] || {}
 
-      DatadogAPI.gauge('data_pipeline.extraction.records_count', result['total_count'] || 0, {
+      DatadogAPI.gauge('data_pipeline.extraction.records_count',
+                      result['total_count'] || 0, {
         step: event[:step_name],
         date: Date.current.strftime('%Y-%m-%d')
       })
 
-      DatadogAPI.gauge('data_pipeline.extraction.duration_seconds', (event[:duration] || 0) / 1000, {
+      DatadogAPI.gauge('data_pipeline.extraction.duration_seconds',
+                      event[:duration_seconds] || 0, {
         step: event[:step_name]
       })
     end
 
     def schedule_next_run(event)
       # Schedule next day's pipeline run
-      CustomerAnalyticsJob.set(wait_until: tomorrow_at_midnight).perform_later({
+      CustomerAnalyticsJob.set(wait_until: tomorrow_at_1am).perform_later({
         date_range: {
           start_date: Date.current.strftime('%Y-%m-%d'),
           end_date: Date.current.strftime('%Y-%m-%d')
@@ -545,11 +601,92 @@ module DataPipeline
       })
     end
 
-    def tomorrow_at_midnight
-      Date.current.tomorrow.beginning_of_day + 1.hour  # 1 AM start time
+    def tomorrow_at_1am
+      Date.current.tomorrow.beginning_of_day + 1.hour
+    end
+
+    def validate_extraction_volume(event)
+      records_extracted = event[:records_extracted]
+      step_name = event[:step_name]
+
+      # Define expected ranges for each extraction step
+      expected_ranges = {
+        'extract_orders' => { min: 100, max: 50000 },
+        'extract_users' => { min: 50, max: 10000 },
+        'extract_products' => { min: 10, max: 5000 }
+      }
+
+      range = expected_ranges[step_name]
+      return unless range
+
+      if records_extracted < range[:min]
+        SlackAPI.post_message(
+          channel: '#data-quality-alerts',
+          text: "⚠️ Low extraction volume: #{step_name} extracted only #{records_extracted} records (expected min: #{range[:min]})"
+        )
+      elsif records_extracted > range[:max]
+        SlackAPI.post_message(
+          channel: '#data-quality-alerts',
+          text: "⚠️ High extraction volume: #{step_name} extracted #{records_extracted} records (expected max: #{range[:max]})"
+        )
+      end
     end
   end
 end
+```
+
+## Real-Time Monitoring Dashboard
+
+The team also built a real-time monitoring interface using Tasker's REST API:
+
+```javascript
+// Dashboard showing live pipeline progress
+async function updatePipelineStatus() {
+  try {
+    const response = await fetch('/api/v1/tasks/current', {
+      headers: { 'Authorization': `Bearer ${API_TOKEN}` }
+    });
+    const tasks = await response.json();
+
+    const pipelineTask = tasks.data.find(task =>
+      task.namespace === 'data_pipeline' &&
+      task.current_state === 'running'
+    );
+
+    if (pipelineTask) {
+      displayPipelineProgress(pipelineTask);
+
+      // Get detailed step information
+      const stepsResponse = await fetch(`/api/v1/tasks/${pipelineTask.id}/steps`);
+      const steps = await stepsResponse.json();
+      displayStepDetails(steps.data);
+    }
+  } catch (error) {
+    console.error('Failed to update pipeline status:', error);
+  }
+}
+
+function displayPipelineProgress(task) {
+  const progressContainer = document.getElementById('pipeline-progress');
+  const completedSteps = task.workflow_steps.filter(step => step.current_state === 'completed').length;
+  const totalSteps = task.workflow_steps.length;
+  const progressPercent = (completedSteps / totalSteps) * 100;
+
+  progressContainer.innerHTML = `
+    <div class="pipeline-status">
+      <h3>Customer Analytics Pipeline</h3>
+      <div class="progress-bar">
+        <div class="progress-fill" style="width: ${progressPercent}%"></div>
+      </div>
+      <p>${completedSteps}/${totalSteps} steps completed (${progressPercent.toFixed(1)}%)</p>
+      <p>Correlation ID: ${task.correlation_id}</p>
+      <p>Started: ${new Date(task.created_at).toLocaleString()}</p>
+    </div>
+  `;
+}
+
+// Update every 30 seconds
+setInterval(updatePipelineStatus, 30000);
 ```
 
 ## The Results
@@ -567,44 +704,82 @@ end
 - Real-time progress tracking for all stakeholders
 - Partial recovery from exact failure points
 - 99.9% on-time dashboard delivery
+- **Zero monitoring failures impact pipeline execution**
 
 The pipeline that once kept everyone awake now runs silently in the background, with intelligent monitoring that only alerts when human intervention is truly needed.
 
-## Key Takeaways
+## Key Architectural Insights
 
-1. **Design for parallel execution** - Independent operations should run concurrently, not sequentially
+### 1. Separation of Concerns: Step Handlers vs Event Subscribers
 
-2. **Implement intelligent progress tracking** - Long-running operations need visibility into their progress
+**Step Handlers** (Business Logic):
+- Extract data from sources
+- Transform and process data
+- Update critical systems
+- **Must succeed** for workflow completion
+- Failures trigger retries and escalation
 
-3. **Build event-driven monitoring** - Different failures need different response strategies
+**Event Subscribers** (Observability):
+- Monitor pipeline progress
+- Send notifications and alerts
+- Update dashboards and metrics
+- **Never block** the main workflow
+- Failures are logged but don't affect pipeline
 
-4. **Plan for partial recovery** - Don't restart entire processes when only one step fails
+### 2. Design for Parallel Execution
+Independent operations run concurrently, not sequentially. The three extraction steps run in parallel, dramatically reducing total pipeline time.
 
-5. **Think in dependency graphs** - Data transformations have natural dependencies that should be explicit
+### 3. Intelligent Progress Tracking
+Long-running operations provide real-time visibility into their progress through annotations and custom events.
 
-6. **Make alerts actionable** - Distinguish between "page immediately" and "review tomorrow" failures
+### 4. Event-Driven Monitoring
+Different failures trigger different response strategies - from immediate pages to next-day reviews.
+
+### 5. Partial Recovery
+When a step fails, only that step and its dependents need to rerun. Previous successful steps remain completed.
+
+### 6. Configuration-Driven Behavior
+YAML configuration allows runtime behavior changes without code deployment.
 
 ## Want to Try This Yourself?
 
 The complete data pipeline workflow is available and can be running in your development environment in under 5 minutes:
 
 ```bash
-# One-line setup using Tasker's install pattern
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/data-pipeline-resilience/setup.sh | bash
+# Clone the demo repository
+git clone https://github.com/tasker-systems/tasker-examples.git
+cd tasker-examples/data-pipeline-resilience
+
+# One-line setup using Tasker's automated demo builder
+./setup.sh
 
 # Start the services
-cd data-pipeline-demo
 redis-server &
 bundle exec sidekiq &
 bundle exec rails server
 
 # Run the analytics pipeline
-curl -X POST http://localhost:3000/analytics/start \
+curl -X POST http://localhost:3000/api/v1/tasks \
   -H "Content-Type: application/json" \
-  -d '{"date_range": {"start_date": "2024-01-01", "end_date": "2024-01-01"}}'
+  -H "Authorization: Bearer your_api_token" \
+  -d '{
+    "task_name": "customer_analytics",
+    "namespace": "data_pipeline",
+    "context": {
+      "date_range": {
+        "start_date": "2024-01-01",
+        "end_date": "2024-01-01"
+      }
+    }
+  }'
 
 # Monitor progress in real-time
-curl http://localhost:3000/analytics/status/TASK_ID
+curl -H "Authorization: Bearer your_api_token" \
+  http://localhost:3000/api/v1/tasks/TASK_ID
+
+# View step details
+curl -H "Authorization: Bearer your_api_token" \
+  http://localhost:3000/api/v1/tasks/TASK_ID/steps
 ```
 
 In our next post, we'll tackle an even more complex challenge: "Microservices Orchestration Without the Chaos" - when your simple user registration involves 6 API calls across 4 different services.

@@ -6,25 +6,47 @@ This guide gets you from zero to a working Tasker workflow quickly. You'll build
 
 ## Prerequisites
 
-- **Rails application** (7.2+) with PostgreSQL
-- **Ruby 3.2+**
+- **Rails application** (7.0+) with PostgreSQL
+- **Ruby 3.2+** (required for Tasker v2.5.0)
+- **PostgreSQL** (required for Tasker's high-performance SQL functions)
+- **Redis** (for background job processing)
 - **Basic Rails knowledge** (models, controllers, ActiveJob)
 
 ## Installation & Setup (3 minutes)
 
-### 1. Add Tasker to your Gemfile
+### Option 1: Automated Demo Application (Recommended)
 
-```ruby
-# Gemfile
-gem 'tasker', git: 'https://github.com/tasker-systems/tasker.git'
-```
-
-### 2. Install and configure
+Create a complete Tasker application with real-world workflows instantly:
 
 ```bash
+# Interactive setup with full observability stack
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash
+
+# Or specify your preferences
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name my-tasker-demo \
+  --tasks ecommerce,inventory,customer \
+  --observability \
+  --non-interactive
+```
+
+### Option 2: Manual Installation (Existing Rails App)
+
+If you have an existing Rails application:
+
+```bash
+# Add to Gemfile
+echo 'gem "tasker", git: "https://github.com/tasker-systems/tasker.git", tag: "v2.5.0"' >> Gemfile
+
+# Install and setup
 bundle install
-bundle exec rails generate tasker:install
+bundle exec rails tasker:install:migrations
+bundle exec rails tasker:install:database_objects  # Critical step!
 bundle exec rails db:migrate
+bundle exec rails tasker:setup
+
+# Mount the engine
+echo 'mount Tasker::Engine, at: "/tasker"' >> config/routes.rb
 ```
 
 ### 3. Create a simple User model (if needed)
@@ -44,45 +66,68 @@ Let's create a workflow that:
 
 ### 1. Create the task handler
 
+First, create the YAML configuration file:
+
+```yaml
+# config/tasker/tasks/welcome_user/welcome_handler.yaml
+---
+name: send_welcome_email
+namespace_name: welcome_user
+version: 1.0.0
+task_handler_class: WelcomeUser::WelcomeHandler
+
+schema:
+  type: object
+  required: ['user_id']
+  properties:
+    user_id:
+      type: integer
+
+step_templates:
+  - name: validate_user
+    handler_class: WelcomeUser::StepHandler::ValidateUserHandler
+
+  - name: generate_content
+    depends_on_step: validate_user
+    handler_class: WelcomeUser::StepHandler::GenerateContentHandler
+
+  - name: send_email
+    depends_on_step: generate_content
+    handler_class: WelcomeUser::StepHandler::SendEmailHandler
+    retryable: true
+    retry_limit: 3
+```
+
+Then create the task handler class:
+
 ```ruby
 # app/tasks/welcome_user/welcome_handler.rb
 module WelcomeUser
-  class WelcomeHandler < Tasker::TaskHandler::Base
-    TASK_NAME = 'send_welcome_email'
-    NAMESPACE = 'welcome_user'
-    VERSION = '1.0.0'
+  class WelcomeHandler < Tasker::ConfiguredTask
+    # Configuration is driven by the YAML file above
+    # The class primarily handles runtime behavior and overrides
 
-    register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-
-    define_step_templates do |templates|
-      templates.define(
-        name: 'validate_user',
-        handler_class: 'WelcomeUser::StepHandler::ValidateUserHandler'
-      )
-
-      templates.define(
-        name: 'generate_content',
-        depends_on_step: 'validate_user',
-        handler_class: 'WelcomeUser::StepHandler::GenerateContentHandler'
-      )
-
-      templates.define(
-        name: 'send_email',
-        depends_on_step: 'generate_content',
-        handler_class: 'WelcomeUser::StepHandler::SendEmailHandler',
-        retryable: true,
-        retry_limit: 3
-      )
+    # Optional: Custom runtime step dependency logic
+    def establish_step_dependencies_and_defaults(task, steps)
+      # Add runtime dependencies based on task context if needed
+      if task.context['priority'] == 'urgent'
+        email_step = steps.find { |s| s.name == 'send_email' }
+        email_step&.update(retry_limit: 1) # Faster failure for urgent emails
+      end
     end
 
-    def schema
-      {
-        type: 'object',
-        required: ['user_id'],
-        properties: {
-          user_id: { type: 'integer' }
-        }
-      }
+    # Optional: Add custom annotations after completion
+    def update_annotations(task, sequence, steps)
+      email_results = steps.find { |s| s.name == 'send_email' }&.results
+      if email_results&.dig('email_sent')
+        task.annotations.create!(
+          annotation_type: 'welcome_email_sent',
+          content: {
+            sent_to: email_results['sent_to'],
+            sent_at: email_results['sent_at']
+          }
+        )
+      end
     end
   end
 end
@@ -101,7 +146,7 @@ module WelcomeUser
 
         # Find the user
         user = User.find_by(id: user_id)
-        raise Tasker::PermanentError, "User not found: #{user_id}" unless user
+        raise StandardError, "User not found: #{user_id}" unless user
 
         Rails.logger.info "Validated user: #{user.name} (#{user.email})"
 
@@ -196,11 +241,13 @@ module WelcomeUser
           }
 
         rescue Net::SMTPServerBusy => e
-          # Temporary failure - retry
-          raise Tasker::RetryableError, "SMTP server busy: #{e.message}"
+          # Temporary failure - will retry based on step configuration
+          Rails.logger.warn "SMTP server busy, will retry: #{e.message}"
+          raise e  # Let Tasker handle retries based on step configuration
         rescue Net::SMTPFatalError => e
           # Permanent failure - don't retry
-          raise Tasker::PermanentError, "Invalid email address: #{e.message}"
+          Rails.logger.error "Permanent SMTP failure: #{e.message}"
+          raise StandardError, "Invalid email address: #{e.message}"
         end
       end
 
@@ -271,13 +318,20 @@ puts "Started task: #{task_id}"
 
 # Check status
 task = Tasker::Task.find(task_id)
-puts "Status: #{task.status}"
+puts "Status: #{task.current_state}"
 
 # View step details
-task.workflow_step_sequences.last.steps.each do |step|
-  puts "#{step.name}: #{step.status}"
-  puts "  Result: #{step.result}" if step.result
+task.workflow_step_sequences.last.workflow_steps.each do |step|
+  puts "#{step.name}: #{step.current_state}"
+  puts "  Result: #{step.results}" if step.results.present?
 end
+
+# Access via REST API (if Tasker engine is mounted)
+# GET /tasker/tasks/#{task_id}
+# GET /tasker/handlers/welcome_user/send_welcome_email
+
+# Access via GraphQL (if available)
+# query { task(taskId: "#{task_id}") { currentState workflowSteps { name currentState results } } }
 ```
 
 ### 4. Expected output

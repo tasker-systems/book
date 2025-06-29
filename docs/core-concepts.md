@@ -15,19 +15,19 @@ flowchart TB
         StepHandler[Step Handlers<br/>Business Logic]
         YAML[YAML Config<br/>Declarative Definition]
     end
-    
+
     subgraph "Execution Engine"
         Registry[Handler Registry<br/>Discovery & Loading]
         Orchestrator[SQL Orchestrator<br/>High Performance]
         Events[Event System<br/>Observability]
     end
-    
+
     subgraph "Infrastructure"
         Database[(PostgreSQL<br/>State & Persistence)]
         Jobs[Background Jobs<br/>Async Execution]
         API[REST API<br/>External Integration]
     end
-    
+
     TaskHandler --> Registry
     StepHandler --> Orchestrator
     YAML --> TaskHandler
@@ -48,44 +48,83 @@ flowchart TB
 - Register with the handler registry
 - Configure retry policies and timeouts
 
-### Basic Structure
+### Modern Architecture (Tasker v2.5.0)
+
+**Primary Pattern: ConfiguredTask with YAML**
+
+```yaml
+# config/tasker/tasks/ecommerce/order_processing_handler.yaml
+---
+name: process_order
+namespace_name: ecommerce
+version: 2.1.0
+task_handler_class: Ecommerce::OrderProcessingHandler
+
+schema:
+  type: object
+  required: ['order_id']
+  properties:
+    order_id:
+      type: integer
+    priority:
+      type: string
+      enum: ['normal', 'high', 'urgent']
+
+step_templates:
+  - name: validate_payment
+    handler_class: Ecommerce::StepHandlers::ValidatePaymentHandler
+    retryable: true
+    retry_limit: 3
+
+  - name: reserve_inventory
+    depends_on_step: validate_payment
+    handler_class: Ecommerce::StepHandlers::ReserveInventoryHandler
+```
 
 ```ruby
+# app/tasks/ecommerce/order_processing_handler.rb
+module Ecommerce
+  class OrderProcessingHandler < Tasker::ConfiguredTask
+    # Configuration is driven by YAML file
+    # Class handles runtime behavior and enterprise features
+
+    def establish_step_dependencies_and_defaults(task, steps)
+      # Add runtime logic based on context
+      if task.context['priority'] == 'urgent'
+        payment_step = steps.find { |s| s.name == 'validate_payment' }
+        payment_step&.update(retry_limit: 1) # Faster failure for urgent orders
+      end
+    end
+
+    def update_annotations(task, sequence, steps)
+      # Add enterprise annotations for tracking
+      payment_results = steps.find { |s| s.name == 'validate_payment' }&.results
+      if payment_results&.dig('payment_validated')
+        task.annotations.create!(
+          annotation_type: 'payment_processed',
+          content: {
+            amount: payment_results['amount_charged'],
+            payment_id: payment_results['payment_id']
+          }
+        )
+      end
+    end
+  end
+end
+```
+
+**Alternative Pattern: Direct Registration**
+
+```ruby
+# For cases where YAML configuration isn't needed
 class OrderProcessingHandler < Tasker::TaskHandler::Base
-  TASK_NAME = 'process_order'
-  NAMESPACE = 'ecommerce'
-  VERSION = '2.1.0'
-  
-  # Register with the handler registry
-  register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-  
-  # Define workflow structure
-  define_step_templates do |templates|
-    templates.define(
-      name: 'validate_payment',
-      handler_class: 'Ecommerce::StepHandlers::ValidatePaymentHandler',
-      retryable: true,
-      retry_limit: 3
-    )
-    
-    templates.define(
-      name: 'reserve_inventory',
-      depends_on_step: 'validate_payment',
-      handler_class: 'Ecommerce::StepHandlers::ReserveInventoryHandler'
-    )
-  end
-  
-  # Define input validation schema
-  def schema
-    {
-      type: 'object',
-      required: ['order_id'],
-      properties: {
-        order_id: { type: 'integer' },
-        priority: { type: 'string', enum: ['normal', 'high', 'urgent'] }
-      }
-    }
-  end
+  register_handler(
+    'process_order',
+    namespace_name: 'ecommerce',
+    version: '2.1.0'
+  )
+
+  # Rest of implementation...
 end
 ```
 
@@ -103,7 +142,7 @@ templates.define(
 ```ruby
 # These three steps run in parallel
 templates.define(name: 'check_credit')
-templates.define(name: 'verify_address')  
+templates.define(name: 'verify_address')
 templates.define(name: 'validate_inventory')
 ```
 
@@ -145,10 +184,10 @@ module Ecommerce
         # Access task context
         order_id = task.context['order_id']
         order = Order.find(order_id)
-        
+
         # Execute business logic
         payment_result = PaymentService.validate(order.payment_method)
-        
+
         # Handle different outcomes
         if payment_result.success?
           {
@@ -157,12 +196,16 @@ module Ecommerce
             amount_charged: payment_result.amount
           }
         else
-          # Decide if error is retryable
+          # Handle errors based on type - let step configuration control retries
           case payment_result.error_code
           when 'timeout', 'server_error'
-            raise Tasker::RetryableError, payment_result.error_message
+            # Temporary failures - will retry based on step configuration
+            Rails.logger.warn "Payment service temporary failure: #{payment_result.error_message}"
+            raise StandardError, payment_result.error_message
           when 'invalid_card', 'insufficient_funds'
-            raise Tasker::PermanentError, payment_result.error_message
+            # Permanent failures - won't retry
+            Rails.logger.error "Payment validation failed permanently: #{payment_result.error_message}"
+            raise StandardError, payment_result.error_message
           end
         end
       end
@@ -173,25 +216,36 @@ end
 
 ### Error Handling Patterns
 
-**Retryable Errors**: Temporary failures that should be retried
-```ruby
-# Network timeouts, rate limits, temporary service unavailability
-raise Tasker::RetryableError, "Payment gateway timeout"
+**Retryable vs Permanent Failures**: Tasker determines retry behavior based on step configuration and error types.
 
-# Custom retry delay
-raise Tasker::RetryableError.new("Rate limited", delay: 60.seconds)
+**Temporary Failures** (will retry based on step configuration):
+```ruby
+# Network errors, timeouts, rate limits - let Tasker handle retries
+begin
+  PaymentGateway.charge(amount)
+rescue Net::TimeoutError, PaymentGateway::ServerError => e
+  Rails.logger.warn "Temporary failure, will retry: #{e.message}"
+  raise e  # Tasker will retry based on step retry_limit configuration
+end
 ```
 
-**Permanent Errors**: Failures that won't succeed on retry
+**Permanent Failures** (fail immediately):
 ```ruby
 # Invalid data, authorization failures, business rule violations
-raise Tasker::PermanentError, "Invalid credit card number"
+if payment_method.invalid?
+  Rails.logger.error "Invalid payment method: #{payment_method.errors}"
+  raise StandardError, "Invalid payment method provided"
+end
 ```
 
-**Standard Errors**: Treated as permanent failures
-```ruby
-# Any unhandled StandardError fails permanently
-raise ArgumentError, "Missing required parameter"
+**Step Configuration Controls Retry Behavior**:
+```yaml
+# In YAML configuration
+- name: process_payment
+  handler_class: ProcessPaymentHandler
+  retryable: true      # Enable retries for this step
+  retry_limit: 3       # Maximum retry attempts
+  timeout: 30000       # 30 second timeout
 ```
 
 ### Result Passing
@@ -203,13 +257,13 @@ def process(task, sequence, step)
   # Access results from previous steps
   payment_results = step_results(sequence, 'validate_payment')
   payment_id = payment_results['payment_id']
-  
+
   # Use the data in business logic
   inventory_result = InventoryService.reserve(
     order_id: task.context['order_id'],
     payment_confirmation: payment_id
   )
-  
+
   # Return results for dependent steps
   {
     inventory_reserved: true,
@@ -246,7 +300,7 @@ SELECT tasker_resolve_dependencies(task_id);
 validate_order → process_payment → ship_order → send_confirmation
 ```
 
-**Parallel Workflow**: Independent concurrent execution  
+**Parallel Workflow**: Independent concurrent execution
 ```
              ┌─ check_inventory
 validate_order ├─ validate_payment
@@ -284,7 +338,7 @@ Tasker publishes events throughout the workflow lifecycle:
 'task.completed'   # All steps completed successfully
 'task.failed'      # Workflow failed permanently
 
-# Step events  
+# Step events
 'step.started'     # Step begins execution
 'step.completed'   # Step completed successfully
 'step.failed'      # Step failed (may retry)
@@ -318,7 +372,7 @@ Create custom integrations by subscribing to events:
 ```ruby
 class OrderMonitor < Tasker::EventSubscriber::Base
   subscribe_to 'step.completed', 'step.failed', 'task.completed'
-  
+
   def handle_step_completed(event)
     if event[:namespace] == 'ecommerce' && event[:step_name] == 'validate_payment'
       # Update analytics
@@ -329,7 +383,7 @@ class OrderMonitor < Tasker::EventSubscriber::Base
       })
     end
   end
-  
+
   def handle_step_failed(event)
     if event[:namespace] == 'ecommerce'
       # Alert the operations team
@@ -339,7 +393,7 @@ class OrderMonitor < Tasker::EventSubscriber::Base
       )
     end
   end
-  
+
   def handle_task_completed(event)
     if event[:namespace] == 'ecommerce'
       # Send order confirmation
@@ -350,7 +404,147 @@ class OrderMonitor < Tasker::EventSubscriber::Base
 end
 ```
 
-## 5. Namespace & Versioning
+## 5. Enterprise Features (v2.5.0)
+*Production-ready capabilities*
+
+**Purpose**: Provide enterprise-grade features for production workflow orchestration at scale.
+
+### Thread-Safe Registry Operations
+
+Production-ready concurrent task execution with automatic safety:
+
+```ruby
+# Tasker handles thread-safe registration and execution
+# No additional configuration needed - built-in safety
+Tasker::HandlerFactory.instance.run_task(task_request)  # Thread-safe
+
+# Multiple concurrent workflows execute safely
+threads = 50.times.map do |i|
+  Thread.new do
+    task_request = Tasker::Types::TaskRequest.new(
+      name: 'process_order',
+      namespace: 'ecommerce',
+      context: { order_id: i }
+    )
+    Tasker::HandlerFactory.instance.run_task(task_request)
+  end
+end
+threads.each(&:join)  # All execute safely
+```
+
+### Structured Logging with Correlation IDs
+
+Automatic request tracing across distributed operations:
+
+```ruby
+# Logs automatically include correlation tracking
+Rails.logger.info "Processing payment", {
+  task_id: task.id,
+  step_name: step.name,
+  correlation_id: task.correlation_id,
+  execution_context: task.execution_context,
+  thread_id: Thread.current.object_id
+}
+
+# Correlation IDs flow through entire workflow
+# Enables distributed tracing across services
+```
+
+### OpenTelemetry Integration
+
+Enterprise observability with automatic tracing and metrics:
+
+```ruby
+# Configure in config/application.rb
+config.tasker.observability.opentelemetry.enabled = true
+config.tasker.observability.opentelemetry.service_name = 'my-app'
+
+# Automatic traces for:
+# - Task execution spans
+# - Step execution spans
+# - Database operations
+# - External API calls
+# - Error conditions
+
+# Custom instrumentation in step handlers
+def process(task, sequence, step)
+  Tasker::Observability.trace('custom_operation') do |span|
+    span.set_attribute('order_id', task.context['order_id'])
+    # Your business logic here
+  end
+end
+```
+
+### REST API & GraphQL
+
+Built-in API access for integration and monitoring:
+
+```ruby
+# Mount Tasker engine for API access
+mount Tasker::Engine, at: '/tasker'
+
+# Available REST endpoints:
+# GET /tasker/tasks/:id           - Get task status
+# GET /tasker/tasks/:id/steps     - Get step details
+# GET /tasker/handlers            - List all handlers
+# GET /tasker/handlers/:namespace/:name - Handler details
+# POST /tasker/tasks              - Create new task
+# GET /tasker/health              - Health check
+
+# GraphQL endpoint at /tasker/graphql
+# Example query:
+# query {
+#   task(taskId: "uuid-1234") {
+#     currentState
+#     workflowSteps {
+#       name
+#       currentState
+#       results
+#     }
+#   }
+# }
+```
+
+### Advanced Event System
+
+56+ built-in events with structured data for comprehensive observability:
+
+```ruby
+# Granular event types available:
+# - task.created, task.started, task.completed, task.failed
+# - step.created, step.started, step.completed, step.failed
+# - step.retry_attempted, step.retry_exhausted
+# - dependency.resolved, dependency.blocked
+# - handler.registered, handler.loaded
+# - sequence.created, sequence.completed
+# And many more...
+
+# Subscribe to specific events
+Tasker::EventBus.subscribe('step.retry_attempted') do |event|
+  Rails.logger.warn "Step retry: #{event.step_name} (attempt #{event.attempt_number})"
+
+  # Alert on repeated failures
+  if event.attempt_number >= 3
+    AlertingService.notify(
+      severity: 'warning',
+      message: "Step #{event.step_name} failing repeatedly",
+      context: event.to_h
+    )
+  end
+end
+
+# Custom event publishing with correlation
+def handle_step(step, task_context)
+  Tasker::EventBus.publish('payment.processed', {
+    task_id: task_context[:task_id],
+    amount: step.context['amount'],
+    correlation_id: task_context[:correlation_id],
+    trace_id: OpenTelemetry::Trace.current_span&.context&.trace_id
+  })
+end
+```
+
+## 6. Namespace & Versioning
 *Enterprise-scale organization*
 
 **Purpose**: Organize workflows by business domain and enable safe evolution through semantic versioning.
@@ -364,7 +558,7 @@ Organize workflows by business capability:
 namespace: 'payments'
 tasks: ['process_payment', 'process_refund', 'update_billing']
 
-# Inventory management workflows  
+# Inventory management workflows
 namespace: 'inventory'
 tasks: ['reserve_items', 'update_stock', 'reorder_products']
 
@@ -385,7 +579,7 @@ Multiple versions can coexist safely:
 # Version 1.0.0 - Original implementation
 class ProcessOrderHandler < Tasker::TaskHandler::Base
   register_handler('process_order', namespace_name: 'ecommerce', version: '1.0.0')
-  
+
   define_step_templates do |templates|
     templates.define(name: 'validate_order')
     templates.define(name: 'process_payment', depends_on_step: 'validate_order')
@@ -395,7 +589,7 @@ end
 # Version 2.0.0 - Added inventory check
 class ProcessOrderHandler < Tasker::TaskHandler::Base
   register_handler('process_order', namespace_name: 'ecommerce', version: '2.0.0')
-  
+
   define_step_templates do |templates|
     templates.define(name: 'validate_order')
     templates.define(name: 'check_inventory', depends_on_step: 'validate_order')
@@ -426,7 +620,7 @@ current_request = Tasker::Types::TaskRequest.new(
 )
 ```
 
-## 6. Handler Registry
+## 7. Handler Registry
 *Discovery and loading system*
 
 **Purpose**: Automatically discover, load, and manage workflow handlers with thread-safe operations.
@@ -457,7 +651,7 @@ The registry handles concurrent access safely:
 threads = 10.times.map do |i|
   Thread.new do
     # Each thread gets correct handler instance
-    handler = Tasker::HandlerFactory.instance.get('process_order', 
+    handler = Tasker::HandlerFactory.instance.get('process_order',
                                                   namespace_name: 'ecommerce')
     # Execute workflows concurrently
     task_id = handler.run_task(context: { order_id: i })
@@ -480,7 +674,7 @@ Tasker::HandlerRegistry.instance.handlers_for_namespace('ecommerce')
 
 # Get handler metadata
 handler_info = Tasker::HandlerRegistry.instance.handler_info(
-  'process_order', 
+  'process_order',
   namespace_name: 'ecommerce'
 )
 # => { version: '2.0.0', schema: {...}, steps: [...] }

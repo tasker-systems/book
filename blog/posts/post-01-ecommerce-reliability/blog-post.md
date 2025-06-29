@@ -73,93 +73,132 @@ During their Black Friday meltdown, Sarah's team spent 6 hours manually reconcil
 
 After their Black Friday nightmare, Sarah's (again, completely imaginary) team discovered Tasker. Here's how they rebuilt their checkout as a reliable, observable workflow:
 
+**First, the YAML configuration that defines the workflow structure:**
+
+```yaml
+# config/tasker/tasks/ecommerce/order_processing_handler.yaml
+---
+name: process_order
+namespace_name: ecommerce
+version: 1.0.0
+task_handler_class: Ecommerce::OrderProcessingHandler
+
+description: "Reliable e-commerce checkout workflow with automatic retry and recovery"
+
+schema:
+  type: object
+  required: ['cart_items', 'payment_info', 'customer_info']
+  properties:
+    cart_items:
+      type: array
+      items:
+        type: object
+        properties:
+          product_id:
+            type: integer
+          quantity:
+            type: integer
+          price:
+            type: number
+    payment_info:
+      type: object
+      properties:
+        token:
+          type: string
+        amount:
+          type: number
+    customer_info:
+      type: object
+      properties:
+        email:
+          type: string
+        name:
+          type: string
+
+step_templates:
+  - name: validate_cart
+    description: Validate cart items and calculate totals
+    handler_class: Ecommerce::StepHandlers::ValidateCartHandler
+    retryable: true
+    retry_limit: 3
+
+  - name: process_payment
+    description: Charge payment method
+    depends_on_step: validate_cart
+    handler_class: Ecommerce::StepHandlers::ProcessPaymentHandler
+    retryable: true
+    retry_limit: 3
+    timeout: 30000  # 30 seconds
+
+  - name: update_inventory
+    description: Update inventory levels
+    depends_on_step: process_payment
+    handler_class: Ecommerce::StepHandlers::UpdateInventoryHandler
+    retryable: true
+    retry_limit: 2
+
+  - name: create_order
+    description: Create order record
+    depends_on_step: update_inventory
+    handler_class: Ecommerce::StepHandlers::CreateOrderHandler
+
+  - name: send_confirmation
+    description: Send order confirmation email
+    depends_on_step: create_order
+    handler_class: Ecommerce::StepHandlers::SendConfirmationHandler
+    retryable: true
+    retry_limit: 5  # Email delivery can be flaky
+```
+
+**Then, the handler class that provides runtime behavior:**
+
 ```ruby
 # app/tasks/ecommerce/order_processing_handler.rb
 module Ecommerce
-  class OrderProcessingHandler < Tasker::TaskHandler::Base
-    TASK_NAME = 'process_order'
-    NAMESPACE = 'ecommerce'
-    VERSION = '1.0.0'
+  class OrderProcessingHandler < Tasker::ConfiguredTask
+    # Configuration is driven by the YAML file above
+    # This class handles runtime behavior and enterprise features
 
-    register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
+    def establish_step_dependencies_and_defaults(task, steps)
+      # Add runtime optimizations based on order context
+      if task.context['priority'] == 'express'
+        # Express orders get faster timeouts and fewer retries
+        payment_step = steps.find { |s| s.name == 'process_payment' }
+        payment_step&.update(timeout: 15000, retry_limit: 1)
 
-    define_step_templates do |templates|
-      templates.define(
-        name: 'validate_cart',
-        description: 'Validate cart items and calculate totals',
-        handler_class: 'Ecommerce::StepHandlers::ValidateCartHandler',
-        retryable: true,
-        retry_limit: 3
-      )
-
-      templates.define(
-        name: 'process_payment',
-        description: 'Charge payment method',
-        depends_on_step: 'validate_cart',
-        handler_class: 'Ecommerce::StepHandlers::ProcessPaymentHandler',
-        retryable: true,
-        retry_limit: 3,
-        timeout: 30.seconds
-      )
-
-      templates.define(
-        name: 'update_inventory',
-        description: 'Update inventory levels',
-        depends_on_step: 'process_payment',
-        handler_class: 'Ecommerce::StepHandlers::UpdateInventoryHandler',
-        retryable: true,
-        retry_limit: 2
-      )
-
-      templates.define(
-        name: 'create_order',
-        description: 'Create order record',
-        depends_on_step: 'update_inventory',
-        handler_class: 'Ecommerce::StepHandlers::CreateOrderHandler'
-      )
-
-      templates.define(
-        name: 'send_confirmation',
-        description: 'Send order confirmation email',
-        depends_on_step: 'create_order',
-        handler_class: 'Ecommerce::StepHandlers::SendConfirmationHandler',
-        retryable: true,
-        retry_limit: 5  # Email delivery can be flaky
-      )
+        email_step = steps.find { |s| s.name == 'send_confirmation' }
+        email_step&.update(retry_limit: 2)
+      end
     end
 
-    def schema
-      {
-        type: 'object',
-        required: ['cart_items', 'payment_info', 'customer_info'],
-        properties: {
-          cart_items: {
-            type: 'array',
-            items: {
-              type: 'object',
-              properties: {
-                product_id: { type: 'integer' },
-                quantity: { type: 'integer' },
-                price: { type: 'number' }
-              }
-            }
-          },
-          payment_info: {
-            type: 'object',
-            properties: {
-              token: { type: 'string' },
-              amount: { type: 'number' }
-            }
-          },
-          customer_info: {
-            type: 'object',
-            properties: {
-              email: { type: 'string' },
-              name: { type: 'string' }
-            }
+    def update_annotations(task, sequence, steps)
+      # Track order processing metrics for business intelligence
+      payment_step = steps.find { |s| s.name == 'process_payment' }
+      if payment_step&.current_state == 'completed'
+        payment_results = payment_step.results
+
+        task.annotations.create!(
+          annotation_type: 'payment_processed',
+          content: {
+            payment_id: payment_results['payment_id'],
+            amount_charged: payment_results['amount_charged'],
+            processing_time_ms: payment_step.duration
           }
-        }
-      }
+        )
+      end
+
+      # Track completion metrics
+      if task.current_state == 'completed'
+        total_duration = steps.sum { |s| s.duration || 0 }
+        task.annotations.create!(
+          annotation_type: 'checkout_completed',
+          content: {
+            total_duration_ms: total_duration,
+            steps_completed: steps.count,
+            customer_email: task.context['customer_info']['email']
+          }
+        )
+      end
     end
   end
 end
@@ -219,6 +258,12 @@ module Ecommerce
         payment_info = task.context['payment_info']
         totals = step_results(sequence, 'validate_cart')
 
+        Rails.logger.info "Processing payment", {
+          task_id: task.id,
+          correlation_id: task.correlation_id,
+          amount: totals['total']
+        }
+
         result = PaymentProcessor.charge(
           amount: totals['total'],
           payment_method: payment_info['token']
@@ -226,11 +271,21 @@ module Ecommerce
 
         unless result.success?
           if result.retryable?
-            raise Tasker::RetryableError, "Payment temporarily failed: #{result.error}"
+            # Temporary failure - will retry based on step configuration
+            Rails.logger.warn "Payment temporarily failed, will retry: #{result.error}"
+            raise StandardError, "Payment temporarily failed: #{result.error}"
           else
-            raise Tasker::NonRetryableError, "Payment failed: #{result.error}"
+            # Permanent failure - won't retry
+            Rails.logger.error "Payment failed permanently: #{result.error}"
+            raise StandardError, "Payment failed: #{result.error}"
           end
         end
+
+        Rails.logger.info "Payment processed successfully", {
+          task_id: task.id,
+          payment_id: result.id,
+          amount_charged: result.amount
+        }
 
         {
           payment_id: result.id,
@@ -275,15 +330,22 @@ Tasker tracks the state of every step. If something fails, you can see exactly w
 ```ruby
 # Check task status
 task = Tasker::Task.find(task_id)
-puts task.status  # 'failed'
+puts task.current_state  # 'failed'
 
 # See which step failed
-failed_step = task.workflow_steps.failed.first
-puts failed_step.name      # 'update_inventory'
-puts failed_step.error     # 'Inventory service timeout'
+failed_step = task.workflow_step_sequences.last.workflow_steps.where(current_state: 'failed').first
+puts failed_step.name           # 'update_inventory'
+puts failed_step.error_message  # 'Inventory service timeout'
 
-# Retry just the failed step
+# Retry the entire workflow (Tasker will skip completed steps)
 task.retry!
+
+# Or access via REST API
+require 'net/http'
+response = Net::HTTP.get_response(URI("http://localhost:3000/tasker/tasks/#{task_id}"))
+task_data = JSON.parse(response.body)
+puts "Task Status: #{task_data['current_state']}"
+puts "Failed Step: #{task_data['workflow_steps'].find { |s| s['current_state'] == 'failed' }&.dig('name')}"
 ```
 
 ### 4. **Visibility and Debugging**
@@ -292,19 +354,59 @@ No more guessing what went wrong:
 
 ```ruby
 # Get complete execution history
-task.workflow_steps.each do |step|
-  puts "#{step.name}: #{step.status} (#{step.duration}ms)"
-  puts "  Result: #{step.result}" if step.completed?
-  puts "  Error: #{step.error}" if step.failed?
+task.workflow_step_sequences.last.workflow_steps.each do |step|
+  puts "#{step.name}: #{step.current_state} (#{step.duration}ms)"
+  puts "  Result: #{step.results}" if step.current_state == 'completed'
+  puts "  Error: #{step.error_message}" if step.current_state == 'failed'
+  puts "  Correlation ID: #{step.correlation_id}"
 end
 
 # Output:
 # validate_cart: completed (45ms)
 #   Result: {"total"=>156.32, "validated_items"=>[...]}
+#   Correlation ID: req_abc123
 # process_payment: completed (1200ms)
 #   Result: {"payment_id"=>"pi_1234", "amount_charged"=>156.32}
+#   Correlation ID: req_abc123
 # update_inventory: failed (30000ms)
 #   Error: "Inventory service timeout after 30 seconds"
+#   Correlation ID: req_abc123
+```
+
+**Enterprise Observability Features:**
+
+```ruby
+# Access via REST API for monitoring dashboards
+response = HTTParty.get("http://localhost:3000/tasker/tasks/#{task_id}/steps")
+steps_data = JSON.parse(response.body)
+
+# OpenTelemetry traces (if configured)
+# Automatic tracing spans are created for each step
+# View in Jaeger, Zipkin, or your observability platform
+
+# Event-driven monitoring
+class CheckoutMonitor < Tasker::EventSubscriber::Base
+  subscribe_to 'step.failed', 'task.completed'
+
+  def handle_step_failed(event)
+    if event[:namespace] == 'ecommerce' && event[:step_name] == 'process_payment'
+      # Alert payment team immediately
+      SlackAPI.post_message(
+        channel: '#payments-critical',
+        text: "Payment failure in checkout: #{event[:error_message]}",
+        metadata: { correlation_id: event[:correlation_id] }
+      )
+    end
+  end
+
+  def handle_task_completed(event)
+    # Track successful checkout metrics
+    Metrics.increment('checkout.completed', {
+      namespace: event[:namespace],
+      duration_ms: event[:total_duration]
+    })
+  end
+end
 ```
 
 ## How to Execute the Workflow
@@ -325,12 +427,14 @@ def create_order
     }
   )
 
-  task = Tasker::TaskExecutor.execute_async(task_request)
+  task_id = Tasker::HandlerFactory.instance.run_task(task_request)
+  task = Tasker::Task.find(task_id)
 
   render json: {
     task_id: task.id,
-    status: task.status,
-    checkout_url: "/orders/#{task.id}/status"
+    status: task.current_state,
+    checkout_url: "/orders/#{task.id}/status",
+    correlation_id: task.correlation_id
   }
 end
 
@@ -338,16 +442,29 @@ end
 def order_status
   task = Tasker::Task.find(params[:task_id])
 
-  case task.status
+  case task.current_state
   when 'completed'
-    order_step = task.workflow_steps.find_by(name: 'create_order')
-    order_id = order_step.result['order_id']
+    order_step = task.workflow_step_sequences.last.workflow_steps.find_by(name: 'create_order')
+    order_id = order_step.results['order_id']
     redirect_to order_path(order_id)
   when 'failed'
-    render :checkout_error, locals: { error: task.error_summary }
+    render :checkout_error, locals: {
+      error: task.error_summary,
+      correlation_id: task.correlation_id
+    }
   else
-    render :processing
+    render :processing, locals: {
+      task_id: task.id,
+      correlation_id: task.correlation_id
+    }
   end
+end
+
+# Alternative: Use REST API for status checks (great for JavaScript frontends)
+def order_status_api
+  # Proxy to Tasker's REST API
+  response = HTTParty.get("#{request.base_url}/tasker/tasks/#{params[:task_id]}")
+  render json: response.parsed_response
 end
 ```
 
@@ -381,24 +498,49 @@ Sarah's team went from being woken up every Black Friday to sleeping soundly whi
 
 ## Want to Try This Yourself?
 
-The complete code for this e-commerce checkout workflow is available and can be running in your development environment in under 5 minutes using Tasker's application generator:
+The complete code for this e-commerce checkout workflow is available and can be running in your development environment in under 5 minutes using Tasker's automated demo builder:
 
 ```bash
-# One-line setup using Tasker's install pattern
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+# Interactive setup with full observability stack
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash
 
-# Or with a custom app name
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash -s -- --app-name my-checkout-demo
+# Or specify your preferences for this e-commerce example
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name ecommerce-checkout-demo \
+  --tasks ecommerce \
+  --observability \
+  --non-interactive
 
-# Start the services
-cd ecommerce-blog-demo  # or your custom name
-redis-server &          # Start Redis
-bundle exec sidekiq &   # Start background jobs
-bundle exec rails server # Start Rails
+# Navigate to your new application
+cd ecommerce-checkout-demo
+
+# Everything is already configured and ready to run:
+# - PostgreSQL database with Tasker tables
+# - Redis for background job processing
+# - Tasker engine mounted at /tasker
+# - Example workflows pre-configured
+# - OpenTelemetry tracing (if enabled)
+
+# Start the application
+bundle exec rails server
 
 # Test the reliable checkout
 open http://localhost:3000
+
+# Monitor workflows via Tasker's REST API
+open http://localhost:3000/tasker/tasks
+
+# View handler documentation
+open http://localhost:3000/tasker/handlers
 ```
+
+**What you get out of the box:**
+- Complete e-commerce checkout workflow with all step handlers
+- Automatic retry logic and error handling
+- REST API endpoints for monitoring
+- OpenTelemetry integration for tracing (if enabled)
+- Example data and test scenarios
+- Production-ready patterns with correlation IDs and structured logging
 
 In our next post, we'll explore how to handle even more complex scenarios with parallel execution and event-driven monitoring when we tackle "The Data Pipeline That Kept Everyone Awake."
 

@@ -1,114 +1,82 @@
 module Ecommerce
-  class OrderProcessingHandler < Tasker::TaskHandler::Base
-    TASK_NAME = 'process_order'
-    NAMESPACE = 'ecommerce'
-    VERSION = '1.0.0'
-    
-    register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-    
-    define_step_templates do |templates|
-      templates.define(
-        name: 'validate_cart',
-        description: 'Validate cart items and calculate totals',
-        handler_class: 'Ecommerce::StepHandlers::ValidateCartHandler',
-        retryable: true,
-        retry_limit: 3
-      )
-      
-      templates.define(
-        name: 'process_payment',
-        description: 'Charge payment method',
-        depends_on_step: 'validate_cart',
-        handler_class: 'Ecommerce::StepHandlers::ProcessPaymentHandler',
-        retryable: true,
-        retry_limit: 3,
-        timeout: 30.seconds
-      )
-      
-      templates.define(
-        name: 'update_inventory',
-        description: 'Update inventory levels',
-        depends_on_step: 'process_payment',
-        handler_class: 'Ecommerce::StepHandlers::UpdateInventoryHandler',
-        retryable: true,
-        retry_limit: 2
-      )
-      
-      templates.define(
-        name: 'create_order',
-        description: 'Create order record',
-        depends_on_step: 'update_inventory',
-        handler_class: 'Ecommerce::StepHandlers::CreateOrderHandler'
-      )
-      
-      templates.define(
-        name: 'send_confirmation',
-        description: 'Send order confirmation email',
-        depends_on_step: 'create_order',
-        handler_class: 'Ecommerce::StepHandlers::SendConfirmationHandler',
-        retryable: true,
-        retry_limit: 5  # Email delivery can be flaky
-      )
+  class OrderProcessingHandler < Tasker::ConfiguredTask
+    # Configuration is driven by the YAML file: config/order_processing_handler.yaml
+    # This class handles runtime behavior and enterprise features
+
+    def establish_step_dependencies_and_defaults(task, steps)
+      # Add runtime optimizations based on order context
+      if task.context['priority'] == 'express'
+        # Express orders get faster timeouts and fewer retries
+        payment_step = steps.find { |s| s.name == 'process_payment' }
+        payment_step&.update(timeout: 15000, retry_limit: 1)
+
+        email_step = steps.find { |s| s.name == 'send_confirmation' }
+        email_step&.update(retry_limit: 2)
+      end
+
+      # Add customer tier optimizations
+      if task.context.dig('customer_info', 'tier') == 'premium'
+        # Premium customers get priority processing
+        steps.each { |step| step.update(priority: 'high') }
+      end
     end
-    
-    def schema
-      {
-        type: 'object',
-        required: ['cart_items', 'payment_info', 'customer_info'],
-        properties: {
-          cart_items: {
-            type: 'array',
-            items: {
-              type: 'object',
-              required: ['product_id', 'quantity'],
-              properties: {
-                product_id: { type: 'integer' },
-                quantity: { type: 'integer', minimum: 1 },
-                price: { type: 'number', minimum: 0 }
-              }
-            }
-          },
-          payment_info: {
-            type: 'object',
-            required: ['token', 'amount'],
-            properties: {
-              token: { type: 'string', minLength: 1 },
-              amount: { type: 'number', minimum: 0 }
-            }
-          },
-          customer_info: {
-            type: 'object',
-            required: ['email', 'name'],
-            properties: {
-              email: { type: 'string', format: 'email' },
-              name: { type: 'string', minLength: 1 },
-              phone: { type: 'string' }
-            }
+
+    def update_annotations(task, sequence, steps)
+      # Track order processing metrics for business intelligence
+      payment_step = steps.find { |s| s.name == 'process_payment' }
+      if payment_step&.current_state == 'completed'
+        payment_results = payment_step.results
+
+        task.annotations.create!(
+          annotation_type: 'payment_processed',
+          content: {
+            payment_id: payment_results['payment_id'],
+            amount_charged: payment_results['amount_charged'],
+            processing_time_ms: payment_step.duration,
+            payment_method_type: payment_results['payment_method_type']
           }
-        }
-      }
+        )
+      end
+
+      # Track completion metrics
+      if task.current_state == 'completed'
+        total_duration = steps.sum { |s| s.duration || 0 }
+        task.annotations.create!(
+          annotation_type: 'checkout_completed',
+          content: {
+            total_duration_ms: total_duration,
+            steps_completed: steps.count,
+            customer_email: task.context['customer_info']['email'],
+            order_total: task.context.dig('payment_info', 'amount'),
+            workflow_version: '1.0.0',
+            environment: Rails.env
+          }
+        )
+      end
+
+      # Track failure analysis
+      if task.current_state == 'failed'
+        failed_step = steps.find { |s| s.current_state == 'failed' }
+        if failed_step
+          task.annotations.create!(
+            annotation_type: 'checkout_failed',
+            content: {
+              failed_step: failed_step.name,
+              error_message: failed_step.error_message,
+              retry_count: failed_step.retry_count,
+              customer_email: task.context['customer_info']['email']
+            }
+          )
+        end
+      end
     end
-    
-    # Override to provide enhanced error context for e-commerce workflows
-    def initialize_task!(task_request)
-      task = super(task_request)
-      
-      # Add e-commerce specific context
-      task.annotations.merge!({
-        workflow_type: 'ecommerce_checkout',
-        started_at: Time.current.iso8601,
-        environment: Rails.env
-      })
-      
-      task
-    end
-    
+
     private
-    
-    # Helper method to extract step results
+
+    # Helper method to extract step results (updated for current API)
     def step_results(sequence, step_name)
-      step = sequence.steps.find { |s| s.name == step_name }
-      step&.result || {}
+      step = sequence.workflow_steps.find { |s| s.name == step_name }
+      step&.results || {}
     end
   end
 end

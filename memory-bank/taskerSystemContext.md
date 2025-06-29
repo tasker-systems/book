@@ -37,7 +37,11 @@
 #### Observability & Monitoring
 - **OpenTelemetry Integration**: Production-ready with safety mechanisms
 - **Health Endpoints**: Kubernetes-compatible with detailed system status
-- **Structured Logging**: Correlation IDs, JSON formatting, comprehensive context
+- **Structured Logging**:
+  - Core API: `log_structured(level, message, **context)` with automatic correlation ID
+  - Domain helpers: `log_task_event`, `log_step_event`, `log_orchestration_event`, `log_performance_event`
+  - Thread-safe correlation ID propagation via `Tasker::Concerns::StructuredLogging`
+  - JSON formatting with parameter filtering for sensitive data
 - **Metrics Backend**: Thread-safe operations with performance tracking
 
 ## Current Development Focus

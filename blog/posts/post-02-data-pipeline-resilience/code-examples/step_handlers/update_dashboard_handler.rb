@@ -3,212 +3,239 @@ module DataPipeline
     class UpdateDashboardHandler < Tasker::StepHandler::Base
       def process(task, sequence, step)
         insights_data = step_results(sequence, 'generate_insights')
-        
-        # Update the executive dashboard with new insights
-        dashboard_update = {
-          last_updated: Time.current.iso8601,
-          data_freshness: 'current',
-          executive_summary: insights_data['executive_summary'],
-          key_metrics: extract_key_metrics(insights_data),
-          alerts: insights_data['performance_alerts'] || [],
-          recommendations: insights_data['business_recommendations'] || []
-        }
-        
+
+        log_structured_info("Starting dashboard update", {
+          insights_available: insights_data.present?,
+          insights_keys: insights_data.keys
+        })
+
+        # Validate we have insights data
+        if insights_data.empty?
+          log_structured_error("No insights data available for dashboard update", {
+            sequence_steps: sequence.workflow_step_sequences.last.workflow_steps.map(&:name)
+          })
+          raise StandardError, "Cannot update dashboard without insights data"
+        end
+
+        dashboards_updated = []
+        update_errors = []
+
         begin
-          # Simulate dashboard API update
-          update_executive_dashboard(dashboard_update)
-          update_operational_dashboards(insights_data)
-          update_team_dashboards(insights_data)
-          
-          update_progress_annotation(step, "Successfully updated all dashboards")
-          
-          {
-            status: 'success',
-            dashboards_updated: ['executive', 'operations', 'customer_success', 'product_management'],
-            update_timestamp: Time.current.iso8601,
-            data_points_updated: count_data_points(insights_data),
-            alert_count: (insights_data['performance_alerts'] || []).length,
-            recommendation_count: (insights_data['business_recommendations'] || []).length
-          }
-          
-        rescue StandardError => e
-          Rails.logger.error "Dashboard update failed: #{e.class} - #{e.message}"
-          raise Tasker::RetryableError, "Dashboard update failed, will retry: #{e.message}"
-        end
-      end
-      
-      private
-      
-      def step_results(sequence, step_name)
-        step = sequence.steps.find { |s| s.name == step_name }
-        step&.result || {}
-      end
-      
-      def extract_key_metrics(insights_data)
-        executive_summary = insights_data['executive_summary'] || {}
-        customer_insights = insights_data['customer_insights'] || {}
-        product_insights = insights_data['product_insights'] || {}
-        
-        {
-          revenue: {
-            total: executive_summary.dig('period_overview', 'total_revenue') || 0,
-            profit: executive_summary.dig('period_overview', 'total_profit') || 0,
-            margin: executive_summary.dig('period_overview', 'profit_margin') || 0
-          },
-          customers: {
-            total_analyzed: executive_summary.dig('period_overview', 'total_customers_analyzed') || 0,
-            vip_count: executive_summary.dig('customer_highlights', 'vip_customers_count') || 0,
-            avg_lifetime_value: executive_summary.dig('customer_highlights', 'average_customer_lifetime_value') || 0,
-            at_risk_count: customer_insights.dig('churn_risk', 'customers_at_risk') || 0
-          },
-          products: {
-            total_analyzed: executive_summary.dig('period_overview', 'total_products_analyzed') || 0,
-            reorder_needed: executive_summary.dig('product_highlights', 'products_needing_reorder') || 0,
-            high_margin_count: executive_summary.dig('product_highlights', 'high_margin_products') || 0,
-            top_category: executive_summary.dig('product_highlights', 'top_performing_category')
-          },
-          alerts: {
-            critical_count: (insights_data['performance_alerts'] || []).count { |a| a['severity'] == 'critical' },
-            warning_count: (insights_data['performance_alerts'] || []).count { |a| a['severity'] == 'warning' }
-          }
-        }
-      end
-      
-      def update_executive_dashboard(dashboard_data)
-        # Simulate updating executive dashboard
-        # In real implementation, this would call dashboard API
-        
-        Rails.logger.info "Updating executive dashboard with latest analytics"
-        
-        # Update main KPI widgets
-        DashboardAPI.update_widget('revenue_overview', {
-          total_revenue: dashboard_data[:key_metrics][:revenue][:total],
-          profit_margin: dashboard_data[:key_metrics][:revenue][:margin],
-          last_updated: dashboard_data[:last_updated]
-        })
-        
-        DashboardAPI.update_widget('customer_metrics', {
-          total_customers: dashboard_data[:key_metrics][:customers][:total_analyzed],
-          vip_customers: dashboard_data[:key_metrics][:customers][:vip_count],
-          avg_clv: dashboard_data[:key_metrics][:customers][:avg_lifetime_value],
-          last_updated: dashboard_data[:last_updated]
-        })
-        
-        DashboardAPI.update_widget('product_performance', {
-          products_analyzed: dashboard_data[:key_metrics][:products][:total_analyzed],
-          reorder_alerts: dashboard_data[:key_metrics][:products][:reorder_needed],
-          top_category: dashboard_data[:key_metrics][:products][:top_category],
-          last_updated: dashboard_data[:last_updated]
-        })
-        
-        # Update alerts section
-        DashboardAPI.update_alerts(dashboard_data[:alerts])
-        
-        # Update recommendations
-        DashboardAPI.update_recommendations(dashboard_data[:recommendations])
-        
-        Rails.logger.info "Executive dashboard updated successfully"
-      end
-      
-      def update_operational_dashboards(insights_data)
-        # Update operations team dashboard with inventory and fulfillment metrics
-        product_insights = insights_data['product_insights'] || {}
-        
-        inventory_data = {
-          reorder_needed: product_insights.dig('inventory', 'reorder_needed_products') || [],
-          fast_movers: product_insights.dig('inventory', 'fast_movers_count') || 0,
-          slow_movers: product_insights.dig('inventory', 'slow_movers_count') || 0,
-          last_updated: Time.current.iso8601
-        }
-        
-        DashboardAPI.update_dashboard('operations', 'inventory_management', inventory_data)
-        
-        Rails.logger.info "Operations dashboard updated with inventory metrics"
-      end
-      
-      def update_team_dashboards(insights_data)
-        customer_insights = insights_data['customer_insights'] || {}
-        product_insights = insights_data['product_insights'] || {}
-        
-        # Customer Success team dashboard
-        customer_success_data = {
-          at_risk_customers: customer_insights.dig('churn_risk', 'customers_at_risk') || 0,
-          high_value_customers: customer_insights.dig('high_value_analysis', 'high_value_customer_count') || 0,
-          engagement_opportunities: customer_insights.dig('marketing_insights', 'recent_customers_needing_engagement') || 0,
-          last_updated: Time.current.iso8601
-        }
-        
-        DashboardAPI.update_dashboard('customer_success', 'retention_metrics', customer_success_data)
-        
-        # Product Management team dashboard
-        product_management_data = {
-          top_performers: product_insights.dig('performance', 'top_performers') || [],
-          underperformers: product_insights.dig('performance', 'underperformers_count') || 0,
-          category_performance: product_insights['category_performance'] || {},
-          last_updated: Time.current.iso8601
-        }
-        
-        DashboardAPI.update_dashboard('product_management', 'product_metrics', product_management_data)
-        
-        Rails.logger.info "Team dashboards updated successfully"
-      end
-      
-      def count_data_points(insights_data)
-        count = 0
-        
-        # Count metrics in each section
-        count += count_nested_values(insights_data['executive_summary'])
-        count += count_nested_values(insights_data['customer_insights'])
-        count += count_nested_values(insights_data['product_insights'])
-        count += (insights_data['performance_alerts'] || []).length
-        count += (insights_data['business_recommendations'] || []).length
-        
-        count
-      end
-      
-      def count_nested_values(hash, depth = 0)
-        return 0 unless hash.is_a?(Hash)
-        return 0 if depth > 3  # Prevent infinite recursion
-        
-        count = 0
-        hash.each_value do |value|
-          if value.is_a?(Hash)
-            count += count_nested_values(value, depth + 1)
-          elsif value.is_a?(Array)
-            count += value.length
-          else
-            count += 1
+          # Update executive dashboard
+          executive_result = update_executive_dashboard(insights_data)
+          dashboards_updated << executive_result
+
+          # Update customer analytics dashboard
+          customer_result = update_customer_dashboard(insights_data)
+          dashboards_updated << customer_result
+
+          # Update product analytics dashboard
+          product_result = update_product_dashboard(insights_data)
+          dashboards_updated << product_result
+
+          # Update operational dashboard if we have alerts
+          if insights_data['performance_alerts']&.any?
+            operational_result = update_operational_dashboard(insights_data)
+            dashboards_updated << operational_result
           end
+
+        rescue StandardError => e
+          log_structured_error("Dashboard update failed", {
+            error: e.message,
+            error_class: e.class.name,
+            dashboards_attempted: dashboards_updated.length
+          })
+          raise e  # Let Tasker handle retries
         end
-        count
-      end
-      
-      def update_progress_annotation(step, message)
-        step.annotations.merge!({
-          progress_message: message,
-          last_updated: Time.current.iso8601
+
+        # Calculate update statistics
+        successful_updates = dashboards_updated.count { |d| d[:status] == 'success' }
+        total_updates = dashboards_updated.length
+
+        result = {
+          status: successful_updates == total_updates ? 'success' : 'partial_success',
+          dashboards_updated: dashboards_updated.map { |d| d[:dashboard_name] },
+          update_details: dashboards_updated,
+          total_dashboards: total_updates,
+          successful_updates: successful_updates,
+          failed_updates: total_updates - successful_updates,
+          updated_at: Time.current.iso8601,
+          processing_stats: {
+            processing_time_seconds: step.duration_seconds,
+            data_points_updated: dashboards_updated.sum { |d| d[:data_points_updated] || 0 }
+          }
+        }
+
+        log_structured_info("Dashboard update completed", {
+          successful_updates: successful_updates,
+          total_updates: total_updates,
+          processing_time_seconds: step.duration_seconds
         })
-        step.save!
+
+        # Fire event for dashboard refresh notifications (handled by event subscribers)
+        publish_event('dashboards_updated', {
+          dashboards_updated: dashboards_updated,
+          update_summary: {
+            successful: successful_updates,
+            total: total_updates,
+            status: result[:status]
+          },
+          correlation_id: task.correlation_id
+        })
+
+        result
+      end
+
+      private
+
+      def step_results(sequence, step_name)
+        step = sequence.workflow_step_sequences.last
+                   .workflow_steps
+                   .find { |s| s.name == step_name }
+        step&.results || {}
+      end
+
+      def update_executive_dashboard(insights_data)
+        executive_summary = insights_data['executive_summary'] || {}
+
+        log_structured_info("Updating executive dashboard", {
+          summary_keys: executive_summary.keys
+        })
+
+        # Business logic: Update executive dashboard data
+        dashboard_data = {
+          period_overview: executive_summary['period_overview'] || {},
+          customer_highlights: executive_summary['customer_highlights'] || {},
+          product_highlights: executive_summary['product_highlights'] || {},
+          key_metrics: {
+            revenue: executive_summary.dig('period_overview', 'total_revenue') || 0,
+            customers: executive_summary.dig('period_overview', 'total_customers_analyzed') || 0,
+            orders: executive_summary.dig('period_overview', 'total_orders_processed') || 0,
+            avg_order_value: executive_summary.dig('customer_highlights', 'average_order_value') || 0
+          },
+          alerts_summary: {
+            critical_count: insights_data['performance_alerts']&.count { |a| a['severity'] == 'critical' } || 0,
+            warning_count: insights_data['performance_alerts']&.count { |a| a['severity'] == 'warning' } || 0
+          },
+          last_updated: Time.current.iso8601
+        }
+
+        # Store in dashboard data store (business logic)
+        DashboardDataStore.update('executive_dashboard', dashboard_data)
+
+        {
+          dashboard_name: 'executive_dashboard',
+          status: 'success',
+          data_points_updated: dashboard_data.keys.length,
+          last_updated: Time.current.iso8601
+        }
+      end
+
+      def update_customer_dashboard(insights_data)
+        customer_metrics = insights_data['customer_analysis'] || {}
+
+        log_structured_info("Updating customer dashboard", {
+          metrics_available: customer_metrics.present?
+        })
+
+        dashboard_data = {
+          customer_segments: customer_metrics['segment_breakdown'] || {},
+          lifetime_value_analysis: customer_metrics['ltv_analysis'] || {},
+          retention_metrics: customer_metrics['retention_metrics'] || {},
+          acquisition_trends: customer_metrics['acquisition_trends'] || {},
+          churn_analysis: customer_metrics['churn_analysis'] || {},
+          top_customers: customer_metrics['top_customers'] || [],
+          last_updated: Time.current.iso8601
+        }
+
+        DashboardDataStore.update('customer_dashboard', dashboard_data)
+
+        {
+          dashboard_name: 'customer_dashboard',
+          status: 'success',
+          data_points_updated: dashboard_data.keys.length,
+          last_updated: Time.current.iso8601
+        }
+      end
+
+      def update_product_dashboard(insights_data)
+        product_analysis = insights_data['product_analysis'] || {}
+
+        log_structured_info("Updating product dashboard", {
+          analysis_available: product_analysis.present?
+        })
+
+        dashboard_data = {
+          top_products: product_analysis['top_performing_products'] || [],
+          category_performance: product_analysis['category_breakdown'] || {},
+          inventory_alerts: product_analysis['inventory_recommendations'] || [],
+          pricing_insights: product_analysis['pricing_analysis'] || {},
+          seasonal_trends: product_analysis['seasonal_patterns'] || {},
+          last_updated: Time.current.iso8601
+        }
+
+        DashboardDataStore.update('product_dashboard', dashboard_data)
+
+        {
+          dashboard_name: 'product_dashboard',
+          status: 'success',
+          data_points_updated: dashboard_data.keys.length,
+          last_updated: Time.current.iso8601
+        }
+      end
+
+      def update_operational_dashboard(insights_data)
+        alerts = insights_data['performance_alerts'] || []
+
+        log_structured_info("Updating operational dashboard", {
+          alerts_count: alerts.length
+        })
+
+        dashboard_data = {
+          active_alerts: alerts,
+          alert_summary: {
+            critical: alerts.count { |a| a['severity'] == 'critical' },
+            warning: alerts.count { |a| a['severity'] == 'warning' },
+            info: alerts.count { |a| a['severity'] == 'info' }
+          },
+          system_health: {
+            pipeline_status: 'healthy',
+            last_successful_run: Time.current.iso8601,
+            data_freshness: 'current'
+          },
+          recommendations: insights_data['business_recommendations'] || [],
+          last_updated: Time.current.iso8601
+        }
+
+        DashboardDataStore.update('operational_dashboard', dashboard_data)
+
+        {
+          dashboard_name: 'operational_dashboard',
+          status: 'success',
+          data_points_updated: dashboard_data.keys.length,
+          last_updated: Time.current.iso8601
+        }
+      end
+
+      def log_structured_info(message, **context)
+        log_structured(:info, message, step_name: 'update_dashboard', **context)
+      end
+
+      def log_structured_error(message, **context)
+        log_structured(:error, message, step_name: 'update_dashboard', **context)
       end
     end
-    
-    # Mock Dashboard API for demo purposes
-    class DashboardAPI
-      def self.update_widget(widget_name, data)
-        Rails.logger.info "Dashboard Widget Updated: #{widget_name} - #{data.to_json}"
-      end
-      
-      def self.update_alerts(alerts)
-        Rails.logger.info "Dashboard Alerts Updated: #{alerts.length} alerts"
-      end
-      
-      def self.update_recommendations(recommendations)
-        Rails.logger.info "Dashboard Recommendations Updated: #{recommendations.length} recommendations"
-      end
-      
-      def self.update_dashboard(team, section, data)
-        Rails.logger.info "Team Dashboard Updated: #{team}/#{section} - #{data.keys.join(', ')}"
-      end
-    end
+  end
+end
+
+# Mock dashboard data store for demo purposes
+class DashboardDataStore
+  def self.update(dashboard_name, data)
+    Rails.logger.info("Dashboard Updated: #{dashboard_name}")
+    Rails.logger.info("Data: #{data.to_json}")
+
+    # In a real implementation, this would update the actual dashboard data store
+    # Could be Redis, database, or dashboard service API
+    true
   end
 end

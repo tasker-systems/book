@@ -6,72 +6,101 @@ module DataPipeline
         start_date = Date.parse(date_range['start_date'])
         end_date = Date.parse(date_range['end_date'])
         force_refresh = task.context['force_refresh'] || false
-        
+
+        # Fire custom event for monitoring
+        publish_event('data_extraction_started', {
+          step_name: 'extract_users',
+          date_range: date_range,
+          estimated_records: estimate_record_count(start_date, end_date),
+          correlation_id: task.correlation_id
+        })
+
         # Check cache first unless force refresh
         cached_data = get_cached_extraction('users', start_date, end_date)
-        return cached_data if cached_data && !force_refresh
-        
-        # Extract users who were active during the date range
-        # (created accounts or placed orders)
-        active_user_ids = get_active_user_ids(start_date, end_date)
-        total_count = active_user_ids.length
+        if cached_data && !force_refresh
+          log_structured_info("Using cached user data", {
+            cache_key: cache_key('users', start_date, end_date),
+            records_count: cached_data['total_count']
+          })
+          return cached_data
+        end
+
+        log_structured_info("Starting user extraction", {
+          date_range: date_range,
+          force_refresh: force_refresh
+        })
+
+        # Extract users who had activity in the date range
+        user_ids_from_orders = Order.where(created_at: start_date..end_date)
+                                   .distinct
+                                   .pluck(:customer_id)
+
+        total_count = user_ids_from_orders.length
         processed_count = 0
-        
         users = []
-        
-        # Process in batches to avoid overwhelming the CRM API
-        active_user_ids.each_slice(500) do |user_id_batch|
+
+        log_structured_info("Processing user extraction", {
+          user_ids_count: total_count,
+          batch_size: batch_size
+        })
+
+        # Process in batches
+        user_ids_from_orders.each_slice(batch_size) do |user_ids_batch|
           begin
-            # Simulate CRM API call with retry logic
-            batch_users = fetch_users_from_crm(user_id_batch)
-            
-            user_data = batch_users.map do |user|
+            batch_users = User.where(id: user_ids_batch).includes(:profile)
+
+            batch_data = batch_users.map do |user|
               {
-                user_id: user['id'],
-                email: user['email'],
-                first_name: user['first_name'],
-                last_name: user['last_name'],
-                created_at: user['created_at'],
-                last_login: user['last_login_at'],
-                customer_since: user['created_at'],
-                marketing_preferences: {
-                  email_opt_in: user['email_marketing_opt_in'],
-                  sms_opt_in: user['sms_marketing_opt_in']
-                },
-                demographics: {
-                  age_range: user['age_range'],
+                user_id: user.id,
+                email: user.email,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                phone: user.phone,
+                created_at: user.created_at.iso8601,
+                updated_at: user.updated_at.iso8601,
+                status: user.status,
+                marketing_opt_in: user.marketing_opt_in,
+                profile: user.profile ? {
+                  age: user.profile.age,
+                  gender: user.profile.gender,
                   location: {
-                    city: user['city'],
-                    state: user['state'],
-                    country: user['country']
-                  }
-                }
+                    city: user.profile.city,
+                    state: user.profile.state,
+                    country: user.profile.country,
+                    zip_code: user.profile.zip_code
+                  },
+                  preferences: user.profile.preferences || {}
+                } : nil
               }
             end
-            
-            users.concat(user_data)
-            processed_count += user_id_batch.length
-            
-            # Update progress for monitoring
-            progress_percent = (processed_count.to_f / total_count * 100).round(1)
-            update_progress_annotation(
-              step, 
-              "Processed #{processed_count}/#{total_count} users (#{progress_percent}%)"
-            )
-            
-            # Rate limit to avoid overwhelming CRM API
-            sleep(0.5)
-            
-          rescue Net::TimeoutError => e
-            raise Tasker::RetryableError, "CRM API timeout: #{e.message}"
-          rescue Net::HTTPServerError => e
-            raise Tasker::RetryableError, "CRM API server error: #{e.message}"
+
+            users.concat(batch_data)
+            processed_count += batch_data.length
+
+            # Update progress
+            update_progress(step, processed_count, total_count)
+
+          rescue ActiveRecord::ConnectionTimeoutError => e
+            log_structured_error("Database connection timeout during user extraction", {
+              error: e.message,
+              batch_size: user_ids_batch.size,
+              processed_so_far: processed_count
+            })
+            raise e  # Let Tasker handle retries
           rescue StandardError => e
-            Rails.logger.error "User extraction error: #{e.class} - #{e.message}"
-            raise Tasker::RetryableError, "CRM extraction failed, will retry: #{e.message}"
+            log_structured_error("User extraction error", {
+              error: e.message,
+              error_class: e.class.name,
+              batch_size: user_ids_batch.size,
+              processed_so_far: processed_count
+            })
+            raise e  # Let Tasker handle retries
           end
         end
-        
+
+        # Calculate data quality metrics
+        data_quality = calculate_data_quality(users)
+
         result = {
           users: users,
           total_count: users.length,
@@ -80,102 +109,103 @@ module DataPipeline
             end_date: end_date.iso8601
           },
           extracted_at: Time.current.iso8601,
-          data_quality: {
-            users_with_orders: users.count { |u| u[:user_id].in?(get_customer_ids_with_orders(start_date, end_date)) },
-            avg_account_age_days: calculate_avg_account_age(users),
-            marketing_opt_in_rate: users.count { |u| u[:marketing_preferences][:email_opt_in] } / users.length.to_f
+          data_quality: data_quality,
+          processing_stats: {
+            batches_processed: (processed_count.to_f / batch_size).ceil,
+            batch_size: batch_size,
+            processing_time_seconds: step.duration_seconds
           }
         }
-        
+
         # Cache the result
         cache_extraction('users', start_date, end_date, result)
-        
+
+        log_structured_info("User extraction completed successfully", {
+          records_extracted: users.length,
+          processing_time_seconds: step.duration_seconds,
+          data_quality_score: data_quality[:quality_score]
+        })
+
+        # Fire completion event with metrics
+        publish_event('data_extraction_completed', {
+          step_name: 'extract_users',
+          records_extracted: users.length,
+          processing_time_seconds: step.duration_seconds,
+          data_quality: data_quality,
+          date_range: date_range,
+          correlation_id: task.correlation_id
+        })
+
         result
       end
-      
+
       private
-      
-      def get_active_user_ids(start_date, end_date)
-        # Get users who placed orders or created accounts during the date range
-        customer_ids_from_orders = Order.where(created_at: start_date..end_date)
-                                      .distinct
-                                      .pluck(:customer_id)
-        
-        new_user_ids = User.where(created_at: start_date..end_date)
-                          .pluck(:id)
-        
-        (customer_ids_from_orders + new_user_ids).uniq.compact
+
+      def batch_size
+        base_size = 500  # Smaller batches for user data with joins
+        multiplier = task.annotations['batch_size_multiplier']&.to_f || 1.0
+        (base_size * multiplier).to_i
       end
-      
-      def get_customer_ids_with_orders(start_date, end_date)
-        Order.where(created_at: start_date..end_date)
-             .distinct
-             .pluck(:customer_id)
+
+      def estimate_record_count(start_date, end_date)
+        # Estimate based on order activity
+        Order.where(created_at: start_date..end_date).distinct.count(:customer_id)
       end
-      
-      def fetch_users_from_crm(user_ids)
-        # Simulate CRM API call
-        # In real implementation, this would call external CRM service
-        User.where(id: user_ids).map do |user|
-          {
-            'id' => user.id,
-            'email' => user.email,
-            'first_name' => user.first_name,
-            'last_name' => user.last_name,
-            'created_at' => user.created_at.iso8601,
-            'last_login_at' => user.last_sign_in_at&.iso8601,
-            'email_marketing_opt_in' => user.marketing_emails_enabled,
-            'sms_marketing_opt_in' => user.sms_notifications_enabled,
-            'age_range' => determine_age_range(user.date_of_birth),
-            'city' => user.city,
-            'state' => user.state,
-            'country' => user.country || 'US'
-          }
-        end
-      end
-      
-      def determine_age_range(date_of_birth)
-        return 'unknown' unless date_of_birth
-        
-        age = Date.current.year - date_of_birth.year
-        case age
-        when 0..17 then 'under_18'
-        when 18..24 then '18_24'
-        when 25..34 then '25_34'
-        when 35..44 then '35_44'
-        when 45..54 then '45_54'
-        when 55..64 then '55_64'
-        else '65_plus'
-        end
-      end
-      
-      def calculate_avg_account_age(users)
-        return 0 if users.empty?
-        
-        total_days = users.sum do |user|
-          account_created = Date.parse(user[:created_at])
-          (Date.current - account_created).to_i
-        end
-        
-        total_days / users.length
-      end
-      
-      def update_progress_annotation(step, message)
+
+      def update_progress(step, processed, total)
+        progress_percent = (processed.to_f / total * 100).round(1)
         step.annotations.merge!({
-          progress_message: message,
+          progress_message: "Processed #{processed}/#{total} users (#{progress_percent}%)",
+          progress_percent: progress_percent,
           last_updated: Time.current.iso8601
         })
         step.save!
       end
-      
-      def get_cached_extraction(data_type, start_date, end_date)
-        cache_key = "extraction:#{data_type}:#{start_date}:#{end_date}"
-        Rails.cache.read(cache_key)
+
+      def calculate_data_quality(users)
+        return { quality_score: 0 } if users.empty?
+
+        users_with_email = users.count { |u| u[:email].present? }
+        users_with_names = users.count { |u| u[:first_name].present? && u[:last_name].present? }
+        users_with_profile = users.count { |u| u[:profile].present? }
+        users_with_location = users.count { |u| u[:profile]&.dig(:location, :city).present? }
+
+        quality_score = [
+          (users_with_email.to_f / users.length * 100).round(1),
+          (users_with_names.to_f / users.length * 100).round(1),
+          (users_with_profile.to_f / users.length * 100).round(1),
+          (users_with_location.to_f / users.length * 100).round(1)
+        ].sum / 4.0
+
+        {
+          quality_score: quality_score.round(1),
+          users_with_email: users_with_email,
+          users_with_names: users_with_names,
+          users_with_profile: users_with_profile,
+          users_with_location: users_with_location,
+          email_completeness: (users_with_email.to_f / users.length * 100).round(1),
+          profile_completeness: (users_with_profile.to_f / users.length * 100).round(1)
+        }
       end
-      
+
+      def cache_key(data_type, start_date, end_date)
+        "extraction:#{data_type}:#{start_date}:#{end_date}"
+      end
+
+      def get_cached_extraction(data_type, start_date, end_date)
+        Rails.cache.read(cache_key(data_type, start_date, end_date))
+      end
+
       def cache_extraction(data_type, start_date, end_date, data)
-        cache_key = "extraction:#{data_type}:#{start_date}:#{end_date}"
-        Rails.cache.write(cache_key, data, expires_in: 6.hours)
+        Rails.cache.write(cache_key(data_type, start_date, end_date), data, expires_in: 6.hours)
+      end
+
+      def log_structured_info(message, **context)
+        log_structured(:info, message, step_name: 'extract_users', **context)
+      end
+
+      def log_structured_error(message, **context)
+        log_structured(:error, message, step_name: 'extract_users', **context)
       end
     end
   end
