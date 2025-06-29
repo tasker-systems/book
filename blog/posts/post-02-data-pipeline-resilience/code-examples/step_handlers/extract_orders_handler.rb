@@ -12,7 +12,7 @@ module DataPipeline
           step_name: 'extract_orders',
           date_range: date_range,
           estimated_records: estimate_record_count(start_date, end_date),
-          correlation_id: task.correlation_id
+          task_id: task.id
         })
 
         # Check cache first unless force refresh
@@ -116,7 +116,7 @@ module DataPipeline
           processing_stats: {
             batches_processed: (processed_count.to_f / batch_size).ceil,
             batch_size: batch_size,
-            processing_time_seconds: step.duration_seconds
+            processing_time_seconds: calculate_duration_seconds(step)
           }
         }
 
@@ -125,7 +125,7 @@ module DataPipeline
 
         log_structured_info("Order extraction completed successfully", {
           records_extracted: orders.length,
-          processing_time_seconds: step.duration_seconds,
+          processing_time_seconds: calculate_duration_seconds(step),
           data_quality_score: data_quality[:quality_score]
         })
 
@@ -133,10 +133,10 @@ module DataPipeline
         publish_event('data_extraction_completed', {
           step_name: 'extract_orders',
           records_extracted: orders.length,
-          processing_time_seconds: step.duration_seconds,
+          processing_time_seconds: calculate_duration_seconds(step),
           data_quality: data_quality,
           date_range: date_range,
-          correlation_id: task.correlation_id
+          task_id: task.id
         })
 
         result
@@ -147,7 +147,7 @@ module DataPipeline
       def batch_size
         # Adjust batch size based on memory profile annotation
         base_size = 1000
-        multiplier = task.annotations['batch_size_multiplier']&.to_f || 1.0
+        multiplier = get_task_annotation('batch_size_multiplier')&.to_f || 1.0
         (base_size * multiplier).to_i
       end
 
@@ -210,6 +210,19 @@ module DataPipeline
 
       def log_structured_error(message, **context)
         log_structured(:error, message, step_name: 'extract_orders', **context)
+      end
+
+      def calculate_duration_seconds(step)
+        return 0 unless step.started_at.present?
+        end_time = step.completed_at || Time.current
+        (end_time - step.started_at).to_i
+      end
+
+      def get_task_annotation(key)
+        # Access task annotations through the sequence's task
+        sequence = step.sequence
+        task = sequence&.task
+        task&.annotations&.dig(key)
       end
     end
   end

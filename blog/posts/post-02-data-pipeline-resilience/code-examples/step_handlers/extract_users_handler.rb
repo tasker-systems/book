@@ -12,7 +12,7 @@ module DataPipeline
           step_name: 'extract_users',
           date_range: date_range,
           estimated_records: estimate_record_count(start_date, end_date),
-          correlation_id: task.correlation_id
+          task_id: task.id
         })
 
         # Check cache first unless force refresh
@@ -133,7 +133,7 @@ module DataPipeline
           processing_time_seconds: step.duration_seconds,
           data_quality: data_quality,
           date_range: date_range,
-          correlation_id: task.correlation_id
+          task_id: task.id
         })
 
         result

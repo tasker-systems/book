@@ -1,6 +1,6 @@
 task_name: customer_analytics
 namespace: data_pipeline
-version: "2.0.0"
+version: "2.6.0"
 description: "Resilient customer analytics pipeline with parallel processing"
 
 # Enterprise annotations for monitoring

@@ -80,7 +80,7 @@ module DataPipeline
             total: total_updates,
             status: result[:status]
           },
-          correlation_id: task.correlation_id
+          task_id: task.id
         })
 
         result
@@ -89,9 +89,7 @@ module DataPipeline
       private
 
       def step_results(sequence, step_name)
-        step = sequence.workflow_step_sequences.last
-                   .workflow_steps
-                   .find { |s| s.name == step_name }
+        step = sequence.steps.find { |s| s.name == step_name }
         step&.results || {}
       end
 

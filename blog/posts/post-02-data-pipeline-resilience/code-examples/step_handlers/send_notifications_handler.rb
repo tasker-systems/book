@@ -28,7 +28,7 @@ module DataPipeline
           channels_configured: notification_channels,
           total_notifications: notification_requirements.length,
           scheduled_at: Time.current.iso8601,
-          pipeline_correlation_id: task.correlation_id
+          pipeline_task_id: task.id
         }
 
         log_structured_info("Notification requirements processed", {
@@ -43,7 +43,7 @@ module DataPipeline
           channels: notification_channels,
           insights_data: insights_data,
           dashboard_data: dashboard_data,
-          correlation_id: task.correlation_id
+          task_id: task.id
         })
 
         notification_record
@@ -52,9 +52,7 @@ module DataPipeline
       private
 
       def step_results(sequence, step_name)
-        step = sequence.workflow_step_sequences.last
-                   .workflow_steps
-                   .find { |s| s.name == step_name }
+        step = sequence.steps.find { |s| s.name == step_name }
         step&.results || {}
       end
 
