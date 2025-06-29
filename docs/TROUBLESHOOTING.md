@@ -418,7 +418,7 @@ Tasker::Types::ValidationError: Invalid task context
    ```ruby
    # Verify SQL functions are installed
    result = Tasker::Task.connection.execute(
-     "SELECT get_task_execution_context_v01($1)", [task_id]
+     "SELECT get_task_execution_context($1)", [task_id]
    )
    ```
 
@@ -472,7 +472,7 @@ Tasker::Types::ValidationError: Invalid task context
 1. **Check SQL function performance**
    ```sql
    -- Monitor SQL function execution time
-   EXPLAIN ANALYZE SELECT get_task_execution_context_v01(123);
+   EXPLAIN ANALYZE SELECT get_task_execution_context(123);
    ```
 
 2. **Verify database indexes**
@@ -643,7 +643,7 @@ rescue => e
 end
 
 def sql_functions_check
-  Tasker::Task.connection.execute("SELECT get_task_execution_context_v01(1)")
+  Tasker::Task.connection.execute("SELECT get_task_execution_context(1)")
   { status: 'ok', message: 'SQL functions available' }
 rescue => e
   { status: 'error', message: "SQL functions unavailable: #{e.message}" }

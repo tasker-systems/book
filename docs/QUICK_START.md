@@ -58,7 +58,7 @@ curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/
 
 This creates a complete Rails application with:
 - ✅ **Tasker gem** installed and configured
-- ✅ **All 21 migrations** executed with database views/functions
+- ✅ **All 21 migrations** executed with SQL functions for performance optimization
 - ✅ **3 complete workflows** (e-commerce, inventory, customer management)
 - ✅ **Redis & Sidekiq** configured for background processing
 - ✅ **OpenTelemetry** tracing and **Prometheus** metrics
