@@ -609,21 +609,27 @@ class MyApiStepHandler < Tasker::StepHandler::Api
   end
 
   # Optional: custom response processing
-  def process(task, sequence, step)
-    # Let parent handle API call and basic response processing
-    super
-
-    # Add custom processing
-    user_data = step.results.body['user']
-    step.results = { user: user_data, processed_at: Time.current }
+  def process_results(step, process_output, initial_results)
+    # process_output is the Faraday::Response from your process method
+    if process_output.status == 200
+      data = JSON.parse(process_output.body)
+      step.results = {
+        profile: data['user_profile'],
+        preferences: data['preferences'],
+        last_login: data['last_login_at'],
+        api_response_time: process_output.headers['x-response-time']
+      }
+    else
+      # Let framework handle error - this will trigger retries if configured
+      raise "API error: #{process_output.status} - #{process_output.body}"
+    end
   end
 end
 ```
 
 **Key Architecture Points:**
-- ✅ **Implement `process()`** for regular step handlers (your business logic)
-- ✅ **Implement `process()`** for API step handlers (your HTTP request)
-- ✅ **Optionally override `process()`** in API handlers for custom response processing
+- ✅ **Implement `process()`** for all step handlers, base or API
+- ✅ **Implement `process()`** for API step handlers and use the `connection` which is a client configured by your step template settings
 - ✅ **Optionally override `process_results()`** to customize how return values are stored in `step.results`
 - ⚠️ **Never override `handle()`** - it's framework-only code that publishes events and coordinates execution
 
@@ -677,97 +683,6 @@ Tasker automatically captures comprehensive error information:
   event_type: "failed",
   timestamp: "2025-06-01T12:00:15Z"
 }
-```
-
-## Production Considerations
-
-### Memory Management
-
-Tasker includes production-ready memory management:
-- Database connection pooling prevents connection exhaustion
-- Explicit cleanup in concurrent processing (`futures.clear()`)
-- Batched processing limits (`MAX_CONCURRENT_STEPS = 3`)
-
-### OpenTelemetry Safety
-
-The system includes safety mechanisms for production use:
-- Selective instrumentation excludes problematic components (Faraday)
-- PostgreSQL instrumentation safely re-enabled after connection improvements
-- Error isolation prevents telemetry failures from affecting core workflow
-
-### Performance Optimization
-
-- Optimized payload building with single database queries (`WorkflowStep.task_completion_stats`)
-- Immediate event emission (no custom batching overhead)
-- Lightweight event publishing with standardized payloads
-
-## Troubleshooting
-
-### Common Issues
-
-- **Missing Events**: Check that `EventPublisher` concern is included in step handlers
-- **Payload Issues**: Use domain-specific methods like `publish_step_completed(step)` for standardized payloads
-- **Parameter Confusion**: Use clean API methods instead of legacy `publish_step_event()` with redundant `event_type:` parameters
-- **Error Information Missing**: Use `publish_step_failed(step, error: exception)` for automatic error capture
-- **OpenTelemetry Errors**: Ensure Faraday instrumentation is disabled (known bug)
-- **Memory Issues**: Verify database connection pooling is configured
-- **Performance Impact**: Monitor for excessive event publishing in high-throughput scenarios
-
-### Span Duplication Issues
-
-- **Multiple Telemetry Subscribers**: If you see unexpected behavior, ensure you're not creating multiple subscribers that handle the same events. Use single-responsibility subscribers:
-  ```ruby
-  # ✅ GOOD: Single responsibility per subscriber
-  config.telemetry.enabled = true  # TelemetrySubscriber for spans only
-  # Create separate MetricsSubscriber for operational data
-  ```
-
-- **Metrics and Spans Mixed**: If you're seeing both metrics and spans for the same events, separate them into different subscribers with single responsibilities
-
-### Hierarchical Context Issues
-
-- **Standalone Spans in Jaeger**: If you see individual spans without parent-child relationships, ensure the `TelemetrySubscriber` is properly registered and OpenTelemetry is configured
-- **Missing Task Context**: Step spans should appear as children of task spans. If steps appear as standalone spans, check that `task.start_requested` events are being published before step events
-- **Broken Span Hierarchy**: Verify that the task ID is consistently included in all event payloads - this is critical for maintaining span relationships
-
-### Debug Commands
-
-```bash
-# Verify OpenTelemetry configuration
-bundle exec rails runner "puts OpenTelemetry.tracer_provider.inspect"
-
-# Check event publisher availability
-bundle exec rails runner "puts Tasker::Events::Publisher.instance.inspect"
-
-# Validate telemetry subscriber
-bundle exec rails runner "puts Tasker::Events::Subscribers::TelemetrySubscriber.new.inspect"
-
-# Test TelemetrySubscriber span management
-bundle exec rails runner "
-  subscriber = Tasker::Events::Subscribers::TelemetrySubscriber.new
-  puts 'OpenTelemetry available: ' + subscriber.send(:opentelemetry_available?).to_s
-  puts 'Telemetry enabled: ' + subscriber.send(:telemetry_enabled?).to_s
-"
-
-# Test span creation with sample events
-bundle exec rails runner "
-  subscriber = Tasker::Events::Subscribers::TelemetrySubscriber.new
-
-  # Simulate task start event
-  task_event = { task_id: 'test-123', task_name: 'test_task' }
-  subscriber.handle_task_start_requested(task_event)
-
-  # Check if span was stored
-  span = subscriber.send(:get_task_span, 'test-123')
-  puts 'Task span created: ' + (!span.nil?).to_s
-
-  # Simulate step event
-  step_event = { task_id: 'test-123', step_id: 'step-456', step_name: 'test_step' }
-  subscriber.handle_step_completed(step_event)
-
-  # Clean up
-  subscriber.send(:remove_task_span, 'test-123')
-"
 ```
 
 ### Log Monitoring
