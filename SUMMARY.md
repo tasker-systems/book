@@ -42,34 +42,33 @@
 * [Documentation Hub](docs/README.md)
 
 ### Getting Started
-* [Quick Start Guide](docs/quick-start.md)
-* [Installation & Setup](docs/installation.md)
+* [System Overview](docs/OVERVIEW.md)
+* [Quick Start Guide](docs/QUICK_START.md)
 * [Core Concepts](docs/core-concepts.md)
 
 ### Developer Reference
-* [Developer Guide](docs/developer-guide.md)
-* [API Reference](docs/api-reference.md)
-* [YAML Configuration](docs/yaml-configuration.md)
-* [Testing Guide](docs/testing-guide.md)
+* [Developer Guide](docs/DEVELOPER_GUIDE.md)
+* [REST API Reference](docs/REST_API.md)
+* [SQL Functions Reference](docs/SQL_FUNCTIONS.md)
+* [Application Generator](docs/APPLICATION_GENERATOR.md)
+* [Workflow Patterns](docs/workflow-patterns.md)
 
-### Production Features
-* [Authentication & Authorization](docs/authentication.md)
-* [REST API](docs/rest-api.md)
-* [Health Monitoring](docs/health-monitoring.md)
-* [Telemetry & Observability](docs/telemetry.md)
-* [Performance](docs/performance.md)
+### Configuration & Setup
+* [YAML Configuration](docs/EXECUTION_CONFIGURATION.md)
+* [Authentication & Authorization](docs/AUTH.md)
+* [Event System](docs/EVENT_SYSTEM.md)
+* [Registry Systems](docs/REGISTRY_SYSTEMS.md)
+
+### Production Operations
+* [Health Monitoring](docs/HEALTH.md)
+* [Metrics & Performance](docs/METRICS.md)
+* [Telemetry & Observability](docs/TELEMETRY.md)
+* [Troubleshooting](docs/TROUBLESHOOTING.md)
 
 ### Advanced Topics
-* [Event System](docs/event-system.md)
-* [Registry Systems](docs/registry-systems.md)
-* [Workflow Patterns](docs/workflow-patterns.md)
-* [Namespace & Versioning](docs/namespace-versioning.md)
-
-### Troubleshooting & Maintenance
-* [Troubleshooting](docs/troubleshooting.md)
-* [Debugging Guide](docs/debugging.md)
-* [Migration Guide](docs/migration-guide.md)
-* [Best Practices](docs/best-practices.md)
+* [System Flow Charts](docs/FLOW_CHART.md)
+* [Task Diagrams](docs/TASK_DIAGRAM.md)
+* [Project Roadmap](docs/ROADMAP.md)
 
 ---
 
