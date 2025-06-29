@@ -23,19 +23,36 @@ Ensure you have:
 
 ## Installation & Setup (2 minutes)
 
-### Option 1: Automated Demo Application (Recommended)
+### Option 1: Docker Setup (Recommended) 🐳
 
-Create a complete Tasker application with real-world workflows instantly:
+Create a complete Tasker application with zero dependencies:
 
 ```bash
-# Interactive setup with full observability stack
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash
-
-# Or specify your preferences
+# Docker with full observability stack
 curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
   --app-name my-tasker-demo \
   --tasks ecommerce,inventory,customer \
-  --observability \
+  --docker \
+  --with-observability \
+  --non-interactive
+
+cd my-tasker-demo
+./bin/docker-dev up-full
+
+# Application: http://localhost:3000
+# Jaeger UI: http://localhost:16686
+# Prometheus: http://localhost:9090
+```
+
+### Option 2: Traditional Setup
+
+For existing Rails applications or local development:
+
+```bash
+# Traditional Rails setup
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name my-tasker-demo \
+  --tasks ecommerce,inventory,customer \
   --non-interactive
 ```
 
@@ -49,7 +66,7 @@ This creates a complete Rails application with:
 
 **Skip to "Exploring Your Workflows"** below to start using your new application!
 
-### Option 2: Manual Installation (Existing Rails App)
+### Option 3: Manual Installation (Existing Rails App)
 
 If you have an existing Rails application:
 
@@ -74,11 +91,20 @@ If you used the automated demo application builder, you now have a complete Rail
 
 ### Start Your Application
 
+#### For Docker Setup:
 ```bash
 cd your-app-name  # Use the name you chose during installation
 
-# Start the services
-bundle exec redis-server &          # Background Redis
+# All services start with one command
+./bin/docker-dev up-full             # Starts Rails, PostgreSQL, Redis, Jaeger, Prometheus
+```
+
+#### For Traditional Setup:
+```bash
+cd your-app-name  # Use the name you chose during installation
+
+# Start services in separate terminals
+redis-server &                      # Background Redis
 bundle exec sidekiq &               # Background Sidekiq
 bundle exec rails server            # Rails application
 ```
@@ -149,10 +175,10 @@ mutation {
 query {
   task(taskId: "your-task-id-here") {
     taskId
-    currentState
+    status
     workflowSteps {
       name
-      currentState
+      status
       results
       attempts
     }

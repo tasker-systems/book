@@ -157,6 +157,13 @@ module WelcomeUser
           validated: true
         }
       end
+
+      private
+
+      def step_results(sequence, step_name)
+        step = sequence.steps.find { |s| s.name == step_name }
+        step&.results || {}
+      end
     end
   end
 end
@@ -207,6 +214,11 @@ module WelcomeUser
           Best regards,
           The Team
         BODY
+      end
+
+      def step_results(sequence, step_name)
+        step = sequence.steps.find { |s| s.name == step_name }
+        step&.results || {}
       end
     end
   end
@@ -266,6 +278,11 @@ module WelcomeUser
         # Simulate potential SMTP delays
         sleep(0.1)
       end
+
+      def step_results(sequence, step_name)
+        step = sequence.steps.find { |s| s.name == step_name }
+        step&.results || {}
+      end
     end
   end
 end
@@ -318,11 +335,11 @@ puts "Started task: #{task_id}"
 
 # Check status
 task = Tasker::Task.find(task_id)
-puts "Status: #{task.current_state}"
+puts "Status: #{task.status}"
 
 # View step details
-task.workflow_step_sequences.last.workflow_steps.each do |step|
-  puts "#{step.name}: #{step.current_state}"
+task.workflow_steps.each do |step|
+  puts "#{step.name}: #{step.status}"
   puts "  Result: #{step.results}" if step.results.present?
 end
 
@@ -331,7 +348,7 @@ end
 # GET /tasker/handlers/welcome_user/send_welcome_email
 
 # Access via GraphQL (if available)
-# query { task(taskId: "#{task_id}") { currentState workflowSteps { name currentState results } } }
+# query { task(taskId: "#{task_id}") { status workflowSteps { name status results } } }
 ```
 
 ### 4. Expected output

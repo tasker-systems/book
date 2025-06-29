@@ -16,20 +16,41 @@ Every chapter in this series follows a proven formula:
 
 Want to see Tasker in action right away? Try our e-commerce reliability example:
 
+### Docker Setup (Recommended) 🐳
 ```bash
-# One command setup - complete working demo
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+# Complete Docker environment with observability
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name ecommerce-demo \
+  --tasks ecommerce \
+  --docker \
+  --with-observability \
+  --non-interactive
 
-# Start the services
-cd ecommerce-blog-demo
-redis-server &
-bundle exec sidekiq &
-bundle exec rails server
+cd ecommerce-demo
+./bin/docker-dev up-full
 
 # Test a reliable checkout workflow
 curl -X POST http://localhost:3000/checkout \
   -H "Content-Type: application/json" \
   -d '{"checkout": {"cart_items": [{"product_id": 1, "quantity": 2}], "payment_info": {"token": "test_success_visa", "amount": 100.00}, "customer_info": {"email": "test@example.com", "name": "Test Customer"}}}'
+
+# Monitor with built-in tools
+# Jaeger UI: http://localhost:16686
+# Prometheus: http://localhost:9090
+```
+
+### Traditional Setup
+```bash
+# Local Ruby/Rails development
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name ecommerce-demo \
+  --tasks ecommerce \
+  --non-interactive
+
+cd ecommerce-demo
+redis-server &
+bundle exec sidekiq &
+bundle exec rails server
 ```
 
 ## 📚 How to Use This Guide
@@ -65,10 +86,13 @@ Each chapter includes business impact metrics and team productivity improvements
 
 ```bash
 # Verify your environment
-ruby -v    # Should show 3.0+
-rails -v   # Should show 7.0+
+ruby -v    # Should show 3.2+
+rails -v   # Should show 7.2+
 psql --version
 redis-server --version
+
+# For Docker setup, only need:
+docker --version
 ```
 
 ### Installing Tasker
