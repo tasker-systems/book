@@ -185,7 +185,7 @@ module UserManagement
       # Generate correlation ID for distributed tracing
       correlation_id = task.context['correlation_id'] || generate_correlation_id
       task.annotations['correlation_id'] = correlation_id
-      
+
       # Adjust timeouts for enterprise customers
       if task.context['plan'] == 'enterprise'
         billing_step = steps.find { |s| s.name == 'setup_billing_profile' }
@@ -196,7 +196,7 @@ module UserManagement
           )
         end
       end
-      
+
       # Add monitoring annotations for all steps
       steps.each do |step|
         step.annotations['correlation_id'] = correlation_id
@@ -225,12 +225,12 @@ module UserManagement
 
       def process(task, sequence, step)
         user_data = extract_user_data(task.context)
-        
+
         log_structured_info("Creating user account", {
           email: user_data[:email],
           plan: task.context['plan']
         })
-        
+
         response = with_circuit_breaker('user_service') do
           with_timeout(30) do
             http_client.post("#{user_service_url}/users", {
@@ -246,7 +246,7 @@ module UserManagement
           # User created successfully
           user_response = response.parsed_response
           log_structured_info("User account created", { user_id: user_response['id'] })
-          
+
           {
             user_id: user_response['id'],
             email: user_response['email'],
@@ -254,16 +254,16 @@ module UserManagement
             correlation_id: correlation_id,
             status: 'created'
           }
-          
+
         when 409
           # User already exists - handle idempotency
           existing_user = get_existing_user(user_data[:email])
-          
+
           if existing_user && user_matches?(existing_user, user_data)
             log_structured_info("Idempotent success - user already exists", {
               user_id: existing_user['id']
             })
-            
+
             {
               user_id: existing_user['id'],
               email: existing_user['email'],
@@ -273,12 +273,12 @@ module UserManagement
           else
             raise StandardError, "User with email #{user_data[:email]} exists with different data"
           end
-          
+
         else
           # Let base handler deal with other HTTP responses
           handle_api_response(response, 'user_service')
         end
-        
+
       rescue CircuitOpenError => e
         log_structured_error("Circuit breaker open for user service", { error: e.message })
         raise Tasker::RetryableError.new(e.message, retry_after: 60)
@@ -303,7 +303,7 @@ module UserManagement
             timeout: 15
           })
         end
-        
+
         response.success? ? response.parsed_response : nil
       rescue => e
         log_structured_error("Failed to check existing user", { error: e.message })

@@ -2,6 +2,9 @@ module UserManagement
   module StepHandlers
     class SetupBillingProfileHandler < ApiBaseHandler
       def process(task, sequence, step)
+        # Store context for base class
+        super(task, sequence, step)
+        
         user_results = step_results(sequence, 'create_user_account')
         user_id = user_results['user_id']
         
@@ -18,28 +21,26 @@ module UserManagement
         })
         
         response = with_circuit_breaker('billing_service') do
-          with_timeout(30) do
-            start_time = Time.current
-            
-            log_api_call(:post, "#{service_url}/profiles", timeout: 30)
-            
-            response = http_client.post("#{service_url}/profiles", {
-              body: billing_data.to_json,
-              headers: default_headers,
-              timeout: 30
-            })
-            
-            duration_ms = ((Time.current - start_time) * 1000).to_i
-            log_api_response(:post, "#{service_url}/profiles", response, duration_ms)
-            
-            response
+          start_time = Time.current
+          
+          log_api_call(:post, "#{service_url}/profiles", timeout: 30)
+          
+          # Use Tasker's Faraday connection
+          response = connection.post("#{service_url}/profiles") do |req|
+            req.body = billing_data.to_json
+            req.headers.merge!(enhanced_default_headers)
           end
+          
+          duration_ms = ((Time.current - start_time) * 1000).to_i
+          log_api_response(:post, "#{service_url}/profiles", response, duration_ms)
+          
+          response
         end
         
-        case response.code
+        case response.status
         when 201
           # Billing profile created
-          profile_data = response.parsed_response
+          profile_data = response.body
           log_structured_info("Billing profile created successfully", {
             user_id: user_id,
             billing_id: profile_data['id'],
@@ -54,7 +55,7 @@ module UserManagement
             trial_ends_at: profile_data['trial_ends_at'],
             created_at: profile_data['created_at'],
             correlation_id: correlation_id,
-            service_response_time: response.headers['X-Response-Time']
+            service_response_time: response.headers['x-response-time']
           }
           
         when 409
@@ -88,17 +89,17 @@ module UserManagement
           
         when 402
           # Payment required - for paid plans
-          payment_details = response.parsed_response
+          payment_details = response.body
           raise StandardError, "Payment required for plan #{billing_data[:plan]}. Payment URL: #{payment_details['payment_url']}"
           
         when 422
           # Validation error
-          errors = response.parsed_response['errors'] || response.parsed_response['message']
+          errors = response.body['errors'] || response.body['message']
           raise StandardError, "Invalid billing data: #{errors}"
           
         else
           # Let base handler deal with other responses
-          handle_api_response(response, 'billing_service')
+          handle_microservice_response(response, 'billing_service')
         end
         
       rescue CircuitOpenError => e
@@ -152,15 +153,12 @@ module UserManagement
       
       def get_existing_profile(user_id)
         response = with_circuit_breaker('billing_service') do
-          with_timeout(15) do
-            http_client.get("#{billing_service_url}/profiles/#{user_id}", {
-              headers: default_headers,
-              timeout: 15
-            })
+          connection.get("#{billing_service_url}/profiles/#{user_id}") do |req|
+            req.headers.merge!(enhanced_default_headers)
           end
         end
         
-        response.success? ? response.parsed_response : nil
+        response.success? ? response.body : nil
       rescue => e
         log_structured_error("Failed to check existing billing profile", {
           error: e.message,

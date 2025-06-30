@@ -2,6 +2,9 @@ module UserManagement
   module StepHandlers
     class CreateUserAccountHandler < ApiBaseHandler
       def process(task, sequence, step)
+        # Store context for base class
+        super(task, sequence, step)
+        
         user_data = extract_user_data(task.context)
         service_url = user_service_url
         
@@ -11,39 +14,37 @@ module UserManagement
         })
         
         response = with_circuit_breaker('user_service') do
-          with_timeout(30) do
-            start_time = Time.current
-            
-            log_api_call(:post, "#{service_url}/users", timeout: 30)
-            
-            response = http_client.post("#{service_url}/users", {
-              body: user_data.to_json,
-              headers: default_headers,
-              timeout: 30
-            })
-            
-            duration_ms = ((Time.current - start_time) * 1000).to_i
-            log_api_response(:post, "#{service_url}/users", response, duration_ms)
-            
-            response
+          start_time = Time.current
+          
+          log_api_call(:post, "#{service_url}/users", timeout: 30)
+          
+          # Use Tasker's Faraday connection
+          response = connection.post("#{service_url}/users") do |req|
+            req.body = user_data.to_json
+            req.headers.merge!(enhanced_default_headers)
           end
+          
+          duration_ms = ((Time.current - start_time) * 1000).to_i
+          log_api_response(:post, "#{service_url}/users", response, duration_ms)
+          
+          response
         end
         
-        case response.code
+        case response.status
         when 201
           # User created successfully
-          user_data = response.parsed_response
+          user_response = response.body
           log_structured_info("User account created successfully", {
-            user_id: user_data['id'],
-            email: user_data['email']
+            user_id: user_response['id'],
+            email: user_response['email']
           })
           
           {
-            user_id: user_data['id'],
-            email: user_data['email'],
-            created_at: user_data['created_at'],
+            user_id: user_response['id'],
+            email: user_response['email'],
+            created_at: user_response['created_at'],
             correlation_id: correlation_id,
-            service_response_time: response.headers['X-Response-Time'],
+            service_response_time: response.headers['x-response-time'],
             status: 'created'
           }
           
@@ -73,12 +74,12 @@ module UserManagement
           
         when 422
           # Validation error
-          errors = response.parsed_response['errors'] || response.parsed_response['message']
+          errors = response.body['errors'] || response.body['message']
           raise StandardError, "Invalid user data: #{errors}"
           
         else
           # Let base handler deal with other responses
-          handle_api_response(response, 'user_service')
+          handle_microservice_response(response, 'user_service')
         end
         
       rescue CircuitOpenError => e
@@ -114,16 +115,13 @@ module UserManagement
       
       def get_existing_user(email)
         response = with_circuit_breaker('user_service') do
-          with_timeout(15) do
-            http_client.get("#{user_service_url}/users", {
-              query: { email: email },
-              headers: default_headers,
-              timeout: 15
-            })
+          connection.get("#{user_service_url}/users") do |req|
+            req.params = { email: email }
+            req.headers.merge!(enhanced_default_headers)
           end
         end
         
-        response.success? ? response.parsed_response : nil
+        response.success? ? response.body : nil
       rescue => e
         log_structured_error("Failed to check existing user", {
           error: e.message,
