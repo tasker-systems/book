@@ -83,9 +83,10 @@ Each chapter must include:
 - **Chapter 1**: Updated all API field names to match Tasker v2.6.0 (`step.results`, `task.status`, `sequence.steps`)
 - **Chapter 2**: Fixed SQL function references and validated workflow steps vs event subscribers pattern
 - **Chapter 3**: Complete microservices coordination implementation with Faraday-based API handlers
-- **API Base Handler**: Created enhanced base class that properly extends Tasker::StepHandler::Api
-- **Step Handlers**: All 5 handlers use circuit breaker pattern with proper Faraday integration
+- **API Base Handler**: Enhanced base class that properly extends Tasker::StepHandler::Api
+- **Step Handlers**: All 5 handlers use Tasker's native circuit breaker architecture
 - **Field Name Audit**: Fixed all timeout/retry field placement across all chapters
+- **Circuit Breaker Revelation**: Replaced custom circuit breaker with Tasker's superior SQL-driven approach
 
 ### Next Priority Tasks 🎯
 1. **Chapter 3 Setup Scripts**: Docker multi-service demo with 4 services (user, billing, preferences, notification)
@@ -93,16 +94,18 @@ Each chapter must include:
 3. **Chapter 3 Narrative**: Update blog-post.md to maintain story continuity with Sarah's team
 
 ### Key Technical Achievements 🚀
-- **Enhanced ApiBaseHandler**: Circuit breakers + Faraday + correlation tracking
-- **Microservices Pattern**: Single Tasker coordinating multiple HTTP services
-- **Graceful Degradation**: Services can fail without breaking entire workflow
+- **Enhanced ApiBaseHandler**: Leverages Tasker's native circuit breaker architecture via typed errors
+- **Microservices Pattern**: Single Tasker coordinating multiple HTTP services with SQL-driven resilience
+- **Architecture Insight**: Discovered Tasker's distributed circuit breaker > in-memory implementations
+- **Error Classification**: `RetryableError` vs `PermanentError` for intelligent retry logic
 - **Distributed Tracing**: Correlation IDs across all service boundaries
-- **Production Patterns**: Idempotency, retry logic, and proper error handling
+- **Production Patterns**: Idempotency, persistent circuit state, and dependency-aware recovery
 
 ### Files Ready for Integration into Tasker Engine 💎
-- `api_base_handler.rb` - Enhanced base class with microservices concerns
-- `circuit_breaker_pattern.rb` - Reusable circuit breaker concern
-- All step handlers demonstrate proper Faraday usage patterns
+- `api_base_handler.rb` - Enhanced base class demonstrating proper Tasker::StepHandler::Api extension
+- `CIRCUIT_BREAKER_EXPLANATION.md` - Documents why Tasker's approach is superior to custom implementations
+- All step handlers demonstrate proper Faraday usage with typed error handling
+- Examples show how `RetryableError` vs `PermanentError` creates intelligent circuit breaker behavior
 
 ## Content Development Workflow
 

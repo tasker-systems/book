@@ -213,9 +213,9 @@ module UserManagement
 end
 ```
 
-## Circuit Breaker Pattern for Service Resilience
+## Discovering Tasker's Built-in Circuit Breaker Architecture
 
-The real innovation was adding circuit breaker patterns to prevent cascade failures:
+The real revelation came when Sarah's team realized they didn't need to implement custom circuit breakers - **Tasker's architecture already provides superior distributed circuit breaker functionality** through its SQL-driven retry system.
 
 ```ruby
 # app/tasks/user_management/step_handlers/create_user_account_handler.rb
@@ -224,6 +224,9 @@ module UserManagement
     class CreateUserAccountHandler < ApiBaseHandler
 
       def process(task, sequence, step)
+        # Store context for base class
+        super(task, sequence, step)
+        
         user_data = extract_user_data(task.context)
 
         log_structured_info("Creating user account", {
@@ -231,20 +234,16 @@ module UserManagement
           plan: task.context['plan']
         })
 
-        response = with_circuit_breaker('user_service') do
-          with_timeout(30) do
-            http_client.post("#{user_service_url}/users", {
-              body: user_data.to_json,
-              headers: default_headers,
-              timeout: 30
-            })
-          end
+        # Use Tasker's Faraday connection - circuit breaker logic handled by Tasker's retry system
+        response = connection.post("#{user_service_url}/users") do |req|
+          req.body = user_data.to_json
+          req.headers.merge!(enhanced_default_headers)
         end
 
-        case response.code
+        case response.status
         when 201
           # User created successfully
-          user_response = response.parsed_response
+          user_response = response.body
           log_structured_info("User account created", { user_id: user_response['id'] })
 
           {
@@ -271,17 +270,16 @@ module UserManagement
               status: 'already_exists'
             }
           else
-            raise StandardError, "User with email #{user_data[:email]} exists with different data"
+            raise Tasker::PermanentError.new(
+              "User with email #{user_data[:email]} exists with different data",
+              error_code: 'USER_CONFLICT'
+            )
           end
 
         else
-          # Let base handler deal with other HTTP responses
-          handle_api_response(response, 'user_service')
+          # Let Tasker's enhanced error handling manage circuit breaker logic
+          handle_microservice_response(response, 'user_service')
         end
-
-      rescue CircuitOpenError => e
-        log_structured_error("Circuit breaker open for user service", { error: e.message })
-        raise Tasker::RetryableError.new(e.message, retry_after: 60)
       end
 
       private
@@ -323,45 +321,37 @@ module UserManagement
 end
 ```
 
-## Distributed Tracing and Correlation
+## Tasker's Superior Circuit Breaker Architecture
 
-The breakthrough was implementing correlation ID tracking across all services:
+Instead of custom circuit breaker objects, Tasker provides **distributed, SQL-driven circuit breaker functionality** that's far more robust:
 
 ```ruby
-# app/concerns/circuit_breaker_pattern.rb
-module CircuitBreakerPattern
-  extend ActiveSupport::Concern
-
-  class CircuitBreakerError < StandardError; end
-  class CircuitOpenError < CircuitBreakerError; end
-
-  def with_circuit_breaker(service_name)
-    breaker = circuit_breaker_for(service_name)
-
-    case breaker.state
-    when :open
-      raise CircuitOpenError, "Circuit breaker is OPEN for #{service_name}"
-    when :half_open, :closed
-      begin
-        result = yield
-        breaker.record_success
-        result
-      rescue => e
-        breaker.record_failure
-        raise
-      end
+# Enhanced API base handler leveraging Tasker's native capabilities
+class ApiBaseHandler < Tasker::StepHandler::Api
+  def handle_microservice_response(response, service_name)
+    case response.status
+    when 429
+      # Rate limited - Tasker's retry system handles intelligent backoff
+      retry_after = response.headers['retry-after']&.to_i || 60
+      raise Tasker::RetryableError.new(
+        "Rate limited by #{service_name}",
+        retry_after: retry_after,  # Server-suggested delay
+        context: { service: service_name, rate_limit_type: 'server_requested' }
+      )
+    when 500..599
+      # Server error - Let Tasker's exponential backoff handle timing  
+      raise Tasker::RetryableError.new(
+        "#{service_name} server error: #{response.status}",
+        context: { service: service_name, error_type: 'server_error' }
+      )
+    when 400..499
+      # Permanent failures - Don't retry, circuit stays "open"
+      raise Tasker::PermanentError.new(
+        "Client error: #{response.status}",
+        error_code: 'CLIENT_ERROR',
+        context: { service: service_name }
+      )
     end
-  end
-
-  private
-
-  def circuit_breaker_for(service_name)
-    @circuit_breakers ||= {}
-    @circuit_breakers[service_name] ||= CircuitBreaker.new(
-      failure_threshold: 5,       # Open after 5 failures
-      recovery_timeout: 60,       # Try again after 60 seconds
-      success_threshold: 2        # Close after 2 successes
-    )
   end
 end
 
@@ -443,17 +433,29 @@ end
 
 ## Key Takeaways
 
-1. **Implement circuit breakers** - Prevent cascade failures when services are down
+1. **Leverage framework capabilities** - Don't re-implement what the framework already provides better
 
-2. **Use correlation IDs** - Track requests across service boundaries for debugging
+2. **Use typed error handling** - `RetryableError` vs `PermanentError` provides intelligent circuit breaker logic
 
-3. **Design for idempotency** - Services should handle duplicate requests gracefully
+3. **Embrace SQL-driven orchestration** - Database state is more durable than in-memory circuit objects
 
-4. **Build in parallel execution** - Independent operations shouldn't wait for each other
+4. **Design for idempotency** - Services should handle duplicate requests gracefully
 
-5. **Plan for partial failures** - Know exactly what state your system is in when things fail
+5. **Build in parallel execution** - Independent operations shouldn't wait for each other
 
-6. **Monitor service interactions** - Different services need different retry and alerting strategies
+6. **Plan for partial failures** - Know exactly what state your system is in when things fail
+
+## The Architecture Revelation
+
+The biggest insight was discovering that **Tasker's distributed, SQL-driven retry architecture already implements superior circuit breaker patterns**:
+
+- **Persistent state** - Circuit state survives process restarts and deployments  
+- **Distributed coordination** - Multiple workers coordinate through database state
+- **Intelligent backoff** - Exponential backoff with jitter and server-suggested delays
+- **Rich observability** - SQL queries provide deep insight into circuit health
+- **Dependency awareness** - Circuit decisions consider workflow dependencies
+
+This demonstrates that sophisticated distributed systems patterns don't always require custom implementations - sometimes the framework already provides a superior solution.
 
 ## Want to Try This Yourself?
 

@@ -1,7 +1,6 @@
 module UserManagement
   module StepHandlers
     class ApiBaseHandler < Tasker::StepHandler::Api
-      include CircuitBreakerPattern
 
       # Initialize with microservices-specific configuration
       def initialize
@@ -19,9 +18,6 @@ module UserManagement
           conn.request :json
           conn.response :json
           conn.adapter Faraday.default_adapter
-          
-          # Add custom middleware for circuit breaker integration
-          conn.use CircuitBreakerMiddleware if defined?(CircuitBreakerMiddleware)
         end
       end
 
@@ -65,21 +61,33 @@ module UserManagement
         "reg_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
       end
 
-      # Custom response handler that works with Faraday responses
+      # Enhanced response handler leveraging Tasker's circuit breaker architecture
       def handle_microservice_response(response, service_name)
         case response.status
         when 200..299
           # Success - return parsed body
           response.body
         when 400
-          # Bad request - our fault, don't retry
-          raise StandardError, "Bad request to #{service_name}: #{response.body}"
+          # Bad request - permanent failure, don't retry
+          raise Tasker::PermanentError.new(
+            "Bad request to #{service_name}: #{response.body}",
+            error_code: 'BAD_REQUEST',
+            context: { service: service_name, status: response.status }
+          )
         when 401
-          # Unauthorized - likely configuration issue
-          raise StandardError, "Unauthorized request to #{service_name}. Check API credentials."
+          # Unauthorized - permanent failure, likely configuration issue
+          raise Tasker::PermanentError.new(
+            "Unauthorized request to #{service_name}. Check API credentials.",
+            error_code: 'UNAUTHORIZED',
+            context: { service: service_name }
+          )
         when 403
-          # Forbidden - don't retry
-          raise StandardError, "Forbidden request to #{service_name}: #{response.body}"
+          # Forbidden - permanent failure
+          raise Tasker::PermanentError.new(
+            "Forbidden request to #{service_name}: #{response.body}",
+            error_code: 'FORBIDDEN',
+            context: { service: service_name }
+          )
         when 404
           # Not found - might be retryable if resource is being created
           nil  # Let calling method decide what to do
@@ -87,24 +95,37 @@ module UserManagement
           # Conflict - resource already exists, typically idempotent success
           response.body
         when 422
-          # Unprocessable entity - validation failed
-          raise StandardError, "Validation failed in #{service_name}: #{response.body}"
+          # Unprocessable entity - permanent failure, validation failed
+          raise Tasker::PermanentError.new(
+            "Validation failed in #{service_name}: #{response.body}",
+            error_code: 'VALIDATION_ERROR',
+            context: { service: service_name, validation_errors: response.body }
+          )
         when 429
-          # Rate limited - let Tasker's built-in backoff handle this
+          # Rate limited - transient failure, use server-suggested delay
           retry_after = response.headers['retry-after']&.to_i || 60
           raise Tasker::RetryableError.new(
-            "Rate limited by #{service_name}. Retry after #{retry_after} seconds",
-            retry_after: retry_after
+            "Rate limited by #{service_name}",
+            retry_after: retry_after,
+            context: { service: service_name, rate_limit_type: 'server_requested' }
           )
         when 500..599
-          # Server error - let Tasker's built-in backoff handle this
+          # Server error - transient failure, let Tasker's exponential backoff handle timing
           raise Tasker::RetryableError.new(
-            "#{service_name} server error: #{response.status} - #{response.reason_phrase}",
-            retry_after: config.retry_delay
+            "#{service_name} server error: #{response.status}",
+            context: { 
+              service: service_name, 
+              status: response.status,
+              error_type: 'server_error'
+            }
           )
         else
-          # Unexpected response
-          raise StandardError, "Unexpected response from #{service_name}: #{response.status} - #{response.body}"
+          # Unexpected response - treat as permanent failure
+          raise Tasker::PermanentError.new(
+            "Unexpected response from #{service_name}: #{response.status}",
+            error_code: 'UNEXPECTED_RESPONSE',
+            context: { service: service_name, status: response.status }
+          )
         end
       end
 
