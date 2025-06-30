@@ -53,32 +53,35 @@ step_templates:
   - name: validate_cart
     description: Validate cart items and calculate totals
     handler_class: Ecommerce::StepHandlers::ValidateCartHandler
-    retryable: true
-    retry_limit: 3
+    default_retryable: true
+    default_retry_limit: 3
 
   - name: process_payment
     description: Charge payment method
     depends_on_step: validate_cart
     handler_class: Ecommerce::StepHandlers::ProcessPaymentHandler
-    retryable: true
-    retry_limit: 3
-    timeout: 30000  # 30 seconds
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 30
 
   - name: update_inventory
     description: Update inventory levels
     depends_on_step: process_payment
     handler_class: Ecommerce::StepHandlers::UpdateInventoryHandler
-    retryable: true
-    retry_limit: 2
+    default_retryable: true
+    default_retry_limit: 2
 
   - name: create_order
     description: Create order record
     depends_on_step: update_inventory
     handler_class: Ecommerce::StepHandlers::CreateOrderHandler
+    default_retryable: true
+    default_retry_limit: 3
 
   - name: send_confirmation
     description: Send order confirmation email
     depends_on_step: create_order
     handler_class: Ecommerce::StepHandlers::SendConfirmationHandler
-    retryable: true
-    retry_limit: 5  # Email delivery can be flaky
+    default_retryable: true
+    default_retry_limit: 5  # Email delivery can be flaky

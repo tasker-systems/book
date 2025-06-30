@@ -71,48 +71,54 @@ step_templates:
   - name: validate_cart
     description: "Validate cart items, check inventory, calculate totals"
     handler_class: Ecommerce::StepHandlers::ValidateCartHandler
-    retryable: true
-    retry_limit: 3
-    timeout: 15
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 15
     
   - name: process_payment
     description: "Process payment with fraud detection and retry logic"
     depends_on_step: validate_cart
     handler_class: Ecommerce::StepHandlers::ProcessPaymentHandler
-    retryable: true
-    retry_limit: 3
-    timeout: 30
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 30
     
   - name: update_inventory
     description: "Atomically update inventory levels with race condition protection"
     depends_on_step: process_payment
     handler_class: Ecommerce::StepHandlers::UpdateInventoryHandler
-    retryable: true
-    retry_limit: 2
-    timeout: 20
+    default_retryable: true
+    default_retry_limit: 2
+    handler_config:
+      timeout_seconds: 20
     
   - name: create_order
     description: "Create order record with full audit trail"
     depends_on_step: update_inventory
     handler_class: Ecommerce::StepHandlers::CreateOrderHandler
-    retryable: true
-    retry_limit: 2
-    timeout: 15
+    default_retryable: true
+    default_retry_limit: 2
+    handler_config:
+      timeout_seconds: 15
     
   - name: send_confirmation
     description: "Send order confirmation email with delivery tracking"
     depends_on_step: create_order
     handler_class: Ecommerce::StepHandlers::SendConfirmationHandler
-    retryable: true
-    retry_limit: 5
-    timeout: 10
+    default_retryable: true
+    default_retry_limit: 5
+    handler_config:
+      timeout_seconds: 10
 
 # Environment-specific configurations
 environments:
   development:
     step_templates:
       - name: validate_cart
-        timeout: 30  # Longer timeout for debugging
+        handler_config:
+          timeout_seconds: 30  # Longer timeout for debugging
         
       - name: process_payment
         handler_config:
@@ -136,7 +142,8 @@ environments:
   production:
     step_templates:
       - name: validate_cart
-        timeout: 10  # Faster timeout in production
+        handler_config:
+          timeout_seconds: 10  # Faster timeout in production
         
       - name: process_payment
         handler_config:

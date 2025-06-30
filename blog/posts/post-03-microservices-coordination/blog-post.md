@@ -89,81 +89,125 @@ The worst part? When something failed, they had **no idea what state the user wa
 
 ## The Orchestrated Solution
 
-After their third weekend debugging partial registrations, Sarah's team applied the same Tasker patterns that had saved their checkout and data pipeline:
+After their third weekend debugging partial registrations, Sarah's team applied the same Tasker patterns that had saved their checkout and data pipeline. But this time, they used Tasker's YAML configuration to clearly separate the workflow structure from the business logic:
+
+```yaml
+# config/tasker/tasks/user_management/user_registration_handler.yaml
+task_name: user_registration
+namespace: user_management
+version: "2.6.0"
+description: "Orchestrated user registration across microservices"
+
+# Input validation schema
+schema:
+  type: object
+  required: ['email', 'name']
+  properties:
+    email:
+      type: string
+      format: email
+    name:
+      type: string
+      minLength: 1
+    phone:
+      type: string
+    plan:
+      type: string
+      enum: ['free', 'pro', 'enterprise']
+      default: 'free'
+    marketing_consent:
+      type: boolean
+      default: false
+    correlation_id:
+      type: string
+      description: "For distributed tracing"
+
+step_templates:
+  - name: create_user_account
+    description: "Create user account in UserService"
+    handler_class: "UserManagement::StepHandlers::CreateUserAccountHandler"
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 30
+      service: "user_service"
+
+  - name: setup_billing_profile
+    description: "Create billing profile in BillingService"
+    depends_on_steps: ["create_user_account"]
+    handler_class: "UserManagement::StepHandlers::SetupBillingProfileHandler"
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 30
+      service: "billing_service"
+
+  - name: initialize_preferences
+    description: "Set up user preferences in PreferencesService"
+    depends_on_steps: ["create_user_account"]  # Runs parallel to billing
+    handler_class: "UserManagement::StepHandlers::InitializePreferencesHandler"
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 20
+      service: "preferences_service"
+
+  - name: send_welcome_sequence
+    description: "Send welcome email via NotificationService"
+    depends_on_steps: ["setup_billing_profile", "initialize_preferences"]
+    handler_class: "UserManagement::StepHandlers::SendWelcomeSequenceHandler"
+    default_retryable: true
+    default_retry_limit: 5  # Email services are often flaky
+    handler_config:
+      timeout_seconds: 15
+      service: "notification_service"
+
+  - name: update_user_status
+    description: "Mark user registration as complete"
+    depends_on_steps: ["send_welcome_sequence"]
+    handler_class: "UserManagement::StepHandlers::UpdateUserStatusHandler"
+    default_retryable: true
+    default_retry_limit: 2
+    handler_config:
+      timeout_seconds: 10
+      service: "user_service"
+```
+
+And a focused task handler with just the business logic:
 
 ```ruby
 # app/tasks/user_management/user_registration_handler.rb
 module UserManagement
-  class UserRegistrationHandler < Tasker::TaskHandler::Base
-    TASK_NAME = 'user_registration'
-    NAMESPACE = 'user_management'
-    VERSION = '1.0.0'
+  class UserRegistrationHandler < Tasker::ConfiguredTask
 
-    register_handler(TASK_NAME, namespace_name: NAMESPACE, version: VERSION)
-
-    define_step_templates do |templates|
-      templates.define(
-        name: 'create_user_account',
-        description: 'Create user account in UserService',
-        handler_class: 'UserManagement::StepHandlers::CreateUserAccountHandler',
-        retryable: true,
-        retry_limit: 3,
-        timeout: 30.seconds
-      )
-
-      templates.define(
-        name: 'setup_billing_profile',
-        description: 'Create billing profile in BillingService',
-        depends_on_step: 'create_user_account',
-        handler_class: 'UserManagement::StepHandlers::SetupBillingProfileHandler',
-        retryable: true,
-        retry_limit: 3,
-        timeout: 30.seconds
-      )
-
-      templates.define(
-        name: 'initialize_preferences',
-        description: 'Set up user preferences in PreferencesService',
-        depends_on_step: 'create_user_account',  # Can run parallel to billing
-        handler_class: 'UserManagement::StepHandlers::InitializePreferencesHandler',
-        retryable: true,
-        retry_limit: 3,
-        timeout: 20.seconds
-      )
-
-      templates.define(
-        name: 'send_welcome_sequence',
-        description: 'Send welcome email via NotificationService',
-        depends_on_step: ['setup_billing_profile', 'initialize_preferences'],
-        handler_class: 'UserManagement::StepHandlers::SendWelcomeSequenceHandler',
-        retryable: true,
-        retry_limit: 5,  # Email services are often flaky
-        timeout: 15.seconds
-      )
-
-      templates.define(
-        name: 'update_user_status',
-        description: 'Mark user registration as complete',
-        depends_on_step: 'send_welcome_sequence',
-        handler_class: 'UserManagement::StepHandlers::UpdateUserStatusHandler',
-        retryable: true,
-        retry_limit: 2
-      )
+    # Runtime step dependency and configuration customization
+    def establish_step_dependencies_and_defaults(task, steps)
+      # Generate correlation ID for distributed tracing
+      correlation_id = task.context['correlation_id'] || generate_correlation_id
+      task.annotations['correlation_id'] = correlation_id
+      
+      # Adjust timeouts for enterprise customers
+      if task.context['plan'] == 'enterprise'
+        billing_step = steps.find { |s| s.name == 'setup_billing_profile' }
+        if billing_step
+          billing_step.retry_limit = 5
+          billing_step.handler_config = billing_step.handler_config.merge(
+            timeout_seconds: 45
+          )
+        end
+      end
+      
+      # Add monitoring annotations for all steps
+      steps.each do |step|
+        step.annotations['correlation_id'] = correlation_id
+        step.annotations['plan_type'] = task.context['plan'] || 'free'
+      end
     end
 
-    def schema
-      {
-        type: 'object',
-        required: ['email', 'name'],
-        properties: {
-          email: { type: 'string', format: 'email' },
-          name: { type: 'string', minLength: 1 },
-          phone: { type: 'string' },
-          plan: { type: 'string', enum: ['free', 'pro', 'enterprise'], default: 'free' },
-          marketing_consent: { type: 'boolean', default: false },
-          correlation_id: { type: 'string' }  # For distributed tracing
-        }
-      }
+    private
+
+    def generate_correlation_id
+      "reg_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
     end
   end
 end
@@ -177,59 +221,67 @@ The real innovation was adding circuit breaker patterns to prevent cascade failu
 # app/tasks/user_management/step_handlers/create_user_account_handler.rb
 module UserManagement
   module StepHandlers
-    class CreateUserAccountHandler < Tasker::StepHandler::Api
-      include CircuitBreakerPattern
+    class CreateUserAccountHandler < ApiBaseHandler
 
       def process(task, sequence, step)
         user_data = extract_user_data(task.context)
-        correlation_id = task.context['correlation_id'] || generate_correlation_id
-
+        
+        log_structured_info("Creating user account", {
+          email: user_data[:email],
+          plan: task.context['plan']
+        })
+        
         response = with_circuit_breaker('user_service') do
-          http_client.post("#{user_service_url}/users", {
-            body: user_data.to_json,
-            headers: {
-              'Content-Type' => 'application/json',
-              'X-Correlation-ID' => correlation_id,
-              'X-Request-ID' => SecureRandom.uuid
-            },
-            timeout: 30
-          })
+          with_timeout(30) do
+            http_client.post("#{user_service_url}/users", {
+              body: user_data.to_json,
+              headers: default_headers,
+              timeout: 30
+            })
+          end
         end
 
         case response.code
         when 201
-          user_data = response.parsed_response
+          # User created successfully
+          user_response = response.parsed_response
+          log_structured_info("User account created", { user_id: user_response['id'] })
+          
           {
-            user_id: user_data['id'],
-            email: user_data['email'],
-            created_at: user_data['created_at'],
+            user_id: user_response['id'],
+            email: user_response['email'],
+            created_at: user_response['created_at'],
             correlation_id: correlation_id,
-            service_response_time: response.headers['X-Response-Time']
+            status: 'created'
           }
+          
         when 409
-          # User already exists - check if it's the same user
-          existing_user = get_existing_user(user_data['email'], correlation_id)
-          if user_matches?(existing_user, user_data)
+          # User already exists - handle idempotency
+          existing_user = get_existing_user(user_data[:email])
+          
+          if existing_user && user_matches?(existing_user, user_data)
+            log_structured_info("Idempotent success - user already exists", {
+              user_id: existing_user['id']
+            })
+            
             {
               user_id: existing_user['id'],
               email: existing_user['email'],
-              created_at: existing_user['created_at'],
               correlation_id: correlation_id,
               status: 'already_exists'
             }
           else
-            raise Tasker::NonRetryableError, "User with email #{user_data['email']} already exists with different data"
+            raise StandardError, "User with email #{user_data[:email]} exists with different data"
           end
-        when 422
-          raise Tasker::NonRetryableError, "Invalid user data: #{response.parsed_response['errors']}"
-        when 429
-          retry_after = response.headers['Retry-After']&.to_i || 60
-          raise Tasker::RetryableError, "Rate limited, retry after #{retry_after} seconds"
-        when 500..599
-          raise Tasker::RetryableError, "UserService error: #{response.code} - #{response.body}"
+          
         else
-          raise Tasker::NonRetryableError, "Unexpected response: #{response.code} - #{response.body}"
+          # Let base handler deal with other HTTP responses
+          handle_api_response(response, 'user_service')
         end
+        
+      rescue CircuitOpenError => e
+        log_structured_error("Circuit breaker open for user service", { error: e.message })
+        raise Tasker::RetryableError.new(e.message, retry_after: 60)
       end
 
       private
@@ -238,32 +290,33 @@ module UserManagement
         {
           email: context['email'],
           name: context['name'],
-          phone: context['phone']
+          phone: context['phone'],
+          plan: context['plan'] || 'free'
         }.compact
       end
 
-      def get_existing_user(email, correlation_id)
-        response = http_client.get("#{user_service_url}/users", {
-          query: { email: email },
-          headers: { 'X-Correlation-ID' => correlation_id },
-          timeout: 15
-        })
-
+      def get_existing_user(email)
+        response = with_circuit_breaker('user_service') do
+          http_client.get("#{user_service_url}/users", {
+            query: { email: email },
+            headers: default_headers,
+            timeout: 15
+          })
+        end
+        
         response.success? ? response.parsed_response : nil
+      rescue => e
+        log_structured_error("Failed to check existing user", { error: e.message })
+        nil
       end
 
       def user_matches?(existing_user, new_user_data)
-        existing_user &&
-          existing_user['email'] == new_user_data['email'] &&
-          existing_user['name'] == new_user_data['name']
+        existing_user['email'] == new_user_data[:email] &&
+          existing_user['name'] == new_user_data[:name]
       end
 
       def user_service_url
         ENV.fetch('USER_SERVICE_URL', 'http://localhost:3001')
-      end
-
-      def generate_correlation_id
-        "reg_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
       end
     end
   end

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-* [About This Series](README.md)
+* [What is Tasker?](README.md)
 * [Getting Started](getting-started.md)
 
 ## Part I: Foundation Stories

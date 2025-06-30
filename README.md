@@ -1,10 +1,5 @@
 # Tasker: Real-World Engineering Stories
 
-[![GitHub Repository](https://img.shields.io/badge/GitHub-tasker--systems%2Ftasker-blue?logo=github)](https://github.com/tasker-systems/tasker)
-[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/tasker-systems/tasker/blob/main/LICENSE)
-[![Ruby](https://img.shields.io/badge/Ruby-3.2%2B-red.svg)](https://github.com/tasker-systems/tasker)
-[![Rails](https://img.shields.io/badge/Rails-7.2%2B-red.svg)](https://github.com/tasker-systems/tasker)
-
 > **Documentation and engineering stories for the [Tasker Rails Engine](https://github.com/tasker-systems/tasker)**
 
 Transform complex, fragile processes into reliable, observable workflows through compelling engineering stories that every developer can relate to.
@@ -38,6 +33,11 @@ Every engineer has lived through these scenarios. Learn how **[Tasker](https://g
 ---
 
 ## 🔗 Tasker Resources
+
+[![GitHub Repository](https://img.shields.io/badge/GitHub-tasker--systems%2Ftasker-blue?logo=github)](https://github.com/tasker-systems/tasker)
+[![MIT License](https://img.shields.io/badge/License-MIT-green.svg)](https://github.com/tasker-systems/tasker/blob/main/LICENSE)
+[![Ruby](https://img.shields.io/badge/Ruby-3.2%2B-red.svg)](https://github.com/tasker-systems/tasker)
+[![Rails](https://img.shields.io/badge/Rails-7.2%2B-red.svg)](https://github.com/tasker-systems/tasker)
 
 - **[📦 Main Repository](https://github.com/tasker-systems/tasker)** - Source code, issues, and releases
 - **[📖 API Documentation](https://rubydoc.info/github/tasker-systems/tasker)** - Complete Ruby API reference
