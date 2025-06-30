@@ -175,18 +175,18 @@ Interested in contributing new engineering stories?
 ## 🔗 Related Resources
 
 ### Tasker Documentation
-- **[Official Docs](https://github.com/tasker-systems/tasker/docs/)**: Complete API reference
-- **[Quick Start](https://github.com/tasker-systems/tasker/docs/QUICK_START.md)**: Basic setup guide
-- **[Developer Guide](https://github.com/tasker-systems/tasker/docs/DEVELOPER_GUIDE.md)**: Advanced patterns
+- **[Official Docs](../docs/README.md)**: Complete API reference
+- **[Quick Start](../docs/QUICK_START.md)**: Basic setup guide
+- **[Developer Guide](../docs/DEVELOPER_GUIDE.md)**: Advanced patterns
 
 ### Community
 - **[GitHub Discussions](https://github.com/tasker-systems/tasker/discussions)**: Ask questions and share patterns
 - **[Issues](https://github.com/tasker-systems/tasker/issues)**: Report bugs and request features
 
 ### Learning Resources
-- **[Workflow Patterns](https://github.com/tasker-systems/tasker/wiki/patterns)**: Common workflow designs
-- **[Best Practices](https://github.com/tasker-systems/tasker/wiki/best-practices)**: Production deployment tips
-- **[Performance Guide](https://github.com/tasker-systems/tasker/wiki/performance)**: Optimization techniques
+- **[Workflow Patterns](../docs/workflow-patterns.md)**: Common workflow designs
+- **[Circuit Breaker Architecture](../docs/CIRCUIT_BREAKER.md)**: Resilience patterns
+- **[Task Execution Control Flow](../docs/TASK_EXECUTION_CONTROL_FLOW.md)**: Advanced orchestration patterns
 
 ---
 

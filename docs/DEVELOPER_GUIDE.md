@@ -1682,7 +1682,7 @@ strategy = Tasker::CacheStrategy.detect
   "component": "cache_strategy",
   "message": "Cache strategy detected",
   "environment": "production",
-  "tasker_version": "2.6.0",
+  "tasker_version": "2.5.0",
   "store_class": "MyAwesomeCacheStore",
   "coordination_strategy": "distributed_atomic",
   "capabilities": {
@@ -2064,6 +2064,12 @@ class TransformingStepHandler < Tasker::StepHandler::Base
 end
 ```
 
+## Task Execution & Orchestration
+
+For detailed understanding of Tasker's sophisticated orchestration patterns, including the dual finalization strategy and coordinated vs autonomous execution contexts, see:
+
+**📖 [Task Execution Control Flow](TASK_EXECUTION_CONTROL_FLOW.md)** - Comprehensive documentation of workflow orchestration patterns, synchronous vs asynchronous finalization, and the coordination between WorkflowCoordinator and TaskFinalizer components.
+
 ## Best Practices
 
 ### Task Handler Design
@@ -2315,7 +2321,7 @@ Validates OpenTelemetry distributed tracing integration:
 
 **Sample Results**:
 ```
-🎯 Tasker 2.6.0 - Jaeger Integration Validator
+🎯 Tasker 2.5.0 - Jaeger Integration Validator
 ✅ Jaeger Connection: PASS - Successfully connected to Jaeger
 ✅ Workflow Execution: PASS - Created and executed 3 workflows
 ✅ Trace Collection: PASS - Successfully collected 13 spans
@@ -2346,7 +2352,7 @@ Validates metrics collection and Prometheus integration:
 
 **Sample Results**:
 ```
-🎯 Tasker 2.6.0 - Prometheus Integration Validator
+🎯 Tasker 2.5.0 - Prometheus Integration Validator
 ✅ MetricsSubscriber registered successfully
 ✅ Prometheus Connection: PASS - Successfully connected to Prometheus
 ✅ Metrics Endpoint: PASS - Tasker metrics endpoint accessible
@@ -2523,7 +2529,7 @@ The validation scripts provide comprehensive diagnostics:
 ```
 
 **Common Issues & Solutions**:
-- **No Metrics Collected**: Ensure `MetricsSubscriber` is registered (automatic in Tasker 2.6.0+)
+- **No Metrics Collected**: Ensure `MetricsSubscriber` is registered (automatic in Tasker 2.5.0+)
 - **Missing Spans**: Verify OpenTelemetry exporter configuration
 - **Connection Failures**: Check service ports and network connectivity
 - **Query Failures**: Validate Prometheus data retention and configuration
@@ -2539,3 +2545,121 @@ The integration validation scripts provide:
 - **🚀 Enterprise Adoption**: Validated observability enables confident production deployment
 
 **Status**: **COMPLETE** - Both Jaeger and Prometheus integration validators fully implemented and tested with 100% success rates, proving Tasker's production readiness through comprehensive observability stack validation.
+
+## Application Template Validation (v2.6.0)
+
+Tasker includes a comprehensive dry-run validation system for application template generation that ensures template consistency and correctness without generating files. This system is essential for maintaining template quality and CI/CD pipeline integration.
+
+### Dry-Run Validation Overview
+
+The validation system tests five critical categories of template correctness:
+
+```bash
+# Run comprehensive validation
+ruby scripts/create_tasker_app.rb dry_run
+
+# Run specific validation categories
+ruby scripts/create_tasker_app.rb dry_run --mode=templates  # File existence
+ruby scripts/create_tasker_app.rb dry_run --mode=syntax     # ERB/Ruby/YAML syntax
+ruby scripts/create_tasker_app.rb dry_run --mode=cli        # CLI option mapping
+ruby scripts/create_tasker_app.rb dry_run --mode=bindings   # Template variables
+
+# Validate Docker templates
+ruby scripts/create_tasker_app.rb dry_run --docker --with-observability
+```
+
+### Validation Categories
+
+**1. Template File Existence Validation**
+- Verifies all required ERB templates exist for selected task types
+- Adapts template requirements based on Docker/observability modes
+- Reports missing templates with specific file paths
+
+**2. ERB Template Syntax Validation**
+- Parses all ERB templates for syntax errors using `ERB.new(template).check_syntax`
+- Validates template structure without executing Ruby code
+- Catches malformed ERB blocks and Ruby expressions
+
+**3. Generated Code Syntax Validation**
+- Renders templates with test data to validate actual output
+- Uses `RubyVM::InstructionSequence.compile` for Ruby syntax validation
+- Uses `YAML.safe_load` for YAML syntax validation
+- Tests real generated output, not just template correctness
+
+**4. CLI Options Mapping Validation**
+- Ensures all Thor CLI options have corresponding instance variables
+- Validates option-to-variable mapping (e.g., `--docker` → `@docker_mode`)
+- Checks for missing or incorrectly mapped CLI options
+
+**5. Template Variable Bindings Validation**
+- Tests template rendering with expected binding contexts
+- Validates all required variables are available during rendering
+- Tests step handlers, configuration files, and Docker-specific bindings
+
+### CI/CD Integration
+
+The dry-run validation system is designed for continuous integration:
+
+```yaml
+# .github/workflows/template-validation.yml
+name: Template Validation
+on: [push, pull_request]
+
+jobs:
+  validate-templates:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Setup Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          bundler-cache: true
+      
+      - name: Validate Application Templates
+        run: |
+          # Test all template combinations
+          ruby scripts/create_tasker_app.rb dry_run --mode=all
+          ruby scripts/create_tasker_app.rb dry_run --docker --with-observability
+          
+      - name: Validate Specific Categories
+        run: |
+          ruby scripts/create_tasker_app.rb dry_run --mode=templates
+          ruby scripts/create_tasker_app.rb dry_run --mode=syntax
+          ruby scripts/create_tasker_app.rb dry_run --mode=cli
+          ruby scripts/create_tasker_app.rb dry_run --mode=bindings
+```
+
+### Development Workflow Integration
+
+**Template Development Process**:
+1. Modify ERB templates in `scripts/templates/`
+2. Run dry-run validation to catch issues early
+3. Fix validation errors before committing
+4. CI/CD pipeline validates all template combinations
+
+**Local Development Validation**:
+```bash
+# Quick validation during template development
+ruby scripts/create_tasker_app.rb dry_run --mode=syntax
+
+# Full validation before committing
+ruby scripts/create_tasker_app.rb dry_run --mode=all
+
+# Test Docker-specific templates
+ruby scripts/create_tasker_app.rb dry_run --docker --with-observability
+```
+
+### Performance Characteristics
+
+- **Zero File System Impact**: No files created during validation
+- **Sub-second Execution**: Validation completes in under 1 second
+- **Clear Exit Codes**: 0 for success, 1 for failure (CI/CD friendly)
+- **Detailed Error Reporting**: Specific file paths and line numbers for errors
+
+### Strategic Benefits
+
+- **Template Quality Assurance**: Prevents broken templates from reaching production
+- **Developer Confidence**: Comprehensive validation reduces template-related issues
+- **CI/CD Integration**: Automated validation in deployment pipelines
+- **Rapid Feedback**: Immediate validation results during development
+- **Enterprise Reliability**: Ensures consistent template generation across environments

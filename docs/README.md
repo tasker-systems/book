@@ -48,7 +48,13 @@ This documentation hub provides everything you need to master **[Tasker](https:/
 ### Advanced Topics
 - **[System Flow Charts](FLOW_CHART.md)** - Visual workflow representation
 - **[Task Diagrams](TASK_DIAGRAM.md)** - Task execution visualization
+- **[Task Execution Control Flow](TASK_EXECUTION_CONTROL_FLOW.md)** - Deep dive into orchestration patterns
 - **[Project Roadmap](ROADMAP.md)** - Future development plans
+
+### Strategic Documentation
+- **[Vision & Roadmap](VISION.md)** - Strategic roadmap for distributed AI-integrated workflow orchestration
+- **[Why Tasker?](WHY.md)** - Rationale and use case explanation for Tasker
+- **[Optimization Plan](OPTIMIZATION_PLAN.md)** - Enterprise-scale performance optimization roadmap
 
 ---
 

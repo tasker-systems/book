@@ -53,6 +53,7 @@
 * [Application Generator](docs/APPLICATION_GENERATOR.md)
 * [Workflow Patterns](docs/workflow-patterns.md)
 * [Circuit Breaker Architecture](docs/CIRCUIT_BREAKER.md)
+* [Task Execution Control Flow](docs/TASK_EXECUTION_CONTROL_FLOW.md)
 
 ## Configuration & Setup
 
@@ -73,6 +74,12 @@
 * [System Flow Charts](docs/FLOW_CHART.md)
 * [Task Diagrams](docs/TASK_DIAGRAM.md)
 * [Project Roadmap](docs/ROADMAP.md)
+
+## Strategic Documentation
+
+* [Vision & Roadmap](docs/VISION.md)
+* [Why Tasker?](docs/WHY.md)
+* [Optimization Plan](docs/OPTIMIZATION_PLAN.md)
 
 ## Appendices
 

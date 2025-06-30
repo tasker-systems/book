@@ -1,23 +1,25 @@
 # Tasker Documentation
 
+> **📚 Note**: This file contains legacy links to the GitHub repository. For the most up-to-date documentation, see our [Developer Documentation Hub](../docs/README.md) which contains all the same content locally.
+
 Quick reference to official Tasker documentation and resources.
 
 ## 📚 Core Documentation
 
 ### Getting Started
-- **[Quick Start Guide](https://github.com/tasker-systems/tasker/blob/main/docs/QUICK_START.md)**: Build your first workflow in 15 minutes
-- **[Installation Guide](https://github.com/tasker-systems/tasker/blob/main/README.md#installation)**: Complete setup instructions
-- **[System Overview](https://github.com/tasker-systems/tasker/blob/main/docs/OVERVIEW.md)**: Architecture and key concepts
+- **[Quick Start Guide](../docs/QUICK_START.md)**: Build your first workflow in 15 minutes
+- **[Installation Guide](../getting-started.md)**: Complete setup instructions
+- **[System Overview](../docs/OVERVIEW.md)**: Architecture and key concepts
 
 ### Developer Guides
-- **[Developer Guide](https://github.com/tasker-systems/tasker/blob/main/docs/DEVELOPER_GUIDE.md)**: Comprehensive implementation guide
-- **[Task Handler Patterns](https://github.com/tasker-systems/tasker/blob/main/docs/TASK_PATTERNS.md)**: Common workflow designs
-- **[Step Handler Guide](https://github.com/tasker-systems/tasker/blob/main/docs/STEP_HANDLERS.md)**: Individual step implementation
+- **[Developer Guide](../docs/DEVELOPER_GUIDE.md)**: Comprehensive implementation guide
+- **[Workflow Patterns](../docs/workflow-patterns.md)**: Common workflow designs
+- **[Circuit Breaker Architecture](../docs/CIRCUIT_BREAKER.md)**: Resilience patterns
 
 ### Advanced Topics
-- **[Event System](https://github.com/tasker-systems/tasker/blob/main/docs/EVENT_SYSTEM.md)**: Observability and integrations
-- **[Registry Systems](https://github.com/tasker-systems/tasker/blob/main/docs/REGISTRY_SYSTEMS.md)**: Handler organization and discovery
-- **[API Documentation](https://github.com/tasker-systems/tasker/blob/main/docs/REST_API.md)**: Complete REST API reference
+- **[Event System](../docs/EVENT_SYSTEM.md)**: Observability and integrations
+- **[Registry Systems](../docs/REGISTRY_SYSTEMS.md)**: Handler organization and discovery
+- **[REST API Reference](../docs/REST_API.md)**: Complete REST API reference
 
 ## 🏗️ Architecture Reference
 
@@ -88,13 +90,13 @@ task_request = Tasker::Types::TaskRequest.new(
 - **[Security](https://github.com/tasker-systems/tasker/blob/main/docs/SECURITY.md)**: Enterprise security patterns
 
 ### Observability & Monitoring
-- **[Telemetry](https://github.com/tasker-systems/tasker/blob/main/docs/TELEMETRY.md)**: OpenTelemetry integration
-- **[Metrics](https://github.com/tasker-systems/tasker/blob/main/docs/METRICS.md)**: Prometheus metrics collection
-- **[Health Monitoring](https://github.com/tasker-systems/tasker/blob/main/docs/HEALTH.md)**: Kubernetes-ready health endpoints
+- **[Telemetry](../docs/TELEMETRY.md)**: OpenTelemetry integration
+- **[Metrics](../docs/METRICS.md)**: Prometheus metrics collection
+- **[Health Monitoring](../docs/HEALTH.md)**: Kubernetes-ready health endpoints
 
 ### Performance & Scaling
-- **[SQL Functions](https://github.com/tasker-systems/tasker/blob/main/docs/SQL_FUNCTIONS.md)**: High-performance workflow execution
-- **[Performance Guide](https://github.com/tasker-systems/tasker/blob/main/docs/PERFORMANCE.md)**: Optimization techniques
+- **[SQL Functions](../docs/SQL_FUNCTIONS.md)**: High-performance workflow execution
+- **[Optimization Plan](../docs/OPTIMIZATION_PLAN.md)**: Enterprise performance optimization roadmap
 
 ## 🧪 Testing and Development
 

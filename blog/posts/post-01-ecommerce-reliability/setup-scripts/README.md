@@ -213,9 +213,9 @@ curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/
 
 ## 📚 Related Documentation
 
-- **[Tasker Application Generator](https://github.com/tasker-systems/tasker/blob/main/docs/APPLICATION_GENERATOR.md)**: Complete documentation of the underlying generator
-- **[Installation Guide](https://github.com/tasker-systems/tasker/blob/main/README.md#installation)**: Manual Tasker setup instructions
-- **[Troubleshooting Guide](../appendices/troubleshooting.md)**: Comprehensive problem-solving guide
+- **[Tasker Application Generator](../../../../docs/APPLICATION_GENERATOR.md)**: Complete documentation of the underlying generator
+- **[Getting Started Guide](../../../../getting-started.md)**: Manual Tasker setup instructions
+- **[Troubleshooting Guide](../../../../appendices/troubleshooting.md)**: Comprehensive problem-solving guide
 
 ---
 
