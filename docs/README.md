@@ -31,6 +31,7 @@ This documentation hub provides everything you need to master **[Tasker](https:/
 - **[SQL Functions Reference](SQL_FUNCTIONS.md)** - Extensive SQL functions reference (39KB)
 - **[Application Generator](APPLICATION_GENERATOR.md)** - Application generation guide
 - **[Workflow Patterns](workflow-patterns.md)** - Common workflow designs
+- **[Circuit Breaker Architecture](CIRCUIT_BREAKER.md)** - SQL-driven resilience patterns
 
 ### Configuration & Setup
 - **[🚀 YAML Configuration](EXECUTION_CONFIGURATION.md)** - Declarative workflow definition
@@ -65,8 +66,12 @@ Learn from detailed engineering stories that show **[Tasker](https://github.com/
 **Solution:** Parallel data processing with intelligent retry and progress tracking
 **Patterns:** Diamond pattern, parallel execution, progress monitoring
 
+### [Chapter 3: Microservices Coordination](../blog/posts/post-03-microservices-coordination/)
+**Problem:** Service coordination nightmare after microservices migration
+**Solution:** Leverage Tasker's SQL-driven circuit breaker architecture for resilient service orchestration
+**Patterns:** API orchestration, distributed circuit breakers, typed error handling
+
 ### More Engineering Stories (Coming Soon)
-- **Chapter 3:** Microservices Coordination - Orchestrating 6 API calls for user registration
 - **Chapter 4:** Team Scaling - Managing workflows across 8 engineering teams
 - **Chapter 5:** Production Observability - From black box to complete visibility
 - **Chapter 6:** Enterprise Security - SOC 2 compliance for workflow engines

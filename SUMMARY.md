@@ -21,7 +21,11 @@
 ## Part II: Advanced Patterns
 
 * [Chapter 3: Microservices Coordination](blog/posts/post-03-microservices-coordination/README.md)
-  * [Coming Soon: Taming Service Dependencies](blog/posts/post-03-microservices-coordination/preview.md)
+  * [The Story: Service Orchestration Without Chaos](blog/posts/post-03-microservices-coordination/blog-post.md)
+  * [Code Examples](blog/posts/post-03-microservices-coordination/code-examples/README.md)
+  * [Circuit Breaker Architecture](blog/posts/post-03-microservices-coordination/code-examples/step_handlers/CIRCUIT_BREAKER_EXPLANATION.md)
+  * [Testing Guide](blog/posts/post-03-microservices-coordination/TESTING.md)
+  * [Quick Setup](blog/posts/post-03-microservices-coordination/setup-scripts/README.md)
 
 ## Part III: Scale & Enterprise
 
@@ -34,21 +38,21 @@
 
 ## Developer Documentation
 
+### Getting Started
+
 * [Documentation Hub](docs/README.md)
-
-## Getting Started
-
 * [System Overview](docs/OVERVIEW.md)
 * [Quick Start Guide](docs/QUICK_START.md)
 * [Core Concepts](docs/core-concepts.md)
 
-## Developer Reference
+### Developer Reference
 
 * [Developer Guide](docs/DEVELOPER_GUIDE.md)
 * [REST API Reference](docs/REST_API.md)
 * [SQL Functions Reference](docs/SQL_FUNCTIONS.md)
 * [Application Generator](docs/APPLICATION_GENERATOR.md)
 * [Workflow Patterns](docs/workflow-patterns.md)
+* [Circuit Breaker Architecture](docs/CIRCUIT_BREAKER.md)
 
 ## Configuration & Setup
 

@@ -1,32 +1,47 @@
 # Chapter 3: Microservices Coordination
 
-> **Coming Soon**: Orchestrate service dependencies without the chaos
+> **Orchestrate service dependencies without the chaos**
 
-## 🎭 The Story Preview
+## 🎭 The Story
 
 *"You've broken your monolith into 12 microservices. Congratulations! Now simple user registration involves 6 API calls across 4 services. What could go wrong?"*
 
-This chapter tackles the coordination nightmare that many teams face after microservices adoption:
-- **Cascade failures** from service dependencies
-- **Timeout and retry chaos** across service boundaries
-- **Debugging hell** when workflows span multiple services
-- **Inconsistent patterns** for error handling and recovery
+Sarah's team at GrowthCorp faced this exact nightmare after their microservices migration. This chapter shows how they transformed distributed chaos into coordinated workflows using Tasker's sophisticated orchestration capabilities.
 
 ## 🚀 What You'll Learn
 
 ### **Service Orchestration Patterns**
-- **API step handlers** with built-in circuit breakers
-- **Timeout management** across service boundaries
+- **API step handlers** extending `Tasker::StepHandler::Api`
 - **Correlation ID tracking** for distributed debugging
 - **Graceful degradation** when services are unavailable
+- **Idempotent operations** across service boundaries
 
-### **Resilience Engineering**
-- **Circuit breaker patterns** to prevent cascade failures
-- **Bulkhead isolation** for service independence
-- **Retry strategies** adapted to service characteristics
-- **Fallback mechanisms** for critical user journeys
+### **The Circuit Breaker Revelation**
+- **Why Tasker's SQL-driven architecture beats in-memory circuit breakers**
+- **How typed errors (`RetryableError` vs `PermanentError`) create intelligent retry logic**
+- **Distributed coordination through persistent database state**
+- **Rich observability via SQL queries and structured logging**
 
-## 📅 Target Release
-**Q2 2024** - Full chapter with working examples
+📚 **[Read the Circuit Breaker Architecture Explanation](code-examples/step_handlers/CIRCUIT_BREAKER_EXPLANATION.md)**
 
-*[Preview content and early access signup info would go here]*
+## 📖 Chapter Contents
+
+- **[Read the Blog Post](blog-post.md)** - The full narrative with code examples
+- **[Code Examples](code-examples/)** - Complete working implementation
+- **[Setup Scripts](setup-scripts/)** - One-command demo setup (Docker support coming soon)
+- **[Testing Guide](TESTING.md)** - How to validate the examples
+
+## 🎯 Key Takeaways
+
+1. **Leverage framework capabilities** - Don't re-implement what Tasker already provides better
+2. **Use typed error handling** - Let the framework manage circuit breaker logic
+3. **Design for idempotency** - Critical for distributed service coordination
+4. **Embrace SQL-driven orchestration** - More durable than in-memory patterns
+
+## 🛠️ Try It Yourself
+
+```bash
+# Clone and run the example (Docker setup coming soon)
+cd blog/posts/post-03-microservices-coordination/setup-scripts
+bash setup.sh
+```
