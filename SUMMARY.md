@@ -2,7 +2,7 @@
 
 ## Introduction
 
-* [What is Tasker?](README.md)
+* [Making Complex Workflows Easy-ish](README.md)
 * [Getting Started](getting-started.md)
 
 ## Part I: Foundation Stories
