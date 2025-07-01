@@ -43,6 +43,154 @@ Tasker.configuration do |config|
 end
 ```
 
+## Analytics API
+
+The analytics API provides real-time performance monitoring and bottleneck analysis for your workflow orchestration, introduced in Tasker v2.7.0.
+
+### Performance Analytics
+
+**Endpoint**: `GET /tasker/analytics/performance`
+
+**Description**: Get system-wide performance metrics and analytics with 90-second caching.
+
+**Example Request**:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     https://your-app.com/tasker/analytics/performance
+```
+
+**Example Response**:
+
+```json
+{
+  "system_health_score": 94.2,
+  "performance_trends": {
+    "1h": { "completion_rate": 0.96, "avg_duration_ms": 1250 },
+    "4h": { "completion_rate": 0.94, "avg_duration_ms": 1180 },
+    "24h": { "completion_rate": 0.93, "avg_duration_ms": 1340 }
+  },
+  "task_statistics": {
+    "total_tasks": 15420,
+    "completed": 14321,
+    "failed": 89,
+    "retried": 210
+  },
+  "processing_times": {
+    "p50": 850,
+    "p95": 2100,
+    "p99": 4200
+  }
+}
+```
+
+### Bottleneck Analysis
+
+**Endpoint**: `GET /tasker/analytics/bottlenecks`
+
+**Description**: Get bottleneck analysis scoped by task parameters with 2-minute caching.
+
+**Query Parameters**:
+
+* `namespace` (optional) - Filter by task namespace
+* `name` (optional) - Filter by task name  
+* `version` (optional) - Filter by task version
+* `period` (optional) - Analysis period in hours (default: 24)
+
+**Example Request**:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     "https://your-app.com/tasker/analytics/bottlenecks?namespace=ecommerce&period=24"
+```
+
+**Example Response**:
+
+```json
+{
+  "analysis_period": "24 hours",
+  "scope": { "namespace": "ecommerce" },
+  "slowest_tasks": [
+    {
+      "task_name": "process_large_order",
+      "avg_duration_ms": 4200,
+      "execution_count": 89,
+      "failure_rate": 0.02
+    }
+  ],
+  "slowest_steps": [
+    {
+      "step_name": "payment_processing", 
+      "task_name": "process_order",
+      "avg_duration_ms": 2800,
+      "retry_rate": 0.08
+    }
+  ],
+  "error_patterns": [
+    {
+      "error_type": "NetworkTimeoutError",
+      "frequency": 45,
+      "affected_steps": ["payment_processing", "inventory_check"]
+    }
+  ],
+  "recommendations": [
+    {
+      "type": "timeout_optimization",
+      "step": "payment_processing", 
+      "current_timeout": 30,
+      "suggested_timeout": 45,
+      "rationale": "95th percentile execution time is 42s"
+    }
+  ]
+}
+```
+
+### Health Monitoring
+
+**Endpoint**: `GET /tasker/health/ready`
+
+**Description**: Check if the system is ready to accept requests. This endpoint never requires authentication.
+
+**Example Request**:
+
+```bash
+curl https://your-app.com/tasker/health/ready
+```
+
+**Endpoint**: `GET /tasker/health/live`
+
+**Description**: Check if the system is alive and responding. This endpoint never requires authentication.
+
+**Example Request**:
+
+```bash
+curl https://your-app.com/tasker/health/live
+```
+
+**Endpoint**: `GET /tasker/health/status`
+
+**Description**: Get detailed system health status including metrics and database information. May require authorization depending on configuration.
+
+**Example Request**:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     https://your-app.com/tasker/health/status
+```
+
+### Metrics Export
+
+**Endpoint**: `GET /tasker/metrics`
+
+**Description**: Export system metrics in Prometheus format. Authentication requirements depend on configuration.
+
+**Example Request**:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     https://your-app.com/tasker/metrics
+```
+
 ## Handler Discovery API
 
 The handler discovery API provides comprehensive information about available task handlers, their configurations, and dependency graphs.
@@ -387,6 +535,155 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 }
 ```
 
+### Get Task Diagram
+
+**Endpoint**: `GET /tasker/tasks/{task_id}/task_diagrams`
+
+**Description**: Get Mermaid task diagram for visualization. New in v2.7.0.
+
+**Parameters**:
+
+* `task_id` (path) - The task ID
+* `format` (query, optional) - Response format (json, html)
+
+**Example Request**:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     https://your-app.com/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/task_diagrams?format=json
+```
+
+**Example Response**:
+
+```json
+{
+  "nodes": [
+    {
+      "id": "validate_payment",
+      "label": "Validate Payment",
+      "shape": "rectangle",
+      "style": "fill:#90EE90",
+      "url": "/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps/validate_payment",
+      "attributes": {
+        "status": "complete",
+        "duration_ms": 1000
+      }
+    },
+    {
+      "id": "charge_card", 
+      "label": "Charge Card",
+      "shape": "rectangle",
+      "style": "fill:#FFE4B5",
+      "url": "/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps/charge_card",
+      "attributes": {
+        "status": "in_progress",
+        "duration_ms": null
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source_id": "validate_payment",
+      "target_id": "charge_card",
+      "label": "depends_on",
+      "type": "dependency",
+      "direction": "forward",
+      "attributes": {}
+    }
+  ],
+  "direction": "TD",
+  "title": "payments.process_payment@2.1.0",
+  "attributes": {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "in_progress"
+  }
+}
+```
+
+## Workflow Steps API
+
+The workflow steps API allows detailed management of individual task steps, introduced in v2.7.0.
+
+### List Steps by Task
+
+**Endpoint**: `GET /tasker/tasks/{task_id}/workflow_steps`
+
+**Description**: List all workflow steps for a specific task.
+
+**Parameters**:
+
+* `task_id` (path) - The task ID
+
+**Example Request**:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     https://your-app.com/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps
+```
+
+### Get Step Details
+
+**Endpoint**: `GET /tasker/tasks/{task_id}/workflow_steps/{step_id}`
+
+**Description**: Get detailed information about a specific workflow step.
+
+**Parameters**:
+
+* `task_id` (path) - The task ID
+* `step_id` (path) - The step ID
+
+**Example Request**:
+
+```bash
+curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     https://your-app.com/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps/validate_payment
+```
+
+### Update Step
+
+**Endpoint**: `PATCH /tasker/tasks/{task_id}/workflow_steps/{step_id}`
+
+**Description**: Update step configuration (retry limits, inputs).
+
+**Request Body**:
+
+```json
+{
+  "retry_limit": 5,
+  "inputs": {
+    "timeout": 30,
+    "custom_param": "value"
+  }
+}
+```
+
+**Example Request**:
+
+```bash
+curl -X PATCH -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     -H "Content-Type: application/json" \
+     -d '{"retry_limit": 5, "inputs": {"timeout": 30}}' \
+     https://your-app.com/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps/validate_payment
+```
+
+### Cancel Step
+
+**Endpoint**: `DELETE /tasker/tasks/{task_id}/workflow_steps/{step_id}`
+
+**Description**: Cancel a specific workflow step.
+
+**Parameters**:
+
+* `task_id` (path) - The task ID
+* `step_id` (path) - The step ID
+
+**Example Request**:
+
+```bash
+curl -X DELETE -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+     https://your-app.com/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps/validate_payment
+```
+
 ## Error Handling
 
 The API uses standard HTTP status codes and provides detailed error information:
@@ -401,6 +698,7 @@ The API uses standard HTTP status codes and provides detailed error information:
 * `404 Not Found` - Resource not found
 * `422 Unprocessable Entity` - Validation errors
 * `500 Internal Server Error` - Server error
+* `503 Service Unavailable` - Analytics unavailable or system health check failed
 
 ### Error Response Format
 
@@ -568,6 +866,39 @@ class TaskerClient {
     const response = await this.client.get(`/tasks/${id}`, { params });
     return response.data;
   }
+
+  async getTaskDiagram(id, format = 'json') {
+    const params = { format };
+    const response = await this.client.get(`/tasks/${id}/task_diagrams`, { params });
+    return response.data;
+  }
+
+  async getPerformanceAnalytics() {
+    const response = await this.client.get('/analytics/performance');
+    return response.data;
+  }
+
+  async getBottleneckAnalysis(options = {}) {
+    const { namespace, name, version, period } = options;
+    const params = {};
+    if (namespace) params.namespace = namespace;
+    if (name) params.name = name;
+    if (version) params.version = version;
+    if (period) params.period = period;
+    
+    const response = await this.client.get('/analytics/bottlenecks', { params });
+    return response.data;
+  }
+
+  async getHealthStatus() {
+    const response = await this.client.get('/health/status');
+    return response.data;
+  }
+
+  async getMetrics() {
+    const response = await this.client.get('/metrics');
+    return response.data;
+  }
 }
 
 // Usage
@@ -578,6 +909,12 @@ const namespaces = await tasker.getNamespaces();
 const handlers = await tasker.getHandlers('payments');
 const handlerDetails = await tasker.getHandlerDetails('payments', 'process_payment', '2.1.0');
 const task = await tasker.createTask('process_payment', 'payments', '2.1.0', { payment_id: 123 });
+
+// Monitor performance and get task visualization (v2.7.0)
+const performance = await tasker.getPerformanceAnalytics();
+const bottlenecks = await tasker.getBottleneckAnalysis({ namespace: 'payments', period: 24 });
+const diagram = await tasker.getTaskDiagram(task.id, 'json');
+const health = await tasker.getHealthStatus();
 ```
 
 ## Best Practices

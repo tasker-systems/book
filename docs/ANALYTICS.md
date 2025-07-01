@@ -2,7 +2,7 @@
 
 > **📊 Advanced Performance Analytics & Bottleneck Analysis for Production Workflows**
 > 
-> **New in Tasker v2.7.0** - Comprehensive analytics endpoints with intelligent caching and performance insights.
+> **New in Tasker v2.7.0** - Comprehensive analytics endpoints with intelligent caching, EventRouter architecture, and performance insights.
 
 The Tasker Analytics system provides real-time performance monitoring and bottleneck analysis for your workflow orchestration. Built on SQL-driven analytics functions with intelligent caching, it delivers sub-100ms analytics responses for production environments.
 

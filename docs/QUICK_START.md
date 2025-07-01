@@ -4,10 +4,12 @@
 
 This guide will get you from zero to a working Tasker application with complete workflows in **5 minutes**. We'll use our automated demo application builder to create a full-featured Rails app with real-world workflow examples, then explore how to customize and extend them.
 
-**🚀 New in Tasker 2.6.0**: This guide leverages our enterprise-grade demo application builder with:
+**🚀 New in Tasker 2.7.0**: This guide leverages our enterprise-grade demo application builder with advanced analytics capabilities:
 - **Automated Setup**: One-command installation with complete Rails application
 - **Real-World Examples**: E-commerce, inventory, and customer management workflows
-- **Performance Optimization**: Dynamic concurrency with configurable execution settings
+- **Performance Analytics**: Advanced bottleneck analysis and performance monitoring
+- **Task Visualization**: Mermaid diagram generation for workflow visualization
+- **EventRouter Architecture**: Trace backend integration with structured logging
 - **Full Observability**: OpenTelemetry tracing and Prometheus metrics integration
 - **Production Ready**: Complete with Redis, Sidekiq, and comprehensive documentation
 

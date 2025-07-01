@@ -88,6 +88,8 @@ Each chapter must include:
 - **Field Name Audit**: Fixed all timeout/retry field placement across all chapters
 - **Circuit Breaker Revelation**: Replaced custom circuit breaker with Tasker's superior SQL-driven approach
 - **Documentation Sync**: Updated to Tasker v2.7.0 with advanced analytics capabilities
+- **REST API Update**: Added v2.7.0 analytics endpoints, task diagrams, and workflow steps API
+- **Analytics Documentation**: Updated ANALYTICS.md with EventRouter architecture details
 
 ### Next Priority Tasks 🎯
 1. **Chapter 3 Setup Scripts**: Docker multi-service demo with 4 services (user, billing, preferences, notification)
