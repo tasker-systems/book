@@ -6,7 +6,7 @@
 
 ## Core Architectural Evolution
 
-### Current Foundation (Tasker 2.4.0)
+### Current Foundation (Tasker 1.0.0)
 - ✅ **Single-system orchestration** with Rails-native patterns
 - ✅ **High-performance SQL functions** for step readiness calculation
 - ✅ **Thread-safe registry systems** with structured logging
@@ -31,7 +31,7 @@
 **Solution**: Self-describing step result schemas with validation.
 
 ```ruby
-# Current (2.4.0)
+# Current (1.0.0)
 def process(task, sequence, step)
   { user_id: 123, status: 'created' }  # Free-form results
 end

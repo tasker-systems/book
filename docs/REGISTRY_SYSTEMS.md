@@ -125,7 +125,7 @@ Every registry operation includes comprehensive structured logging with correlat
   "component": "handler_factory",
   "message": "Registry item registered",
   "environment": "production",
-  "tasker_version": "2.4.1",
+  "tasker_version": "1.0.0",
   "process_id": 12345,
   "thread_id": "abc123",
   "entity_type": "task_handler",
@@ -341,10 +341,10 @@ If upgrading from older Tasker versions:
 
 1. **Update Registration Code**:
 ```ruby
-# Old (pre-2.3.0)
+# Old (pre-1.0.0)
 Tasker::HandlerFactory.register('handler', HandlerClass)
 
-# New (2.3.0+)
+# New (1.0.0+)
 Tasker::HandlerFactory.instance.register(
   'handler',
   HandlerClass,
