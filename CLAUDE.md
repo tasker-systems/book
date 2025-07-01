@@ -77,17 +77,17 @@ Each chapter must include:
 - Always verify exclusions work with local build testing
 - Use SUMMARY.md to control what gets published
 
-## Current Development Status (2025-06-30)
+## Current Development Status (2025-07-01)
 
 ### Recently Completed ✅
-- **Chapter 1**: Updated all API field names to match Tasker v2.6.2 (`step.results`, `task.status`, `sequence.steps`)
+- **Chapter 1**: Updated all API field names to match Tasker v2.7.0 (`step.results`, `task.status`, `sequence.steps`)
 - **Chapter 2**: Fixed SQL function references and validated workflow steps vs event subscribers pattern
 - **Chapter 3**: Complete microservices coordination implementation with Faraday-based API handlers
 - **API Base Handler**: Enhanced base class that properly extends Tasker::StepHandler::Api
 - **Step Handlers**: All 5 handlers use Tasker's native circuit breaker architecture
 - **Field Name Audit**: Fixed all timeout/retry field placement across all chapters
 - **Circuit Breaker Revelation**: Replaced custom circuit breaker with Tasker's superior SQL-driven approach
-- **Documentation Sync**: Updated to Tasker v2.6.2 with new strategic documentation
+- **Documentation Sync**: Updated to Tasker v2.7.0 with advanced analytics capabilities
 
 ### Next Priority Tasks 🎯
 1. **Chapter 3 Setup Scripts**: Docker multi-service demo with 4 services (user, billing, preferences, notification)
@@ -116,7 +116,7 @@ Each chapter must include:
 - **Technical Progression**: Each chapter builds on previous implementation patterns
 
 ### Code Quality Requirements
-- All Tasker examples must use version 2.6.0 consistently (production-ready)
+- All Tasker examples must use version 2.7.0 consistently (production-ready)
 - Ruby 3.2+, Rails 7.2+, PostgreSQL, Redis dependencies
 - Thread-safe registry systems with structured logging
 - Enterprise-ready patterns: namespace organization, semantic versioning
@@ -206,7 +206,7 @@ Focus on these files for version-specific changes:
 ### 3. GitBook Update Process
 ```bash
 # Update version references in GitBook
-grep -r "2\.5\.0" . --include="*.md" --include="*.json"
+grep -r "2\.6\.2" . --include="*.md" --include="*.json"
 
 # Update system requirements in documentation
 grep -r "Ruby 3\.0" . --include="*.md"

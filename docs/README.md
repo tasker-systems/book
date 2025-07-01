@@ -29,6 +29,7 @@ This documentation hub provides everything you need to master **[Tasker](https:/
 - **[Developer Guide](DEVELOPER_GUIDE.md)** - Comprehensive implementation guide (80KB, 2542 lines)
 - **[REST API Reference](REST_API.md)** - Complete HTTP API documentation
 - **[SQL Functions Reference](SQL_FUNCTIONS.md)** - Extensive SQL functions reference (39KB)
+- **[Analytics System](ANALYTICS.md)** - Performance analytics and bottleneck analysis (v2.7.0+)
 - **[Application Generator](APPLICATION_GENERATOR.md)** - Application generation guide
 - **[Workflow Patterns](workflow-patterns.md)** - Common workflow designs
 - **[Circuit Breaker Architecture](CIRCUIT_BREAKER.md)** - SQL-driven resilience patterns

@@ -542,6 +542,27 @@ open http://localhost:3000/tasker/handlers
 - Example data and test scenarios
 - Production-ready patterns with correlation IDs and structured logging
 
+## 📊 Monitoring Your Checkout Performance (New in v2.7.0)
+
+With Tasker's new analytics capabilities, Sarah's team can now monitor their checkout performance in real-time:
+
+```bash
+# Get overall system health
+curl -H "Authorization: Bearer $API_TOKEN" \
+  https://growthcorp.com/tasker/analytics/performance
+
+# Analyze checkout workflow bottlenecks
+curl -H "Authorization: Bearer $API_TOKEN" \
+  "https://growthcorp.com/tasker/analytics/bottlenecks?namespace=ecommerce&task_name=process_order"
+```
+
+**What they discovered:**
+- Payment processing step averages 2.8 seconds (95th percentile: 4.2s)
+- Inventory updates have a 0.8% retry rate due to timeouts
+- System health score: 94.2% (excellent for Black Friday!)
+
+This real-time insight helps them proactively optimize before problems impact customers.
+
 In our next post, we'll explore how to handle even more complex scenarios with parallel execution and event-driven monitoring when we tackle "The Data Pipeline That Kept Everyone Awake."
 
 ---

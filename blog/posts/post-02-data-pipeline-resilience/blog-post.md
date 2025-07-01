@@ -782,6 +782,27 @@ curl -H "Authorization: Bearer your_api_token" \
   http://localhost:3000/api/v1/tasks/TASK_ID/steps
 ```
 
+## 📊 Performance Analytics Reveal the Hidden Bottlenecks (New in v2.7.0)
+
+Six months after implementing the resilient data pipeline, Sarah's team discovered something surprising through Tasker's new analytics system:
+
+```bash
+# Analyze data pipeline performance
+curl -H "Authorization: Bearer $API_TOKEN" \
+  "https://growthcorp.com/tasker/analytics/bottlenecks?namespace=data_pipeline&period=24"
+```
+
+**Key insights:**
+- Extract operations run in perfect parallel (15-20 minutes each)
+- Transform steps occasionally timeout during high-data periods (95th percentile: 2.1 hours)
+- The `transform_customer_metrics` step has a 3.2% retry rate
+- **Discovery:** Adding more memory to transform processes reduced duration by 40%
+
+**Before analytics:** They assumed network issues caused most retries  
+**After analytics:** Memory pressure was the real culprit
+
+This data-driven insight led to right-sizing their infrastructure and eliminating weekend pipeline failures.
+
 In our next post, we'll tackle an even more complex challenge: "Microservices Orchestration Without the Chaos" - when your simple user registration involves 6 API calls across 4 different services.
 
 ---

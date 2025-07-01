@@ -480,6 +480,27 @@ curl -X POST http://localhost:3000/users/register \
 curl http://localhost:3000/users/registration_status/TASK_ID
 ```
 
+## 📊 Microservices Analytics: Finding the Weak Links (New in v2.7.0)
+
+After rolling out the new registration workflow, Sarah's team used Tasker's analytics to identify optimization opportunities:
+
+```bash
+# Analyze user registration performance across all services
+curl -H "Authorization: Bearer $API_TOKEN" \
+  "https://growthcorp.com/tasker/analytics/bottlenecks?namespace=user_management&task_name=user_registration"
+```
+
+**Surprising discoveries:**
+- `send_welcome_sequence` step: 15.2 second average (due to email service rate limiting)
+- `setup_billing_profile` has 2.1% retry rate (billing service occasional timeouts)
+- **Circuit breaker insight:** UserService opened circuit breaker 12 times in the last 24 hours
+- **Optimization win:** Reducing welcome email timeout from 30s to 15s improved user experience without increasing failures
+
+**Before analytics:** "Registration feels slow sometimes"  
+**After analytics:** "Email service rate limiting adds 12 seconds to registration"
+
+The analytics revealed that their SQL-driven circuit breaker was saving them from cascading failures, and specific timeout optimizations could improve user experience significantly.
+
 In our next post, we'll tackle the organizational challenges that emerge as engineering teams scale: "Building Workflows That Scale With Your Team" - when namespace conflicts become your biggest problem.
 
 ---
