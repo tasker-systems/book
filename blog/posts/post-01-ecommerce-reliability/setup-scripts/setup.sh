@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Setup script for Chapter 1: E-commerce Reliability
-# Updated for Tasker v2.6.0 with Docker support
+# Updated for Tasker Engine v1.0.0 with Docker support
 
 set -e
 

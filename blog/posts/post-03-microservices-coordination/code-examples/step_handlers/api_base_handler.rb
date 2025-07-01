@@ -49,7 +49,7 @@ module UserManagement
           'X-Request-ID' => SecureRandom.uuid,
           'X-Source-Service' => 'tasker',
           'X-Workflow-ID' => current_task&.id&.to_s,
-          'User-Agent' => "Tasker/#{Tasker::VERSION || '2.6.0'}"
+          'User-Agent' => "Tasker/#{Tasker::VERSION || '1.0.0'}"
         )
       end
 

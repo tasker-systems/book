@@ -2546,7 +2546,7 @@ The integration validation scripts provide:
 
 **Status**: **COMPLETE** - Both Jaeger and Prometheus integration validators fully implemented and tested with 100% success rates, proving Tasker's production readiness through comprehensive observability stack validation.
 
-## Application Template Validation (v2.6.0)
+## Application Template Validation (v1.0.0)
 
 Tasker includes a comprehensive dry-run validation system for application template generation that ensures template consistency and correctness without generating files. This system is essential for maintaining template quality and CI/CD pipeline integration.
 

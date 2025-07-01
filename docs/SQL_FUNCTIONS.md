@@ -41,12 +41,12 @@ The Tasker system uses eleven key SQL functions to optimize workflow execution:
 4. **`get_task_execution_contexts_batch`** - Batch execution context for multiple tasks
 5. **`calculate_dependency_levels`** - Calculates dependency levels for workflow steps
 
-### Enhanced Analytics Functions (v2.7.0)
+### Enhanced Analytics Functions (v1.0.0)
 6. **`function_based_analytics_metrics`** - System-wide performance analytics with intelligent caching
 7. **`function_based_slowest_tasks`** - Task performance analysis with namespace/version filtering and scope-aware caching
 8. **`function_based_slowest_steps`** - Step-level bottleneck identification with detailed timing analysis
 
-### Legacy Analytics Functions (Deprecated in v2.7.0)
+### Legacy Analytics Functions (Deprecated in v1.0.0)
 9. **`get_analytics_metrics_v01`** - Legacy analytics aggregation (replaced by `function_based_analytics_metrics`)
 10. **`get_slowest_tasks_v01`** - Legacy task analysis (replaced by `function_based_slowest_tasks`)
 11. **`get_slowest_steps_v01`** - Legacy step analysis (replaced by `function_based_slowest_steps`)
@@ -1166,7 +1166,7 @@ WHEN COUNT(dep_edges.from_step_id) = 0 THEN true  -- Zero dependencies
    - Creates `calculate_dependency_levels` function
    - Loads from `db/functions/calculate_dependency_levels_v01.sql`
 
-**Analytics Functions Added in v2.7.0:**
+**Analytics Functions Added in v1.0.0:**
 
 6. **`get_analytics_metrics_v01`** (Via system migrations)
    - Comprehensive system metrics aggregation
@@ -1184,9 +1184,9 @@ WHEN COUNT(dep_edges.from_step_id) = 0 THEN true  -- Zero dependencies
 - `lib/tasker/functions/function_based_step_readiness_status.rb` - Step readiness function wrapper
 - `lib/tasker/functions/function_based_task_execution_context.rb` - Task context function wrapper
 - `lib/tasker/functions/function_based_dependency_levels.rb` - Dependency levels function wrapper
-- `lib/tasker/functions/function_based_analytics_metrics.rb` - Analytics metrics function wrapper (v2.7.0)
-- `lib/tasker/functions/function_based_slowest_tasks.rb` - Slowest tasks analysis function wrapper (v2.7.0)
-- `lib/tasker/functions/function_based_slowest_steps.rb` - Slowest steps analysis function wrapper (v2.7.0)
+- `lib/tasker/functions/function_based_analytics_metrics.rb` - Analytics metrics function wrapper (v1.0.0)
+- `lib/tasker/functions/function_based_slowest_tasks.rb` - Slowest tasks analysis function wrapper (v1.0.0)
+- `lib/tasker/functions/function_based_slowest_steps.rb` - Slowest steps analysis function wrapper (v1.0.0)
 - `lib/tasker/functions/function_wrapper.rb` - Base function wrapper class
 - `lib/tasker/functions.rb` - Function module loader
 
@@ -1417,9 +1417,9 @@ These functions are critical components that make Tasker's concurrent workflow e
 
 ---
 
-## Enhanced Analytics Functions (v2.7.0)
+## Enhanced Analytics Functions (v1.0.0)
 
-Tasker v2.7.0 introduces three new high-performance analytics functions that replace the legacy `_v01` versions with enhanced caching, filtering capabilities, and performance optimizations.
+Tasker Engine v1.0.0 introduces three new high-performance analytics functions that replace the legacy `_v01` versions with enhanced caching, filtering capabilities, and performance optimizations.
 
 ### Function 9: `function_based_analytics_metrics`
 
@@ -1587,7 +1587,7 @@ high_impact_steps = slow_steps.select { |s| s.optimization_score > 80 }
 
 ### Analytics Function Integration
 
-#### Controller Integration (v2.7.0)
+#### Controller Integration (v1.0.0)
 ```ruby
 # app/controllers/tasker/analytics_controller.rb
 class Tasker::AnalyticsController < ApplicationController
@@ -1623,7 +1623,7 @@ end
 ```
 
 #### Caching Strategy
-The v2.7.0 analytics functions implement intelligent caching:
+The v1.0.0 analytics functions implement intelligent caching:
 
 ```ruby
 # Performance metrics: 90-second TTL with activity-based invalidation
@@ -1639,9 +1639,9 @@ def cache_key_bottlenecks(namespace, task_name, hours)
 end
 ```
 
-### Performance Benchmarks (v2.7.0)
+### Performance Benchmarks (v1.0.0)
 
-| Metric | Legacy (_v01) | Enhanced (v2.7.0) | Improvement |
+| Metric | Legacy (_v01) | Enhanced (v1.0.0) | Improvement |
 |--------|---------------|-------------------|-------------|
 | Analytics Response | 45-120ms | <10ms (cached) | **5-12x faster** |
 | Cache Hit Rate | N/A | 95%+ | **New capability** |
@@ -1664,7 +1664,7 @@ new_metrics = Tasker::Functions::FunctionBasedAnalyticsMetrics.call
 ```
 
 #### Feature Comparison
-| Feature | Legacy _v01 | Enhanced v2.7.0 | Migration Required |
+| Feature | Legacy _v01 | Enhanced v1.0.0 | Migration Required |
 |---------|-------------|-----------------|-------------------|
 | Basic Metrics | ✅ | ✅ | No |
 | Performance Filtering | ⚠️ Limited | ✅ Enhanced | Optional |
@@ -1707,4 +1707,4 @@ class AnalyticsMonitoringJob < ApplicationJob
 end
 ```
 
-The enhanced v2.7.0 analytics functions provide production-ready performance monitoring with intelligent caching, making real-time analytics dashboards feasible for high-volume Tasker deployments.
+The enhanced v1.0.0 analytics functions provide production-ready performance monitoring with intelligent caching, making real-time analytics dashboards feasible for high-volume Tasker deployments.

@@ -542,7 +542,7 @@ open http://localhost:3000/tasker/handlers
 - Example data and test scenarios
 - Production-ready patterns with correlation IDs and structured logging
 
-## 📊 Monitoring Your Checkout Performance (New in v2.7.0)
+## 📊 Monitoring Your Checkout Performance (New in v1.0.0)
 
 With Tasker's new analytics capabilities, Sarah's team can now monitor their checkout performance in real-time:
 

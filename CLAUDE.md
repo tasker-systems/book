@@ -80,15 +80,15 @@ Each chapter must include:
 ## Current Development Status (2025-07-01)
 
 ### Recently Completed ✅
-- **Chapter 1**: Updated all API field names to match Tasker v2.7.0 (`step.results`, `task.status`, `sequence.steps`)
+- **Chapter 1**: Updated all API field names to match tasker-engine v1.0.0 (`step.results`, `task.status`, `sequence.steps`)
 - **Chapter 2**: Fixed SQL function references and validated workflow steps vs event subscribers pattern
 - **Chapter 3**: Complete microservices coordination implementation with Faraday-based API handlers
 - **API Base Handler**: Enhanced base class that properly extends Tasker::StepHandler::Api
 - **Step Handlers**: All 5 handlers use Tasker's native circuit breaker architecture
 - **Field Name Audit**: Fixed all timeout/retry field placement across all chapters
 - **Circuit Breaker Revelation**: Replaced custom circuit breaker with Tasker's superior SQL-driven approach
-- **Documentation Sync**: Updated to Tasker v2.7.0 with advanced analytics capabilities
-- **REST API Update**: Added v2.7.0 analytics endpoints, task diagrams, and workflow steps API
+- **Documentation Sync**: Updated to tasker-engine v1.0.0 with advanced analytics capabilities
+- **REST API Update**: Added v1.0.0 analytics endpoints, task diagrams, and workflow steps API
 - **Analytics Documentation**: Updated ANALYTICS.md with EventRouter architecture details
 
 ### Next Priority Tasks 🎯
@@ -118,7 +118,7 @@ Each chapter must include:
 - **Technical Progression**: Each chapter builds on previous implementation patterns
 
 ### Code Quality Requirements
-- All Tasker examples must use version 2.7.0 consistently (production-ready)
+- All Tasker examples must use tasker-engine gem version 1.0.0 consistently (production-ready)
 - Ruby 3.2+, Rails 7.2+, PostgreSQL, Redis dependencies
 - Thread-safe registry systems with structured logging
 - Enterprise-ready patterns: namespace organization, semantic versioning
@@ -156,7 +156,7 @@ Each chapter must include:
 ## Technology Stack Context
 
 - **Primary Platform**: GitBook for documentation generation
-- **Code Examples**: Ruby/Rails with Tasker workflow orchestration engine
+- **Code Examples**: Ruby/Rails with tasker-engine workflow orchestration gem
 - **Dependencies**: PostgreSQL, Redis, Sidekiq for background processing
 - **Monitoring**: OpenTelemetry integration in examples
 - **Development**: Node.js/npm for GitBook CLI tooling
@@ -164,7 +164,7 @@ Each chapter must include:
 ## Current Development Status
 
 ### Completed Work
-- **Chapter 1**: E-commerce Reliability (complete with Tasker v2.6.0 patterns)
+- **Chapter 1**: E-commerce Reliability (complete with tasker-engine v1.0.0 patterns)
 - **Documentation Integration**: Comprehensive Tasker documentation integrated
 - **Repository Integration**: Clear links to main Tasker repository established
 - **GitBook Infrastructure**: Complete setup with plugins and custom styling
@@ -208,7 +208,7 @@ Focus on these files for version-specific changes:
 ### 3. GitBook Update Process
 ```bash
 # Update version references in GitBook
-grep -r "2\.6\.2" . --include="*.md" --include="*.json"
+grep -r "1\.0\.0" . --include="*.md" --include="*.json"
 
 # Update system requirements in documentation
 grep -r "Ruby 3\.0" . --include="*.md"

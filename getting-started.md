@@ -101,7 +101,7 @@ Each chapter example uses Tasker's one-line installer, but you can also add it t
 
 ```ruby
 # In your Gemfile
-gem 'tasker', '~> 2.6.0'
+gem 'tasker-engine', '~> 1.0.0'
 
 # Then run
 bundle install

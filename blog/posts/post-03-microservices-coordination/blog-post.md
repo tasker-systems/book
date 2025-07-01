@@ -95,7 +95,7 @@ After their third weekend debugging partial registrations, Sarah's team applied 
 # config/tasker/tasks/user_management/user_registration_handler.yaml
 task_name: user_registration
 namespace: user_management
-version: "2.6.0"
+version: "1.0.0"
 description: "Orchestrated user registration across microservices"
 
 # Input validation schema
@@ -480,7 +480,7 @@ curl -X POST http://localhost:3000/users/register \
 curl http://localhost:3000/users/registration_status/TASK_ID
 ```
 
-## 📊 Microservices Analytics: Finding the Weak Links (New in v2.7.0)
+## 📊 Microservices Analytics: Finding the Weak Links (New in v1.0.0)
 
 After rolling out the new registration workflow, Sarah's team used Tasker's analytics to identify optimization opportunities:
 

@@ -54,7 +54,7 @@ module DataPipeline
       # Data pipeline specific annotations
       task.annotations['workflow_type'] = 'data_pipeline'
       task.annotations['pipeline_name'] = 'customer_analytics'
-      task.annotations['data_version'] = '2.6.0'
+      task.annotations['data_version'] = '1.0.0'
       task.annotations['date_range_days'] = days_span.to_s
       task.annotations['environment'] = Rails.env
       task.annotations['force_refresh'] = task.context['force_refresh'].to_s

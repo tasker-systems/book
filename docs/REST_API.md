@@ -45,7 +45,7 @@ end
 
 ## Analytics API
 
-The analytics API provides real-time performance monitoring and bottleneck analysis for your workflow orchestration, introduced in Tasker v2.7.0.
+The analytics API provides real-time performance monitoring and bottleneck analysis for your workflow orchestration, introduced in Tasker Engine v1.0.0.
 
 ### Performance Analytics
 
@@ -261,7 +261,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
     {
       "id": "process_payment",
       "namespace": "payments",
-      "version": "2.1.0",
+      "version": "1.0.0",
       "description": "Process customer payment with validation and confirmation",
       "step_count": 4,
       "step_names": ["validate_payment", "charge_card", "update_order", "send_confirmation"]
@@ -269,7 +269,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
     {
       "id": "refund_payment",
       "namespace": "payments",
-      "version": "1.5.0",
+      "version": "1.0.0",
       "description": "Process customer refund with validation",
       "step_count": 3,
       "step_names": ["validate_refund", "process_refund", "notify_customer"]
@@ -294,7 +294,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 ```bash
 curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     https://your-app.com/tasker/handlers/payments/process_payment?version=2.1.0
+     https://your-app.com/tasker/handlers/payments/process_payment?version=1.0.0
 ```
 
 **Example Response**:
@@ -303,7 +303,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 {
   "id": "process_payment",
   "namespace": "payments",
-  "version": "2.1.0",
+  "version": "1.0.0",
   "description": "Process customer payment with validation and confirmation",
   "step_templates": [
     {
@@ -375,7 +375,7 @@ The task management API supports creating and managing tasks with full namespace
 {
   "name": "process_payment",
   "namespace": "payments",
-  "version": "2.1.0",
+  "version": "1.0.0",
   "context": {
     "payment_id": 12345,
     "amount": 99.99,
@@ -393,7 +393,7 @@ curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" \
      -d '{
        "name": "process_payment",
        "namespace": "payments",
-       "version": "2.1.0",
+       "version": "1.0.0",
        "context": {
          "payment_id": 12345,
          "amount": 99.99,
@@ -411,8 +411,8 @@ curl -X POST -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "name": "process_payment",
   "namespace": "payments",
-  "version": "2.1.0",
-  "full_name": "payments.process_payment@2.1.0",
+  "version": "1.0.0",
+  "full_name": "payments.process_payment@1.0.0",
   "status": "pending",
   "context": {
     "payment_id": 12345,
@@ -455,8 +455,8 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
       "id": "550e8400-e29b-41d4-a716-446655440000",
       "name": "process_payment",
       "namespace": "payments",
-      "version": "2.1.0",
-      "full_name": "payments.process_payment@2.1.0",
+      "version": "1.0.0",
+      "full_name": "payments.process_payment@1.0.0",
       "status": "pending",
       "context": {...},
       "created_at": "2024-01-15T10:30:00Z",
@@ -497,8 +497,8 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   "id": "550e8400-e29b-41d4-a716-446655440000",
   "name": "process_payment",
   "namespace": "payments",
-  "version": "2.1.0",
-  "full_name": "payments.process_payment@2.1.0",
+  "version": "1.0.0",
+  "full_name": "payments.process_payment@1.0.0",
   "status": "in_progress",
   "context": {
     "payment_id": 12345,
@@ -539,7 +539,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 **Endpoint**: `GET /tasker/tasks/{task_id}/task_diagrams`
 
-**Description**: Get Mermaid task diagram for visualization. New in v2.7.0.
+**Description**: Get Mermaid task diagram for visualization. New in v1.0.0.
 
 **Parameters**:
 
@@ -592,7 +592,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
     }
   ],
   "direction": "TD",
-  "title": "payments.process_payment@2.1.0",
+  "title": "payments.process_payment@1.0.0",
   "attributes": {
     "task_id": "550e8400-e29b-41d4-a716-446655440000",
     "status": "in_progress"
@@ -602,7 +602,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 
 ## Workflow Steps API
 
-The workflow steps API allows detailed management of individual task steps, introduced in v2.7.0.
+The workflow steps API allows detailed management of individual task steps, introduced in v1.0.0.
 
 ### List Steps by Task
 
@@ -809,7 +809,7 @@ curl -H "Authorization: Bearer $TOKEN" \
 
 # 3. Get detailed handler information with dependency graph
 curl -H "Authorization: Bearer $TOKEN" \
-     https://your-app.com/tasker/handlers/payments/process_payment?version=2.1.0
+     https://your-app.com/tasker/handlers/payments/process_payment?version=1.0.0
 
 # 4. Create a task using discovered handler
 curl -X POST -H "Authorization: Bearer $TOKEN" \
@@ -907,10 +907,10 @@ const tasker = new TaskerClient('https://your-app.com/tasker', 'YOUR_JWT_TOKEN')
 // Discover and create task
 const namespaces = await tasker.getNamespaces();
 const handlers = await tasker.getHandlers('payments');
-const handlerDetails = await tasker.getHandlerDetails('payments', 'process_payment', '2.1.0');
-const task = await tasker.createTask('process_payment', 'payments', '2.1.0', { payment_id: 123 });
+const handlerDetails = await tasker.getHandlerDetails('payments', 'process_payment', '1.0.0');
+const task = await tasker.createTask('process_payment', 'payments', '1.0.0', { payment_id: 123 });
 
-// Monitor performance and get task visualization (v2.7.0)
+// Monitor performance and get task visualization (v1.0.0)
 const performance = await tasker.getPerformanceAnalytics();
 const bottlenecks = await tasker.getBottleneckAnalysis({ namespace: 'payments', period: 24 });
 const diagram = await tasker.getTaskDiagram(task.id, 'json');
@@ -959,7 +959,7 @@ const health = await tasker.getHealthStatus();
   run: |
     # Validate all handlers are accessible via API
     curl -f -H "Authorization: Bearer $TASKER_TOKEN" \
-         https://your-app.com/tasker/handlers/payments/process_payment?version=2.1.0
+         https://your-app.com/tasker/handlers/payments/process_payment?version=1.0.0
 ```
 
 ### Monitoring Dashboard Integration

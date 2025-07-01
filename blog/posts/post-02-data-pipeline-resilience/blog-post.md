@@ -782,7 +782,7 @@ curl -H "Authorization: Bearer your_api_token" \
   http://localhost:3000/api/v1/tasks/TASK_ID/steps
 ```
 
-## 📊 Performance Analytics Reveal the Hidden Bottlenecks (New in v2.7.0)
+## 📊 Performance Analytics Reveal the Hidden Bottlenecks (New in v1.0.0)
 
 Six months after implementing the resilient data pipeline, Sarah's team discovered something surprising through Tasker's new analytics system:
 

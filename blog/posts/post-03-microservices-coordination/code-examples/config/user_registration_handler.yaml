@@ -1,6 +1,6 @@
 task_name: user_registration
 namespace: user_management
-version: "2.7.0"
+version: "1.0.0"
 description: "Orchestrated user registration workflow across multiple microservices"
 
 # Input validation schema

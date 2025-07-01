@@ -54,7 +54,7 @@ curl -fsSL https://raw.githubusercontent.com/your-gitbook-repo/main/blog/posts/p
 
 ## 🛠️ How It Works
 
-### Integration with Tasker v2.6.0 Application Generator
+### Integration with Tasker Engine v1.0.0 Application Generator
 
 We leverage Tasker's production-ready application generator with new Docker support:
 

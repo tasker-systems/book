@@ -7,7 +7,7 @@ This guide gets you from zero to a working Tasker workflow quickly. You'll build
 ## Prerequisites
 
 - **Rails application** (7.0+) with PostgreSQL
-- **Ruby 3.2+** (required for Tasker v2.6.0)
+- **Ruby 3.2+** (required for Tasker Engine v1.0.0)
 - **PostgreSQL** (required for Tasker's high-performance SQL functions)
 - **Redis** (for background job processing)
 - **Basic Rails knowledge** (models, controllers, ActiveJob)
@@ -36,7 +36,7 @@ If you have an existing Rails application:
 
 ```bash
 # Add to Gemfile
-echo 'gem "tasker", git: "https://github.com/tasker-systems/tasker.git", tag: "v2.6.0"' >> Gemfile
+echo 'gem "tasker-engine", "~> 1.0.0"' >> Gemfile
 
 # Install and setup
 bundle install

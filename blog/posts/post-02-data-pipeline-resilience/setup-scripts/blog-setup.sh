@@ -33,7 +33,7 @@ echo "📦 Installing required gems..."
 cat >> Gemfile << 'EOF'
 
 # Tasker workflow engine
-gem 'tasker', git: 'https://github.com/tasker-systems/tasker.git'
+gem 'tasker-engine', '~> 1.0.0'
 
 # Background job processing
 gem 'sidekiq'
