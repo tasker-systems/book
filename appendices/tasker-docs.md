@@ -96,7 +96,6 @@ task_request = Tasker::Types::TaskRequest.new(
 
 ### Performance & Scaling
 - **[SQL Functions](../docs/SQL_FUNCTIONS.md)**: High-performance workflow execution
-- **[Optimization Plan](../docs/OPTIMIZATION_PLAN.md)**: Enterprise performance optimization roadmap
 
 ## 🧪 Testing and Development
 

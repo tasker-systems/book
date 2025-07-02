@@ -54,8 +54,6 @@ This documentation hub provides everything you need to master **[Tasker](https:/
 
 ### Strategic Documentation
 - **[Vision & Roadmap](VISION.md)** - Strategic roadmap for distributed AI-integrated workflow orchestration
-- **[Why Tasker?](WHY.md)** - Rationale and use case explanation for Tasker
-- **[Optimization Plan](OPTIMIZATION_PLAN.md)** - Enterprise-scale performance optimization roadmap
 
 ---
 

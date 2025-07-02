@@ -78,8 +78,6 @@
 ## Strategic Documentation
 
 * [Vision & Roadmap](docs/VISION.md)
-* [Why Tasker?](docs/WHY.md)
-* [Optimization Plan](docs/OPTIMIZATION_PLAN.md)
 
 ## Appendices
 
