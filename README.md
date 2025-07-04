@@ -46,4 +46,52 @@ Every engineer has lived through these scenarios. Learn how **[Tasker](https://g
 
 ---
 
+## 🛠️ Development
+
+This GitBook site uses Docker to ensure consistent builds across all environments.
+
+### Prerequisites
+
+- Docker installed and running
+- Git for cloning the repository
+
+### Building the Site
+
+```bash
+# Clone the repository
+git clone https://github.com/tasker-systems/tasker-blog.git
+cd tasker-blog
+
+# Test your setup
+./bin/test-setup.sh
+
+# Build and serve the site
+./bin/build-site.sh serve
+```
+
+The site will be available at http://localhost:4000
+
+### Available Commands
+
+```bash
+# Start development server
+./bin/build-site.sh serve
+npm run serve-docker
+
+# Build static site
+./bin/build-site.sh build
+npm run build-docker
+
+# Clean up Docker resources
+./bin/build-site.sh clean
+npm run docker-clean
+
+# Test setup
+./bin/test-setup.sh
+```
+
+For detailed development instructions, see [`bin/README.md`](bin/README.md).
+
+---
+
 *Ready to transform your workflows? Start with Chapter 1: "When Your E-commerce Checkout Became a House of Cards"*

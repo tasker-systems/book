@@ -73,6 +73,10 @@
     ".git",
     "*.log",
     "*.tmp",
-    ".DS_Store"
+    ".DS_Store",
+    "CLAUDE.md",
+    "GITBOOK_SETUP.md",
+    "Dockerfile",
+    "bin"
   ]
 }

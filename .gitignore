@@ -29,3 +29,8 @@ Gemfile.lock
 
 # Generated files
 site/
+
+# Docker build files (development only)
+# Note: Keep these commented out if you want to commit them
+# Dockerfile
+# bin/build-site.sh
