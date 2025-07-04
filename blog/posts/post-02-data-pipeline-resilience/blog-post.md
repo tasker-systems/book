@@ -75,163 +75,93 @@ Sarah spent the entire night manually restarting processes, watching logs, and e
 
 After their data pipeline nightmare, Sarah's team rebuilt it as a resilient, observable workflow using the same Tasker patterns that had saved their checkout system.
 
+### Complete Working Examples
+
+All the code examples in this post are **tested and validated** in the Tasker engine repository:
+
+**📁 [Data Pipeline Resilience Examples](https://github.com/tasker-systems/tasker/tree/main/spec/blog/post_02_data_pipeline_resilience)**
+
+This includes:
+- **[YAML Configuration](https://github.com/tasker-systems/tasker/blob/main/spec/blog/post_02_data_pipeline_resilience/config/customer_analytics_handler.yaml)** - Pipeline structure with parallel processing
+- **[Task Handler](https://github.com/tasker-systems/tasker/blob/main/spec/blog/post_02_data_pipeline_resilience/task_handler/customer_analytics_handler.rb)** - Runtime behavior and enterprise features
+- **[Step Handlers](https://github.com/tasker-systems/tasker/tree/main/spec/blog/post_02_data_pipeline_resilience/step_handlers)** - Individual pipeline steps
+- **[Setup Scripts](https://github.com/tasker-systems/tasker/tree/main/spec/blog/post_02_data_pipeline_resilience/setup-scripts)** - Quick deployment and testing
+
+### Key Architecture Insights
+
 The key insight was separating **business-critical operations** (step handlers) from **observability operations** (event subscribers):
 
 - **Step Handlers**: Extract, transform, and load data - must succeed for the pipeline to complete
 - **Event Subscribers**: Monitoring, alerting, analytics - failures don't block the main workflow
 
-### The YAML Configuration
+### Parallel Processing Configuration
+
+The **[YAML configuration](https://github.com/tasker-systems/tasker/blob/main/spec/blog/post_02_data_pipeline_resilience/config/customer_analytics_handler.yaml)** shows how to implement parallel data extraction:
 
 ```yaml
-# config/customer_analytics_handler.yaml
-task_name: customer_analytics
-namespace: data_pipeline
-version: "2.0.0"
-description: "Resilient customer analytics pipeline with parallel processing"
-
-# Enterprise annotations for monitoring
-annotations:
-  team: "data-engineering"
-  criticality: "high"
-  sla_hours: 8
-  dependencies: ["postgresql", "redis", "crm_api"]
-
 # Parallel data extraction phase
 step_templates:
   - name: extract_orders
     description: "Extract order data from transactional database"
     handler_class: "DataPipeline::StepHandlers::ExtractOrdersHandler"
-    timeout_seconds: 1800  # 30 minutes
-    max_retries: 3
-    retry_backoff: exponential
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 1800  # 30 minutes
+      retry_backoff: exponential
 
   - name: extract_users
     description: "Extract user data from CRM system"
     handler_class: "DataPipeline::StepHandlers::ExtractUsersHandler"
-    timeout_seconds: 1200  # 20 minutes - CRM can be flaky
-    max_retries: 5
-    retry_backoff: exponential
+    default_retryable: true
+    default_retry_limit: 5  # CRM can be flaky
+    handler_config:
+      timeout_seconds: 1200  # 20 minutes
+      retry_backoff: exponential
 
   - name: extract_products
     description: "Extract product data from inventory system"
     handler_class: "DataPipeline::StepHandlers::ExtractProductsHandler"
-    timeout_seconds: 900   # 15 minutes
-    max_retries: 3
-    retry_backoff: exponential
+    default_retryable: true
+    default_retry_limit: 3
+    handler_config:
+      timeout_seconds: 900   # 15 minutes
+      retry_backoff: exponential
 
   # Dependent transformations (wait for all extractions)
   - name: transform_customer_metrics
     description: "Calculate customer behavior metrics"
     handler_class: "DataPipeline::StepHandlers::TransformCustomerMetricsHandler"
-    depends_on: ["extract_orders", "extract_users"]
-    timeout_seconds: 2700  # 45 minutes
-    max_retries: 2
-
-  - name: transform_product_metrics
-    description: "Calculate product performance metrics"
-    handler_class: "DataPipeline::StepHandlers::TransformProductMetricsHandler"
-    depends_on: ["extract_orders", "extract_products"]
-    timeout_seconds: 1800  # 30 minutes
-    max_retries: 2
-
-  # Final aggregation and output
-  - name: generate_insights
-    description: "Generate business insights and recommendations"
-    handler_class: "DataPipeline::StepHandlers::GenerateInsightsHandler"
-    depends_on: ["transform_customer_metrics", "transform_product_metrics"]
-    timeout_seconds: 1200  # 20 minutes
-
-  - name: update_dashboard
-    description: "Update executive dashboard with new metrics"
-    handler_class: "DataPipeline::StepHandlers::UpdateDashboardHandler"
-    depends_on: ["generate_insights"]
-    max_retries: 3
-    retry_backoff: exponential
-
-  - name: send_notifications
-    description: "Send completion notifications to stakeholders"
-    handler_class: "DataPipeline::StepHandlers::SendNotificationsHandler"
-    depends_on: ["update_dashboard"]
-    max_retries: 5
-    retry_backoff: exponential
-
-# Custom events for this pipeline
-custom_events:
-  - name: "data_extraction_started"
-    description: "Fired when any extraction step begins"
-  - name: "data_extraction_completed"
-    description: "Fired when extraction step completes with metrics"
-  - name: "pipeline_milestone_reached"
-    description: "Fired at key pipeline milestones"
+    depends_on_steps: ["extract_orders", "extract_users"]
+    default_retryable: true
+    default_retry_limit: 2
+    handler_config:
+      timeout_seconds: 2700  # 45 minutes
 ```
 
-### The Modern Task Handler
+The **[complete task handler](https://github.com/tasker-systems/tasker/blob/main/spec/blog/post_02_data_pipeline_resilience/task_handler/customer_analytics_handler.rb)** uses the modern ConfiguredTask pattern:
 
 ```ruby
-# app/tasks/data_pipeline/customer_analytics_handler.rb
-module DataPipeline
-  class CustomerAnalyticsHandler < Tasker::ConfiguredTask
-    def schema
-      {
-        type: 'object',
-        properties: {
-          date_range: {
-            type: 'object',
-            properties: {
-              start_date: { type: 'string', format: 'date' },
-              end_date: { type: 'string', format: 'date' }
-            },
-            required: ['start_date', 'end_date']
-          },
-          force_refresh: { type: 'boolean', default: false },
-          notification_channels: {
-            type: 'array',
-            items: { type: 'string' },
-            default: ['#data-team']
-          },
-          processing_mode: {
-            type: 'string',
-            enum: ['standard', 'high_memory', 'distributed'],
-            default: 'standard'
-          }
-        },
-        required: ['date_range']
-      }
-    end
+# frozen_string_literal: true
 
-    # Runtime behavior customization based on data volume
-    def configure_runtime_behavior(context)
-      date_range = context['date_range']
-      start_date = Date.parse(date_range['start_date'])
-      end_date = Date.parse(date_range['end_date'])
-      days_span = (end_date - start_date).to_i + 1
-
-      # Adjust timeouts and batch sizes based on date range
-      if days_span > 30
-        # Large date range - increase timeouts and enable distributed mode
-        override_step_config('extract_orders', {
-          timeout_seconds: 3600,  # 1 hour
-          max_retries: 5
-        })
-        override_step_config('transform_customer_metrics', {
-          timeout_seconds: 5400   # 90 minutes
-        })
-      elsif days_span > 7
-        # Medium date range - moderate adjustments
-        override_step_config('extract_orders', {
-          timeout_seconds: 2700   # 45 minutes
-        })
-      end
-
-      # High memory mode for large datasets
-      if context['processing_mode'] == 'high_memory'
-        add_annotation('memory_profile', 'high_memory_optimized')
-        add_annotation('batch_size_multiplier', '2.0')
+module BlogExamples
+  module Post02
+    # CustomerAnalyticsHandler demonstrates YAML-driven task configuration
+    # This example shows the ConfiguredTask pattern using manual YAML loading
+    # for compatibility with the blog test framework
+    class CustomerAnalyticsHandler < Tasker::ConfiguredTask
+      def self.yaml_path
+        @yaml_path ||= File.join(
+          File.dirname(__FILE__),
+          '..', 'config', 'customer_analytics_handler.yaml'
+        )
       end
     end
   end
 end
 ```
+
+The beauty of the ConfiguredTask pattern is its simplicity - the YAML file handles all the step configuration, dependencies, and retry policies. The task handler focuses purely on business logic when needed.
 
 Now let's look at how they implemented the intelligent step handlers with clear separation of concerns:
 
@@ -244,13 +174,25 @@ module DataPipeline
         date_range = task.context['date_range']
         start_date = Date.parse(date_range['start_date'])
         end_date = Date.parse(date_range['end_date'])
+        force_refresh = task.context['force_refresh'] || false
 
-        # Fire custom event for monitoring
+        # Fire custom event for monitoring (handled by event subscribers)
         publish_event('data_extraction_started', {
           step_name: 'extract_orders',
           date_range: date_range,
-          estimated_records: estimate_record_count(start_date, end_date)
+          estimated_records: estimate_record_count(start_date, end_date),
+          task_id: task.id
         })
+
+        # Check cache first unless force refresh
+        cached_data = get_cached_extraction('orders', start_date, end_date)
+        if cached_data && !force_refresh
+          log_structured_info("Using cached order data", {
+            cache_key: cache_key('orders', start_date, end_date),
+            records_count: cached_data['total_count']
+          })
+          return cached_data
+        end
 
         # Calculate total records for progress tracking
         total_count = Order.where(created_at: start_date..end_date).count
@@ -258,19 +200,24 @@ module DataPipeline
         orders = []
 
         # Process in batches to avoid memory issues
-        Order.where(created_at: start_date..end_date).find_in_batches(batch_size: batch_size) do |batch|
+        Order.where(created_at: start_date..end_date)
+             .includes(:order_items, :customer)
+             .find_in_batches(batch_size: batch_size) do |batch|
           begin
             batch_data = batch.map do |order|
               {
                 order_id: order.id,
                 customer_id: order.customer_id,
+                customer_email: order.customer&.email,
                 total_amount: order.total_amount,
                 order_date: order.created_at.iso8601,
-                items: order.items.map { |item|
+                status: order.status,
+                items: order.order_items.map { |item|
                   {
                     product_id: item.product_id,
                     quantity: item.quantity,
-                    price: item.price
+                    unit_price: item.unit_price,
+                    line_total: item.line_total
                   }
                 }
               }
@@ -283,43 +230,35 @@ module DataPipeline
             update_progress(step, processed_count, total_count)
 
           rescue ActiveRecord::ConnectionTimeoutError => e
-            # Log the error but let Tasker handle retries
-            log_structured_error("Database connection timeout during order extraction", {
+            log_structured_error("Database connection timeout", {
               error: e.message,
-              batch_size: batch.size,
-              processed_so_far: processed_count
+              processed_so_far: processed_count,
+              total_expected: total_count
             })
             raise e  # Let Tasker retry with backoff
-          rescue StandardError => e
-            log_structured_error("Order extraction error", {
-              error: e.message,
-              batch_size: batch.size,
-              processed_so_far: processed_count
-            })
-            raise e  # Let Tasker handle retries
           end
         end
+
+        # Calculate data quality metrics
+        data_quality = calculate_data_quality(orders)
 
         result = {
           orders: orders,
           total_count: orders.length,
-          date_range: {
-            start_date: start_date.iso8601,
-            end_date: end_date.iso8601
-          },
+          date_range: { start_date: start_date.iso8601, end_date: end_date.iso8601 },
           extracted_at: Time.current.iso8601,
-          processing_stats: {
-            batches_processed: (processed_count.to_f / batch_size).ceil,
-            batch_size: batch_size
-          }
+          data_quality: data_quality
         }
 
-        # Fire completion event with metrics
+        # Cache the result
+        cache_extraction('orders', start_date, end_date, result)
+
+        # Fire completion event (handled by event subscribers)
         publish_event('data_extraction_completed', {
           step_name: 'extract_orders',
           records_extracted: orders.length,
-          processing_time_seconds: step.duration_seconds,
-          date_range: date_range
+          data_quality: data_quality,
+          task_id: task.id
         })
 
         result
@@ -328,36 +267,18 @@ module DataPipeline
       private
 
       def batch_size
-        # Adjust batch size based on memory profile annotation
         base_size = 1000
-        multiplier = task.annotations['batch_size_multiplier']&.to_f || 1.0
+        multiplier = get_task_annotation('batch_size_multiplier')&.to_f || 1.0
         (base_size * multiplier).to_i
-      end
-
-      def estimate_record_count(start_date, end_date)
-        # Quick estimate without full count for monitoring
-        sample_day = Order.where(created_at: start_date..start_date.end_of_day).count
-        days_span = (end_date - start_date).to_i + 1
-        sample_day * days_span
       end
 
       def update_progress(step, processed, total)
         progress_percent = (processed.to_f / total * 100).round(1)
         step.annotations.merge!({
           progress_message: "Processed #{processed}/#{total} orders (#{progress_percent}%)",
-          progress_percent: progress_percent,
-          last_updated: Time.current.iso8601
+          progress_percent: progress_percent
         })
         step.save!
-      end
-
-      def log_structured_error(message, context)
-        Rails.logger.error({
-          message: message,
-          correlation_id: task.correlation_id,
-          step_name: 'extract_orders',
-          context: context
-        }.to_json)
       end
     end
   end
@@ -798,7 +719,7 @@ curl -H "Authorization: Bearer $API_TOKEN" \
 - The `transform_customer_metrics` step has a 3.2% retry rate
 - **Discovery:** Adding more memory to transform processes reduced duration by 40%
 
-**Before analytics:** They assumed network issues caused most retries  
+**Before analytics:** They assumed network issues caused most retries
 **After analytics:** Memory pressure was the real culprit
 
 This data-driven insight led to right-sizing their infrastructure and eliminating weekend pipeline failures.

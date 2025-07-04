@@ -1,508 +1,787 @@
-# Microservices Orchestration Without the Chaos
+# Microservices Coordination: Orchestrating Complex Workflows
 
-*How one team tamed their distributed system nightmare into a coordinated symphony*
+*Building resilient microservices workflows with Tasker's distributed coordination engine*
 
 ---
 
-## The Distributed System Reality Check
+## The Challenge: Service Orchestration at Scale
 
-Eight months after conquering their data pipeline demons, Sarah's team at GrowthCorp was riding high. Their customer analytics ran like clockwork, delivering fresh insights every morning without a single 3 AM alert.
+Modern applications rarely exist in isolation. A simple user registration might involve coordinating with multiple services: user management, billing, preferences, notifications, and analytics. Each service has its own failure modes, response times, and availability patterns.
 
-Then the architecture team made an announcement that filled Sarah with dread:
+Traditional approaches to service orchestration often result in brittle, hard-to-maintain code with custom circuit breakers, manual retry logic, and complex state management. Tasker provides a different approach: **declarative workflow orchestration** with built-in resilience patterns.
 
-"We're breaking up the monolith! Each domain team will own their services. User management, inventory, payments, notifications - all separate services with their own databases and APIs."
+## Real-World Scenario: User Registration Flow
 
-"It'll be great!" proclaimed Marcus, the newly hired DevOps engineer. "Microservices give us independence, scalability, and faster deployments!"
+Let's examine a user registration workflow that coordinates across multiple microservices:
 
-Sarah had seen this movie before. She knew what was coming.
+1. **Create User Account** - UserService
+2. **Setup Billing Profile** - BillingService
+3. **Initialize Preferences** - PreferencesService
+4. **Send Welcome Sequence** - NotificationService
+5. **Update User Status** - UserService
 
-Three weeks after the "great decomposition," her phone started buzzing again. But this time it wasn't data pipelines - it was something far worse.
+Some steps can run in parallel (billing and preferences), while others must be sequential (welcome email after both are complete).
 
-> **Alert**: User registration completion rate down 40%
-> **Symptoms**: Registration starts but never completes
-> **Services involved**: Users, Billing, Notifications, Preferences
-> **Debug path**: Good luck.
+## Tasker's Approach: YAML-Driven Orchestration
 
-What used to be a simple user registration flow had become a distributed nightmare spanning 4 services with no coordination, no failure handling, and no visibility when things went wrong.
+Instead of hardcoding service calls and dependencies, Tasker uses declarative YAML configuration. This approach separates workflow structure from business logic, making complex orchestrations maintainable and testable.
 
-## The Microservices Horror Show
-
-Here's what their "improved" user registration looked like:
-
-```ruby
-class UserRegistrationService
-  def register_user(user_params)
-    # Step 1: Create user in UserService
-    user_response = HTTParty.post("#{USER_SERVICE_URL}/users", {
-      body: user_params.to_json,
-      headers: { 'Content-Type' => 'application/json' },
-      timeout: 30
-    })
-
-    raise "User creation failed" unless user_response.success?
-    user_id = user_response.parsed_response['id']
-
-    # Step 2: Create billing profile
-    billing_response = HTTParty.post("#{BILLING_SERVICE_URL}/profiles", {
-      body: { user_id: user_id, plan: 'free' }.to_json,
-      headers: { 'Content-Type' => 'application/json' },
-      timeout: 30
-    })
-
-    raise "Billing creation failed" unless billing_response.success?
-
-    # Step 3: Set up preferences
-    prefs_response = HTTParty.post("#{PREFERENCES_SERVICE_URL}/preferences", {
-      body: { user_id: user_id, defaults: true }.to_json,
-      headers: { 'Content-Type' => 'application/json' },
-      timeout: 30
-    })
-
-    raise "Preferences creation failed" unless prefs_response.success?
-
-    # Step 4: Send welcome email
-    email_response = HTTParty.post("#{NOTIFICATION_SERVICE_URL}/welcome", {
-      body: { user_id: user_id, email: user_params[:email] }.to_json,
-      headers: { 'Content-Type' => 'application/json' },
-      timeout: 30
-    })
-
-    raise "Email sending failed" unless email_response.success?
-
-    { user_id: user_id, status: 'completed' }
-  rescue => e
-    # What do we do here? User might be created but billing failed...
-    logger.error "Registration failed: #{e.message}"
-    raise
-  end
-end
-```
-
-**What went wrong constantly:**
-- **BillingService timeout**: User created, no billing profile, registration "failed"
-- **PreferencesService 500 error**: User and billing exist, but preferences missing
-- **NotificationService rate limiting**: Everything created, no welcome email
-- **Network hiccups**: Random timeouts causing partial registrations
-- **Service deployments**: Any service restart broke in-flight registrations
-
-The worst part? When something failed, they had **no idea what state the user was in**. Marcus spent his first month writing "cleanup scripts" to reconcile partially created users across services.
-
-## The Orchestrated Solution
-
-After their third weekend debugging partial registrations, Sarah's team applied the same Tasker patterns that had saved their checkout and data pipeline. But this time, they used Tasker's YAML configuration to clearly separate the workflow structure from the business logic:
+The configuration supports nested input validation for complex microservices workflows:
 
 ```yaml
-# config/tasker/tasks/user_management/user_registration_handler.yaml
-task_name: user_registration
-namespace: user_management
+name: user_registration
+namespace_name: blog_examples
+task_handler_class: BlogExamples::Post03::UserRegistrationHandler
 version: "1.0.0"
-description: "Orchestrated user registration across microservices"
+description: "Orchestrated user registration workflow across multiple microservices"
+default_dependent_system: "user_management_system"
 
 # Input validation schema
 schema:
   type: object
-  required: ['email', 'name']
+  required: ['user_info']
   properties:
-    email:
-      type: string
-      format: email
-    name:
-      type: string
-      minLength: 1
-    phone:
-      type: string
-    plan:
-      type: string
-      enum: ['free', 'pro', 'enterprise']
-      default: 'free'
-    marketing_consent:
-      type: boolean
-      default: false
+    user_info:
+      type: object
+      required: ['email', 'name']
+      properties:
+        email:
+          type: string
+          format: email
+        name:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+        plan:
+          type: string
+          enum: ['free', 'pro', 'enterprise']
+          default: 'free'
+        referral_code:
+          type: string
+        company:
+          type: string
+        source:
+          type: string
+          enum: ['web', 'mobile', 'api']
+          default: 'web'
+    billing_info:
+      type: object
+      properties:
+        payment_method:
+          type: string
+        billing_address:
+          type: object
+          properties:
+            street:
+              type: string
+            city:
+              type: string
+            state:
+              type: string
+            zip:
+              type: string
+    preferences:
+      type: object
+      properties:
+        marketing_emails:
+          type: boolean
+          default: false
+        product_updates:
+          type: boolean
+          default: false
+        newsletter:
+          type: boolean
+          default: false
     correlation_id:
       type: string
       description: "For distributed tracing"
 
+# Step templates for service orchestration
 step_templates:
   - name: create_user_account
     description: "Create user account in UserService"
-    handler_class: "UserManagement::StepHandlers::CreateUserAccountHandler"
+    handler_class: "BlogExamples::Post03::StepHandlers::CreateUserAccountHandler"
     default_retryable: true
     default_retry_limit: 3
     handler_config:
-      timeout_seconds: 30
-      service: "user_service"
+      url: 'https://api.userservice.com'
 
   - name: setup_billing_profile
     description: "Create billing profile in BillingService"
+    handler_class: "BlogExamples::Post03::StepHandlers::SetupBillingProfileHandler"
     depends_on_steps: ["create_user_account"]
-    handler_class: "UserManagement::StepHandlers::SetupBillingProfileHandler"
     default_retryable: true
     default_retry_limit: 3
     handler_config:
-      timeout_seconds: 30
-      service: "billing_service"
+      url: 'https://api.billingservice.com'
 
   - name: initialize_preferences
     description: "Set up user preferences in PreferencesService"
-    depends_on_steps: ["create_user_account"]  # Runs parallel to billing
-    handler_class: "UserManagement::StepHandlers::InitializePreferencesHandler"
+    handler_class: "BlogExamples::Post03::StepHandlers::InitializePreferencesHandler"
+    depends_on_steps: ["create_user_account"]  # Can run parallel to billing
     default_retryable: true
     default_retry_limit: 3
     handler_config:
-      timeout_seconds: 20
-      service: "preferences_service"
+      url: 'https://api.preferencesservice.com'
 
   - name: send_welcome_sequence
     description: "Send welcome email via NotificationService"
+    handler_class: "BlogExamples::Post03::StepHandlers::SendWelcomeSequenceHandler"
     depends_on_steps: ["setup_billing_profile", "initialize_preferences"]
-    handler_class: "UserManagement::StepHandlers::SendWelcomeSequenceHandler"
     default_retryable: true
     default_retry_limit: 5  # Email services are often flaky
     handler_config:
-      timeout_seconds: 15
-      service: "notification_service"
+      url: 'https://api.notificationservice.com'
 
   - name: update_user_status
-    description: "Mark user registration as complete"
+    description: "Mark user registration as complete in UserService"
+    handler_class: "BlogExamples::Post03::StepHandlers::UpdateUserStatusHandler"
     depends_on_steps: ["send_welcome_sequence"]
-    handler_class: "UserManagement::StepHandlers::UpdateUserStatusHandler"
     default_retryable: true
     default_retry_limit: 2
     handler_config:
-      timeout_seconds: 10
-      service: "user_service"
+      url: 'https://api.userservice.com'
+
+# Custom events for service monitoring (using Tasker's native circuit breaker)
+custom_events:
+  - name: "service_call_started"
+    description: "Fired when calling external service"
+  - name: "service_call_completed"
+    description: "Fired when service call succeeds"
+  - name: "service_call_failed"
+    description: "Fired when service call fails"
 ```
 
-And a focused task handler with just the business logic:
+**Key Configuration Features:**
+
+1. **Nested Input Validation**: The schema supports complex, structured input validation with nested objects for `user_info`, `billing_info`, and `preferences`. This ensures data integrity across all microservices.
+
+2. **Service-Specific Configuration**: Each step includes `handler_config` with service URLs, making it easy to configure different environments.
+
+3. **Parallel Execution**: Steps like `setup_billing_profile` and `initialize_preferences` both depend only on `create_user_account`, allowing them to run in parallel.
+
+4. **Smart Retry Policies**: Different services get different retry limits based on their reliability characteristics (email services get 5 retries, user services get 2-3).
+
+## The Task Handler: Modern ConfiguredTask Pattern
+
+Tasker's modern `ConfiguredTask` pattern eliminates boilerplate code by automatically handling YAML loading and step template registration. This is a significant improvement over manual configuration approaches.
+
+**Why ConfiguredTask is Superior:**
+
+- **Automatic YAML Loading**: No need to manually parse and load configuration files
+- **Step Template Registration**: Framework automatically registers step handlers from YAML
+- **Convention over Configuration**: Follows established patterns for file locations and naming
+- **Reduced Complexity**: Focus on business logic instead of framework plumbing
+
+Here's the complete task handler using the modern pattern:
 
 ```ruby
-# app/tasks/user_management/user_registration_handler.rb
-module UserManagement
-  class UserRegistrationHandler < Tasker::ConfiguredTask
+# frozen_string_literal: true
 
-    # Runtime step dependency and configuration customization
-    def establish_step_dependencies_and_defaults(task, steps)
-      # Generate correlation ID for distributed tracing
-      correlation_id = task.context['correlation_id'] || generate_correlation_id
-      task.annotations['correlation_id'] = correlation_id
+module BlogExamples
+  module Post03
+    # UserRegistrationHandler demonstrates YAML-driven task configuration
+    # This example shows the ConfiguredTask pattern for modern Tasker applications
+    class UserRegistrationHandler < Tasker::ConfiguredTask
+      def self.yaml_path
+        @yaml_path ||= File.join(
+          File.dirname(__FILE__),
+          '..', 'config', 'user_registration_handler.yaml'
+        )
+      end
 
-      # Adjust timeouts for enterprise customers
-      if task.context['plan'] == 'enterprise'
-        billing_step = steps.find { |s| s.name == 'setup_billing_profile' }
-        if billing_step
-          billing_step.retry_limit = 5
-          billing_step.handler_config = billing_step.handler_config.merge(
-            timeout_seconds: 45
-          )
+      # Post-completion hooks
+      def update_annotations(task, _sequence, steps)
+        # Record service response times in task context (simplified for testing)
+        service_timings = {}
+        steps.each do |step|
+          if step.results && step.results['service_response_time']
+            service_name = step.name
+            service_timings[service_name] = step.results['service_response_time']
+          end
         end
+
+        # Store in task context for testing
+        task.context['service_performance'] = {
+          service_timings: service_timings,
+          total_duration: calculate_total_duration(steps),
+          parallel_execution_saved: calculate_parallel_savings(steps)
+        }
+
+        # Record registration outcome
+        task.context['registration_outcome'] = {
+          user_id: steps.find { |s| s.name == 'create_user_account' }&.results&.dig('user_id'),
+          plan: task.context['plan'],
+          source: task.context['source'],
+          completed_at: Time.current.iso8601
+        }
+
+        # Set fields expected by tests
+        task.context['plan_type'] = task.context.dig('user_info', 'plan') || task.context['plan'] || 'free'
+        task.context['correlation_id'] = task.context['correlation_id'] || generate_correlation_id
+        task.context['registration_source'] = task.context.dig('user_info', 'source') || task.context['source'] || 'web'
+
+        # Save the task to persist context changes
+        task.save! if task.respond_to?(:save!)
       end
 
-      # Add monitoring annotations for all steps
-      steps.each do |step|
-        step.annotations['correlation_id'] = correlation_id
-        step.annotations['plan_type'] = task.context['plan'] || 'free'
+      private
+
+      def generate_correlation_id
+        "reg_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
       end
-    end
 
-    private
+      def calculate_total_duration(steps)
+        return 0 unless steps.any?
 
-    def generate_correlation_id
-      "reg_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
+        # Use created_at and updated_at since WorkflowStep doesn't have started_at
+        start_time = steps.filter_map(&:created_at).min
+        end_time = steps.filter_map(&:updated_at).max
+
+        return 0 unless start_time && end_time
+
+        ((end_time - start_time) * 1000).round(2) # Convert to milliseconds
+      end
+
+      def calculate_parallel_savings(steps)
+        # Calculate how much time was saved by parallel execution
+        sequential_time = steps.sum { |s| calculate_step_duration(s) }
+        actual_time = calculate_total_duration(steps)
+
+        sequential_time - actual_time
+      end
+
+      def calculate_step_duration(step)
+        return 0 unless step.created_at && step.updated_at
+
+        ((step.updated_at - step.created_at) * 1000).round(2) # Convert to milliseconds
+      end
     end
   end
 end
 ```
 
-## Discovering Tasker's Built-in Circuit Breaker Architecture
+**What's Different from Manual Approaches:**
 
-The real revelation came when Sarah's team realized they didn't need to implement custom circuit breakers - **Tasker's architecture already provides superior distributed circuit breaker functionality** through its SQL-driven retry system.
+1. **Inherits from `Tasker::ConfiguredTask`**: Automatically gets YAML loading and step registration
+2. **Simple `yaml_path` Declaration**: Just specify where the YAML file is located
+3. **Focus on Business Logic**: The handler only contains workflow-specific logic like performance tracking and result aggregation
+4. **No Boilerplate**: No manual step template definition or YAML parsing code
+
+Compare this to a manual approach that would require 50+ lines of configuration parsing, step template registration, and error handling - all eliminated by the framework.
+
+## Step Handlers: Business Logic Focus
+
+Step handlers focus purely on business logic, with API concerns abstracted away:
 
 ```ruby
-# app/tasks/user_management/step_handlers/create_user_account_handler.rb
-module UserManagement
-  module StepHandlers
-    class CreateUserAccountHandler < ApiBaseHandler
+# frozen_string_literal: true
 
-      def process(task, sequence, step)
-        # Store context for base class
-        super(task, sequence, step)
-        
-        user_data = extract_user_data(task.context)
+require_relative '../concerns/api_request_handling'
 
-        log_structured_info("Creating user account", {
-          email: user_data[:email],
-          plan: task.context['plan']
-        })
+# CreateUserAccountHandler - Microservices Coordination Example
+#
+# This handler demonstrates how to coordinate with external microservices
+# using Tasker's built-in circuit breaker functionality through proper error classification.
+#
+# KEY ARCHITECTURAL DECISIONS:
+# 1. NO custom circuit breaker logic - Tasker handles this at the framework level
+# 2. Focus on proper error classification (PermanentError vs RetryableError)
+# 3. Let Tasker's SQL-driven retry system handle intelligent backoff and recovery
+# 4. Use structured logging for observability instead of custom circuit breaker metrics
+#
+module BlogExamples
+  module Post03
+    module StepHandlers
+      class CreateUserAccountHandler < Tasker::StepHandler::Api
+        include BlogExamples::Post03::Concerns::ApiRequestHandling
 
-        # Use Tasker's Faraday connection - circuit breaker logic handled by Tasker's retry system
-        response = connection.post("#{user_service_url}/users") do |req|
-          req.body = user_data.to_json
-          req.headers.merge!(enhanced_default_headers)
+        def process(task, sequence, step)
+          set_current_context(task, step, sequence)
+
+          # Extract and validate all required inputs
+          user_inputs = extract_and_validate_inputs(task, sequence, step)
+
+          Rails.logger.info "Creating user account for #{user_inputs[:email]}"
+
+          # Create user account through microservice
+          # Tasker's circuit breaker logic is handled automatically through error classification
+          create_user_account(user_inputs)
+        rescue StandardError => e
+          Rails.logger.error "User account creation failed: #{e.message}"
+          raise
         end
 
-        case response.status
-        when 201
-          # User created successfully
-          user_response = response.body
-          log_structured_info("User account created", { user_id: user_response['id'] })
+        # Override process_results to set business logic results based on response
+        def process_results(step, service_response, _initial_results)
+          # Set business logic results based on response status
+          case service_response.status
+          when 201
+            step.results = process_successful_creation(service_response)
+          when 409
+            # For 409, we need to check if it's idempotent
+            user_inputs = extract_and_validate_inputs(@current_task, @current_sequence, step)
+            step.results = process_existing_user(user_inputs, service_response)
+          else
+            # For other statuses, let the framework handle the error
+            # The ResponseProcessor will raise appropriate errors
+            step.results = {
+              error: true,
+              status_code: service_response.status,
+              response_body: service_response.body
+            }
+          end
+        end
 
+        private
+
+        # Extract and validate all required inputs for user account creation
+        def extract_and_validate_inputs(task, _sequence, _step)
+          # Normalize all hash keys to symbols for consistent access
+          context = task.context.deep_symbolize_keys
+          user_info = context[:user_info] || {}
+
+          # Validate required fields - these are PERMANENT errors (don't retry)
+          unless user_info[:email]
+            raise Tasker::PermanentError.new(
+              'Email is required but was not provided',
+              error_code: 'MISSING_EMAIL'
+            )
+          end
+
+          unless user_info[:name]
+            raise Tasker::PermanentError.new(
+              'Name is required but was not provided',
+              error_code: 'MISSING_NAME'
+            )
+          end
+
+          # Build validated user data with defaults
           {
-            user_id: user_response['id'],
-            email: user_response['email'],
-            created_at: user_response['created_at'],
+            email: user_info[:email],
+            name: user_info[:name],
+            phone: user_info[:phone],
+            plan: user_info[:plan] || 'free',
+            marketing_consent: context[:preferences]&.dig(:marketing_emails) || false,
+            referral_code: user_info[:referral_code],
+            source: user_info[:source] || 'web'
+          }.compact
+        end
+
+        # Create user account using validated inputs
+        def create_user_account(user_inputs)
+          start_time = Time.current
+
+          log_api_call(:post, 'user_service/users', timeout: 30)
+
+          # Call the mock service - demonstrates Tasker's circuit breaker through error classification
+          user_service = get_service(:user_service)
+          response = user_service.create_user(user_inputs)
+
+          duration_ms = ((Time.current - start_time) * 1000).to_i
+          log_api_response(:post, 'user_service/users', response, duration_ms)
+
+          # Return the original response for framework processing
+          response
+        end
+
+        # Process successful user creation response
+        def process_successful_creation(response)
+          user_response = response.body.deep_symbolize_keys
+
+          # Validate the response structure
+          ensure_user_creation_successful!(user_response)
+
+          Rails.logger.info "User account created successfully: #{user_response[:id]}"
+
+          # Return structured results for the next step
+          {
+            user_id: user_response[:id],
+            email: user_response[:email],
+            created_at: user_response[:created_at],
             correlation_id: correlation_id,
+            service_response_time: response.headers['x-response-time'],
             status: 'created'
           }
+        end
 
-        when 409
-          # User already exists - handle idempotency
-          existing_user = get_existing_user(user_data[:email])
+        # Process existing user with idempotency check
+        def process_existing_user(user_inputs, _response)
+          Rails.logger.info "User already exists, checking for idempotency: #{user_inputs[:email]}"
 
-          if existing_user && user_matches?(existing_user, user_data)
-            log_structured_info("Idempotent success - user already exists", {
-              user_id: existing_user['id']
-            })
+          existing_user = get_existing_user(user_inputs[:email])
+
+          if existing_user && user_matches?(existing_user, user_inputs)
+            Rails.logger.info "Existing user matches, treating as idempotent success: #{existing_user[:id]}"
 
             {
-              user_id: existing_user['id'],
-              email: existing_user['email'],
+              user_id: existing_user[:id],
+              email: existing_user[:email],
+              created_at: existing_user[:created_at],
               correlation_id: correlation_id,
               status: 'already_exists'
             }
           else
             raise Tasker::PermanentError.new(
-              "User with email #{user_data[:email]} exists with different data",
+              "User with email #{user_inputs[:email]} already exists with different data",
               error_code: 'USER_CONFLICT'
             )
           end
-
-        else
-          # Let Tasker's enhanced error handling manage circuit breaker logic
-          handle_microservice_response(response, 'user_service')
-        end
-      end
-
-      private
-
-      def extract_user_data(context)
-        {
-          email: context['email'],
-          name: context['name'],
-          phone: context['phone'],
-          plan: context['plan'] || 'free'
-        }.compact
-      end
-
-      def get_existing_user(email)
-        response = with_circuit_breaker('user_service') do
-          http_client.get("#{user_service_url}/users", {
-            query: { email: email },
-            headers: default_headers,
-            timeout: 15
-          })
         end
 
-        response.success? ? response.parsed_response : nil
-      rescue => e
-        log_structured_error("Failed to check existing user", { error: e.message })
-        nil
-      end
+        # Get existing user for idempotency check
+        def get_existing_user(email)
+          # Tasker's retry system will handle failures automatically
+          user_service = get_service(:user_service)
+          response = user_service.get_user_by_email(email)
 
-      def user_matches?(existing_user, new_user_data)
-        existing_user['email'] == new_user_data[:email] &&
-          existing_user['name'] == new_user_data[:name]
-      end
+          response.success? ? response.body.deep_symbolize_keys : nil
+        rescue Tasker::PermanentError => e
+          # Don't retry permanent failures (like 404s)
+          Rails.logger.error "Permanent error checking existing user: #{e.message}"
+          nil
+        rescue StandardError => e
+          # Re-raise other errors for Tasker's retry system to handle
+          Rails.logger.error "Failed to check existing user: #{e.message}"
+          raise
+        end
 
-      def user_service_url
-        ENV.fetch('USER_SERVICE_URL', 'http://localhost:3001')
+        # Check if existing user matches new user data for idempotency
+        def user_matches?(existing_user, new_user_data)
+          # Check if core attributes match for idempotency
+          existing_user &&
+            existing_user[:email] == new_user_data[:email] &&
+            existing_user[:name] == new_user_data[:name] &&
+            existing_user[:plan] == new_user_data[:plan]
+        end
+
+        # Ensure user creation was successful
+        def ensure_user_creation_successful!(user_response)
+          unless user_response[:id]
+            raise Tasker::PermanentError.new(
+              'User creation appeared successful but no user ID was returned',
+              error_code: 'MISSING_USER_ID_IN_RESPONSE'
+            )
+          end
+
+          return if user_response[:email]
+
+          raise Tasker::PermanentError.new(
+            'User creation appeared successful but no email was returned',
+            error_code: 'MISSING_EMAIL_IN_RESPONSE'
+          )
+        end
       end
     end
   end
 end
 ```
 
-## Tasker's Superior Circuit Breaker Architecture
+## API Request Handling: Abstracted Concerns
 
-Instead of custom circuit breaker objects, Tasker provides **distributed, SQL-driven circuit breaker functionality** that's far more robust:
+The API handling logic is cleanly separated into a reusable concern:
 
 ```ruby
-# Enhanced API base handler leveraging Tasker's native capabilities
-class ApiBaseHandler < Tasker::StepHandler::Api
-  def handle_microservice_response(response, service_name)
-    case response.status
-    when 429
-      # Rate limited - Tasker's retry system handles intelligent backoff
-      retry_after = response.headers['retry-after']&.to_i || 60
-      raise Tasker::RetryableError.new(
-        "Rate limited by #{service_name}",
-        retry_after: retry_after,  # Server-suggested delay
-        context: { service: service_name, rate_limit_type: 'server_requested' }
-      )
-    when 500..599
-      # Server error - Let Tasker's exponential backoff handle timing  
-      raise Tasker::RetryableError.new(
-        "#{service_name} server error: #{response.status}",
-        context: { service: service_name, error_type: 'server_error' }
-      )
-    when 400..499
-      # Permanent failures - Don't retry, circuit stays "open"
-      raise Tasker::PermanentError.new(
-        "Client error: #{response.status}",
-        error_code: 'CLIENT_ERROR',
-        context: { service: service_name }
-      )
-    end
-  end
-end
+# frozen_string_literal: true
 
-# Service-specific monitoring
-class ServiceMonitor < Tasker::EventSubscriber::Base
-  subscribe_to 'step.failed', 'step.completed'
+# API Request Handling for Microservices Coordination
+#
+# This concern demonstrates how to handle API requests in a microservices architecture
+# using Tasker's built-in circuit breaker functionality through proper error classification.
+#
+# KEY INSIGHT: Tasker provides superior circuit breaker functionality through its
+# SQL-driven retry architecture. Custom circuit breaker patterns are unnecessary and
+# actually work against Tasker's distributed coordination capabilities.
+#
+module BlogExamples
+  module Post03
+    module Concerns
+      module ApiRequestHandling
+        extend ActiveSupport::Concern
 
-  def handle_step_failed(event)
-    if microservice_step?(event)
-      service_name = extract_service_name(event[:step_name])
+        included do
+          # Initialize with mock service access for blog examples
+          def initialize(*args, **kwargs)
+            # For blog examples, provide a dummy URL to satisfy Api::Config requirements
+            # since we use mock services instead of real HTTP requests
+            dummy_config = Tasker::StepHandler::Api::Config.new(url: 'http://localhost:3000')
+            kwargs[:config] ||= dummy_config
 
-      # Different alerts for different failure types
-      case event[:error]
-      when /Circuit breaker is OPEN/
-        notify_circuit_breaker_open(service_name, event)
-      when /timeout/i
-        notify_service_timeout(service_name, event)
-      when /Rate limited/
-        notify_rate_limiting(service_name, event)
-      else
-        notify_service_error(service_name, event)
+            super
+            @mock_services = {
+              user_service: BlogExamples::MockServices::MockUserService.new,
+              billing_service: BlogExamples::MockServices::MockBillingService.new,
+              preferences_service: BlogExamples::MockServices::MockPreferencesService.new,
+              notification_service: BlogExamples::MockServices::MockNotificationService.new
+            }
+          end
+        end
+
+        protected
+
+        # Get mock service by name (business logic, not framework)
+        def get_service(service_name)
+          @mock_services[service_name.to_sym] || raise("Unknown service: #{service_name}")
+        end
+
+        # Enhanced response handler leveraging Tasker's error classification
+        # This is where Tasker's circuit breaker logic is implemented - through error types!
+        def handle_microservice_response(response, service_name)
+          case response.status
+          when 200..299
+            # Success - circuit breaker records success automatically
+            response.body
+
+          when 400, 422
+            # Client errors - PERMANENT failures
+            # Tasker's circuit breaker will NOT retry these (circuit stays "open" indefinitely)
+            raise Tasker::PermanentError.new(
+              "#{service_name} validation error: #{response.body}",
+              error_code: 'CLIENT_VALIDATION_ERROR',
+              context: { service: service_name, status: response.status }
+            )
+
+          when 401, 403
+            # Authentication/authorization errors - PERMANENT failures
+            raise Tasker::PermanentError.new(
+              "#{service_name} authentication failed: #{response.status}",
+              error_code: 'AUTH_ERROR',
+              context: { service: service_name }
+            )
+
+          when 404
+            # Not found - usually PERMANENT, but depends on context
+            raise Tasker::PermanentError.new(
+              "#{service_name} resource not found",
+              error_code: 'RESOURCE_NOT_FOUND',
+              context: { service: service_name }
+            )
+
+          when 409
+            # Conflict - resource already exists, typically idempotent success
+            response.body
+
+          when 429
+            # Rate limiting - RETRYABLE with server-specified backoff
+            # This is where Tasker's intelligent backoff shines!
+            retry_after = response.headers['retry-after']&.to_i || 60
+            raise Tasker::RetryableError.new(
+              "#{service_name} rate limited",
+              retry_after: retry_after,
+              context: { service: service_name, rate_limit_type: 'server_requested' }
+            )
+
+          when 500..599
+            # Server errors - RETRYABLE with exponential backoff
+            # Tasker's circuit breaker will handle intelligent retry timing
+            raise Tasker::RetryableError.new(
+              "#{service_name} server error: #{response.status}",
+              context: {
+                service: service_name,
+                status: response.status,
+                error_type: 'server_error'
+              }
+            )
+
+          else
+            # Unknown status codes - treat as retryable to be safe
+            raise Tasker::RetryableError.new(
+              "#{service_name} unknown error: #{response.status}",
+              context: { service: service_name, status: response.status }
+            )
+          end
+        end
+
+        # Correlation ID generation for distributed tracing
+        def correlation_id
+          @correlation_id ||= @current_task&.context&.dig('correlation_id') || generate_correlation_id
+        end
+
+        def generate_correlation_id
+          "reg_#{Time.current.to_i}_#{SecureRandom.hex(4)}"
+        end
+
+        # Business logic helper methods
+        def step_results(sequence, step_name)
+          step = sequence.steps.find { |s| s.name == step_name }
+          step&.results || {}
+        end
+
+        def log_api_call(method, url, options = {})
+          log_structured(:info, 'API call initiated', {
+                           method: method.to_s.upcase,
+                           url: url,
+                           service: extract_service_name(url),
+                           timeout: options[:timeout]
+                         })
+        end
+
+        def log_api_response(method, url, response, duration_ms)
+          status = response.respond_to?(:status) ? response.status : response.code
+
+          # Handle response body - convert to JSON string if it's a Hash
+          body = response.respond_to?(:body) ? response.body : response.body
+          body_size = if body.is_a?(Hash)
+                        body.to_json.bytesize
+                      elsif body.respond_to?(:bytesize)
+                        body.bytesize
+                      else
+                        body.to_s.bytesize
+                      end
+
+          log_structured(:info, 'API call completed', {
+                           method: method.to_s.upcase,
+                           url: url,
+                           service: extract_service_name(url),
+                           status_code: status,
+                           duration_ms: duration_ms,
+                           response_size: body_size
+                         })
+        end
+
+        def log_structured(level, message, context = {})
+          full_context = {
+            message: message,
+            correlation_id: correlation_id,
+            step_name: @current_step&.name,
+            task_id: @current_task&.id,
+            timestamp: Time.current.iso8601
+          }.merge(context)
+
+          puts "[#{level.upcase}] #{full_context.to_json}" if Rails.env.test?
+        end
+
+        def extract_service_name(url)
+          uri = URI.parse(url)
+          # Extract service name from hostname or path
+          if uri.hostname&.include?('localhost')
+            # Local development - extract from port or path
+            case uri.port
+            when 3001
+              'user_service'
+            when 3002
+              'billing_service'
+            when 3003
+              'preferences_service'
+            when 3004
+              'notification_service'
+            else
+              uri.path.split('/')[1] || 'unknown_service'
+            end
+          else
+            # Production - extract from subdomain or hostname
+            uri.hostname&.split('.')&.first || 'unknown_service'
+          end
+        end
+
+        # Convenience methods for step handlers to set context
+        def set_current_context(task, step, sequence = nil)
+          @current_task = task
+          @current_step = step
+          @current_sequence = sequence
+        end
       end
     end
   end
-
-  def handle_step_completed(event)
-    if microservice_step?(event)
-      service_name = extract_service_name(event[:step_name])
-      duration = event[:duration] || 0
-
-      # Track service performance
-      track_service_performance(service_name, duration)
-
-      # Alert on slow responses
-      if duration > 30_000  # 30 seconds
-        notify_slow_response(service_name, duration, event)
-      end
-    end
-  end
-
-  private
-
-  def microservice_step?(event)
-    event[:namespace] == 'user_management'
-  end
-
-  def extract_service_name(step_name)
-    case step_name
-    when /user_account/
-      'user_service'
-    when /billing/
-      'billing_service'
-    when /preferences/
-      'preferences_service'
-    when /notification|welcome/
-      'notification_service'
-    else
-      'unknown_service'
-    end
-  end
 end
 ```
 
-## The Results
+## Key Architectural Insights
 
-**Before Tasker:**
-- 40% user registration failure rate
-- 2-4 hours to debug partial registrations
-- No visibility into which service failed
-- Manual cleanup scripts running daily
-- Services failing independently brought down entire flows
+### 1. **Modern ConfiguredTask Pattern**
+Tasker's `ConfiguredTask` automatically handles YAML loading and step template registration, eliminating boilerplate code.
 
-**After Tasker:**
-- 2% registration failure rate (mostly permanent failures like invalid emails)
-- Automatic recovery for 90% of service hiccups
-- Complete visibility into service interactions
-- Circuit breakers prevent cascade failures
-- Correlation IDs enable distributed debugging in minutes
+### 2. **No Custom Circuit Breakers**
+Tasker's SQL-driven retry system provides superior circuit breaker functionality. Custom implementations often work against the framework's distributed coordination capabilities.
 
-## Key Takeaways
+### 3. **Error Classification is Circuit Breaking**
+The key to Tasker's circuit breaker is proper error classification:
+- `PermanentError` - Circuit stays "open" indefinitely (no retries)
+- `RetryableError` - Circuit uses intelligent backoff and recovery
 
-1. **Leverage framework capabilities** - Don't re-implement what the framework already provides better
+### 4. **Separation of Concerns**
+- **Task Handler**: Business logic, validation, orchestration
+- **Step Handlers**: Domain-specific processing
+- **API Concerns**: Reusable HTTP handling, error classification
 
-2. **Use typed error handling** - `RetryableError` vs `PermanentError` provides intelligent circuit breaker logic
-
-3. **Embrace SQL-driven orchestration** - Database state is more durable than in-memory circuit objects
-
-4. **Design for idempotency** - Services should handle duplicate requests gracefully
-
-5. **Build in parallel execution** - Independent operations shouldn't wait for each other
-
-6. **Plan for partial failures** - Know exactly what state your system is in when things fail
-
-## The Architecture Revelation
-
-The biggest insight was discovering that **Tasker's distributed, SQL-driven retry architecture already implements superior circuit breaker patterns**:
-
-- **Persistent state** - Circuit state survives process restarts and deployments  
-- **Distributed coordination** - Multiple workers coordinate through database state
-- **Intelligent backoff** - Exponential backoff with jitter and server-suggested delays
-- **Rich observability** - SQL queries provide deep insight into circuit health
-- **Dependency awareness** - Circuit decisions consider workflow dependencies
-
-This demonstrates that sophisticated distributed systems patterns don't always require custom implementations - sometimes the framework already provides a superior solution.
-
-## Want to Try This Yourself?
-
-The complete microservices orchestration workflow is available:
-
-```bash
-# One-line setup
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/microservices-coordination/setup.sh | bash
-
-# Start all services
-cd microservices-demo
-docker-compose up -d  # Starts 4 simulated microservices
-bundle exec sidekiq &
-bundle exec rails server
-
-# Test user registration
-curl -X POST http://localhost:3000/users/register \
-  -H "Content-Type: application/json" \
-  -d '{"email": "test@example.com", "name": "Test User", "plan": "free"}'
-
-# Monitor the workflow across services
-curl http://localhost:3000/users/registration_status/TASK_ID
+### 5. **Declarative Dependencies**
+YAML configuration makes complex dependencies explicit and maintainable:
+```yaml
+depends_on_steps: ["setup_billing_profile", "initialize_preferences"]
 ```
 
-## 📊 Microservices Analytics: Finding the Weak Links (New in v1.0.0)
+### 6. **Structured Input Validation**
+The YAML schema supports nested objects for complex workflows, which is crucial for microservices coordination where different services need different data structures:
 
-After rolling out the new registration workflow, Sarah's team used Tasker's analytics to identify optimization opportunities:
-
-```bash
-# Analyze user registration performance across all services
-curl -H "Authorization: Bearer $API_TOKEN" \
-  "https://growthcorp.com/tasker/analytics/bottlenecks?namespace=user_management&task_name=user_registration"
+```yaml
+user_info:
+  required: ['email', 'name']
+  properties:
+    plan:
+      enum: ['free', 'pro', 'enterprise']
+billing_info:
+  properties:
+    payment_method: string
+    billing_address:
+      type: object
+preferences:
+  properties:
+    marketing_emails: boolean
 ```
 
-**Surprising discoveries:**
-- `send_welcome_sequence` step: 15.2 second average (due to email service rate limiting)
-- `setup_billing_profile` has 2.1% retry rate (billing service occasional timeouts)
-- **Circuit breaker insight:** UserService opened circuit breaker 12 times in the last 24 hours
-- **Optimization win:** Reducing welcome email timeout from 30s to 15s improved user experience without increasing failures
+This nested approach provides several benefits:
 
-**Before analytics:** "Registration feels slow sometimes"  
-**After analytics:** "Email service rate limiting adds 12 seconds to registration"
+- **Service Isolation**: Each service gets only the data it needs (`user_info` for UserService, `billing_info` for BillingService)
+- **Type Safety**: JSON Schema validation ensures data types are correct before any service calls
+- **Default Values**: Sensible defaults reduce the chance of missing required fields
+- **Documentation**: The schema serves as living documentation of what each service expects
 
-The analytics revealed that their SQL-driven circuit breaker was saving them from cascading failures, and specific timeout optimizations could improve user experience significantly.
+## Testing the Implementation
 
-In our next post, we'll tackle the organizational challenges that emerge as engineering teams scale: "Building Workflows That Scale With Your Team" - when namespace conflicts become your biggest problem.
+The complete implementation includes comprehensive tests that validate:
+
+```bash
+# Run the microservices coordination tests
+cd /Users/petetaylor/projects/tasker
+bundle exec rspec spec/blog/post_03_microservices_coordination/
+```
+
+## Production Considerations
+
+### 1. **Service Discovery**
+In production, replace mock services with actual service discovery:
+```ruby
+def get_service(service_name)
+  ServiceRegistry.get_client(service_name)
+end
+```
+
+### 2. **Configuration Management**
+Use environment-specific configuration:
+```yaml
+handler_config:
+  url: <%= ENV['USER_SERVICE_URL'] %>
+```
+
+### 3. **Monitoring and Observability**
+Tasker provides built-in metrics for service coordination:
+- Service call success/failure rates
+- Response time distributions
+- Circuit breaker state changes
+- Parallel execution efficiency
+
+## Next Steps
+
+The [complete implementation](https://github.com/tasker-systems/tasker/tree/main/spec/blog/fixtures/post_03_microservices_coordination) demonstrates production-ready patterns for:
+
+- **Idempotency handling** for reliable service coordination
+- **Correlation ID propagation** for distributed tracing
+- **Structured logging** for operational visibility
+- **Error classification** for intelligent retry behavior
+
+In our next post, we'll explore how these patterns scale when coordinating teams and processes, not just services.
 
 ---
 
-*Have you been burned by microservices coordination failures? Share your distributed system war stories in the comments below.*
+*This post is part of our series on building resilient systems with Tasker. The complete source code and tests are available in the [Tasker repository](https://github.com/tasker-systems/tasker/tree/main/spec/blog/).*

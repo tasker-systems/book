@@ -1,20 +1,22 @@
 #!/bin/bash
 
 # E-commerce Blog Post Demo Setup
-# Leverages the existing Tasker install-app pattern to create the blog post example
+# Leverages Docker and GitHub resources for the blog post example
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_01_ecommerce_reliability/setup-scripts/blog-setup.sh | bash
 #
 #   Or with options:
-#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/blog-examples/ecommerce-reliability/setup.sh | bash -s -- --app-name ecommerce-blog-demo
+#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_01_ecommerce_reliability/setup-scripts/blog-setup.sh | bash -s -- --app-name ecommerce-blog-demo
 
 set -e
 
 # Configuration
 GITHUB_REPO="tasker-systems/tasker"
 BRANCH="main"
-INSTALL_SCRIPT_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/scripts/install-tasker-app.sh"
+BLOG_FIXTURES_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/spec/blog/fixtures/post_01_ecommerce_reliability"
+DOCKER_COMPOSE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/docker-compose.yml"
+DOCKERFILE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/Dockerfile"
 
 # Colors for output
 RED='\033[0;31m'
@@ -35,6 +37,10 @@ log_success() {
 
 log_header() {
     echo -e "${CYAN}🛒 $1${NC}"
+}
+
+log_error() {
+    echo -e "${RED}❌ $1${NC}"
 }
 
 # Parse command line arguments
@@ -67,6 +73,158 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
+# Check dependencies
+check_dependencies() {
+    log_info "Checking dependencies..."
+
+    if ! command -v docker &> /dev/null; then
+        log_error "Docker is required but not installed. Please install Docker first."
+        exit 1
+    fi
+
+    if ! command -v docker-compose &> /dev/null; then
+        log_error "Docker Compose is required but not installed. Please install Docker Compose first."
+        exit 1
+    fi
+
+    if ! command -v curl &> /dev/null; then
+        log_error "curl is required but not installed."
+        exit 1
+    fi
+
+    log_success "All dependencies found"
+}
+
+# Create project structure
+setup_project() {
+    log_info "Setting up project structure..."
+
+    mkdir -p "$OUTPUT_DIR/$APP_NAME"
+    cd "$OUTPUT_DIR/$APP_NAME"
+
+    # Download Docker configuration
+    log_info "Downloading Docker configuration..."
+    curl -fsSL "$DOCKER_COMPOSE_URL" -o docker-compose.yml
+    curl -fsSL "$DOCKERFILE_URL" -o Dockerfile
+
+    # Create directories for blog examples
+    mkdir -p app/tasks/ecommerce/step_handlers
+    mkdir -p app/tasks/ecommerce/models
+    mkdir -p config/tasker/tasks
+    mkdir -p spec/integration
+
+    log_success "Project structure created"
+}
+
+# Download blog post examples
+download_examples() {
+    log_info "Downloading blog post examples from GitHub..."
+
+    # Download task handler
+    curl -fsSL "${BLOG_FIXTURES_BASE}/task_handler/order_processing_handler.rb" \
+        -o app/tasks/ecommerce/order_processing_handler.rb
+
+    # Download step handlers
+    for handler in validate_cart_handler process_payment_handler update_inventory_handler create_order_handler send_confirmation_handler; do
+        curl -fsSL "${BLOG_FIXTURES_BASE}/step_handlers/${handler}.rb" \
+            -o "app/tasks/ecommerce/step_handlers/${handler}.rb"
+    done
+
+    # Download YAML configuration
+    curl -fsSL "${BLOG_FIXTURES_BASE}/config/order_processing_handler.yaml" \
+        -o config/tasker/tasks/order_processing_handler.yaml
+
+    # Download models
+    for model in order product; do
+        curl -fsSL "${BLOG_FIXTURES_BASE}/models/${model}.rb" \
+            -o "app/tasks/ecommerce/models/${model}.rb"
+    done
+
+    # Download integration tests
+    curl -fsSL "${BLOG_FIXTURES_BASE}/integration/order_processing_workflow_spec.rb" \
+        -o spec/integration/order_processing_workflow_spec.rb
+
+    log_success "Blog post examples downloaded"
+}
+
+# Create demo controller
+create_demo_controller() {
+    log_info "Creating demo controller..."
+
+    mkdir -p app/controllers
+
+    cat > app/controllers/checkout_controller.rb << 'EOF'
+class CheckoutController < ApplicationController
+  def create
+    task_request = Tasker::Types::TaskRequest.new(
+      name: 'process_order',
+      namespace: 'ecommerce',
+      version: '1.0.0',
+      context: checkout_params.to_h
+    )
+
+    task_id = Tasker::HandlerFactory.instance.run_task(task_request)
+    task = Tasker::Task.find(task_id)
+
+    render json: {
+      success: true,
+      task_id: task.task_id,
+      status: task.status,
+      checkout_url: order_status_path(task_id: task.task_id)
+    }
+  rescue Tasker::ValidationError => e
+    render json: {
+      success: false,
+      error: 'Invalid checkout data',
+      details: e.message
+    }, status: :unprocessable_entity
+  end
+
+  def order_status
+    task = Tasker::Task.find(params[:task_id])
+
+    case task.status
+    when 'complete'
+      order_step = task.get_step_by_name('create_order')
+      order_id = order_step.results['order_id']
+
+      render json: {
+        status: 'completed',
+        order_id: order_id,
+        order_number: order_step.results['order_number'],
+        total_amount: order_step.results['total_amount']
+      }
+    when 'error'
+      failed_step = task.workflow_steps.where("status = 'error'").first
+
+      render json: {
+        status: 'failed',
+        failed_step: failed_step&.name,
+        retry_url: retry_checkout_path(task_id: task.task_id)
+      }
+    when 'processing'
+      render json: {
+        status: 'processing',
+        current_step: task.workflow_steps.where("status = 'processing'").first&.name
+      }
+    end
+  end
+
+  private
+
+  def checkout_params
+    params.require(:checkout).permit(
+      cart_items: [:product_id, :quantity],
+      payment_info: [:token, :amount],
+      customer_info: [:email, :name]
+    )
+  end
+end
+EOF
+
+    log_success "Demo controller created"
+}
+
 # Main setup
 main() {
     log_header "E-commerce Checkout Reliability Demo Setup"
@@ -74,20 +232,10 @@ main() {
     log_info "This demo showcases Tasker's reliability features through a real e-commerce checkout workflow"
     echo
 
-    log_info "Downloading and running Tasker application generator..."
-    echo
-
-    # Use the existing install-app pattern with e-commerce template
-    if command -v curl &> /dev/null; then
-        curl -fsSL "$INSTALL_SCRIPT_URL" | bash -s -- \
-            --app-name "$APP_NAME" \
-            --tasks ecommerce \
-            --output-dir "$OUTPUT_DIR" \
-            --non-interactive
-    else
-        echo "❌ curl is required for this setup script"
-        exit 1
-    fi
+    check_dependencies
+    setup_project
+    download_examples
+    create_demo_controller
 
     echo
     log_success "E-commerce demo application created successfully!"
@@ -100,10 +248,9 @@ main() {
     echo "   'When Your E-commerce Checkout Became a House of Cards'"
     echo
     echo "🚀 Quick Start:"
-    echo "   1. cd $OUTPUT_DIR/$APP_NAME"
-    echo "   2. Start Redis: redis-server"
-    echo "   3. Start Sidekiq: bundle exec sidekiq"
-    echo "   4. Start Rails: bundle exec rails server"
+    echo "   1. Start the application: docker-compose up"
+    echo "   2. Wait for all services to be ready"
+    echo "   3. The application will be available at http://localhost:3000"
     echo
     echo "🧪 Test the Reliability Features:"
     echo
@@ -121,10 +268,13 @@ main() {
     echo "   curl http://localhost:3000/order_status/TASK_ID"
     echo
     echo "📖 Read the full blog post at:"
-    echo "   https://github.com/$GITHUB_REPO/blob/$BRANCH/blog-examples/ecommerce-reliability/blog-post.md"
+    echo "   https://github.com/$GITHUB_REPO/blob/$BRANCH/blog/posts/post-01-ecommerce-reliability/blog-post.md"
     echo
-    echo "🔧 Explore the code patterns at:"
-    echo "   https://github.com/$GITHUB_REPO/tree/$BRANCH/blog-examples/ecommerce-reliability/code-examples"
+    echo "🔧 Explore the tested code examples at:"
+    echo "   https://github.com/$GITHUB_REPO/tree/$BRANCH/spec/blog/fixtures/post_01_ecommerce_reliability"
+    echo
+    echo "🐳 Stop the application:"
+    echo "   docker-compose down"
 }
 
 # Run main function

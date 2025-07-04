@@ -2,98 +2,127 @@
 
 This directory contains scripts to quickly set up and test the data pipeline resilience examples from Chapter 2.
 
-## Quick Setup
+## 🚀 Quick Start
 
-The fastest way to get started:
+### One-Command Setup (Recommended)
+The fastest way to try the example with zero local dependencies:
 
 ```bash
-# Run the complete setup
-./blog-setup.sh
+# Download and run the setup script
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_02_data_pipeline_resilience/setup-scripts/blog-setup.sh | bash
+
+# Or with custom app name
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_02_data_pipeline_resilience/setup-scripts/blog-setup.sh | bash -s -- --app-name my-pipeline-demo
 ```
 
-This script will:
-1. Create a new Rails application
-2. Install and configure Tasker
-3. Set up the data pipeline workflow
-4. Create sample data
-5. Configure monitoring and notifications
+**Requirements:** Docker and Docker Compose only
 
-## What Gets Created
+### Local Setup
+If you prefer to run the setup script locally:
+
+```bash
+# Download the script
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_02_data_pipeline_resilience/setup-scripts/blog-setup.sh -o blog-setup.sh
+chmod +x blog-setup.sh
+
+# Run with options
+./blog-setup.sh --app-name pipeline-demo --output-dir ./demos
+```
+
+## 🛠️ How It Works
+
+### Docker-Based Architecture
+The setup script creates a complete Docker environment with:
+
+- **Rails application** with live code reloading
+- **PostgreSQL 15** database with sample data
+- **Redis 7** for background job processing
+- **Sidekiq** for workflow execution
+- **All tested code examples** from the GitHub repository
+
+### Integration with Tasker Repository
+All code examples are downloaded directly from the tested repository:
+
+```bash
+# Task handler from tested examples
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/fixtures/post_02_data_pipeline_resilience/task_handler/customer_analytics_handler.rb
+
+# Step handlers from tested examples
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/fixtures/post_02_data_pipeline_resilience/step_handlers/extract_orders_handler.rb
+```
+
+This ensures the examples are always up-to-date and have passed integration tests.
+
+## 📋 What Gets Created
 
 ### Application Structure
 ```
-demo-app/
-├── app/tasks/data_pipeline/
-│   ├── customer_analytics_handler.rb           # Main workflow
-│   ├── step_handlers/
-│   │   ├── extract_orders_handler.rb           # Parallel data extraction
-│   │   ├── extract_users_handler.rb
-│   │   ├── extract_products_handler.rb
-│   │   ├── transform_customer_metrics_handler.rb
-│   │   ├── transform_product_metrics_handler.rb
-│   │   ├── generate_insights_handler.rb         # Business intelligence
-│   │   ├── update_dashboard_handler.rb          # Dashboard integration
-│   │   └── send_notifications_handler.rb       # Smart alerting
-│   └── event_subscribers/
-│       └── pipeline_monitor.rb                 # Real-time monitoring
-├── config/tasker/tasks/data_pipeline/
-│   └── customer_analytics.yaml                 # Workflow configuration
-└── app/controllers/
-    └── analytics_controller.rb                 # REST API endpoints
+data-pipeline-demo/
+├── docker-compose.yml                          # Docker services configuration
+├── Dockerfile                                  # Application container
+├── app/
+│   ├── tasks/data_pipeline/
+│   │   ├── customer_analytics_handler.rb      # Main workflow handler
+│   │   └── step_handlers/
+│   │       ├── extract_orders_handler.rb      # Parallel data extraction
+│   │       ├── transform_customer_metrics_handler.rb  # Data transformation
+│   │       └── generate_insights_handler.rb   # Business intelligence
+│   └── controllers/
+│       └── analytics_controller.rb            # REST API endpoints
+├── config/tasker/tasks/
+│   └── customer_analytics_handler.yaml        # Workflow configuration
+└── spec/integration/
+    └── customer_analytics_workflow_spec.rb    # Integration tests
 ```
-
-### Sample Data
-- **100 users** with realistic profiles and preferences
-- **50 products** across multiple categories with inventory
-- **200 orders** with realistic purchase patterns
-- **Order items** with proper pricing and quantities
 
 ### API Endpoints
 - `POST /analytics/start` - Start the analytics pipeline
-- `GET /analytics/status/:id` - Monitor pipeline progress
-- `GET /analytics/results/:id` - Get generated insights
+- `GET /analytics/status/:task_id` - Monitor pipeline progress
+- `GET /analytics/results/:task_id` - Get generated insights
 
-## Testing the Pipeline
+## 🧪 Testing the Pipeline Resilience
 
-### Method 1: Test Script
+### Start the Application
 ```bash
-cd demo-app
-./test_pipeline.rb
+cd data-pipeline-demo
+docker-compose up
 ```
 
-### Method 2: API Calls
+Wait for all services to be ready (you'll see "Ready for connections" messages).
+
+### Start Analytics Pipeline
 ```bash
-# Start pipeline
 curl -X POST http://localhost:3000/analytics/start \
-  -H "Content-Type: application/json" \
-  -d '{"start_date": "2024-01-01", "end_date": "2024-01-07"}'
+  -H 'Content-Type: application/json' \
+  -d '{
+    "start_date": "2024-01-01",
+    "end_date": "2024-01-31",
+    "force_refresh": true
+  }'
+```
 
-# Monitor progress (replace TASK_ID)
+### Monitor Pipeline Progress
+```bash
+# Replace TASK_ID with the actual task ID from the response
 curl http://localhost:3000/analytics/status/TASK_ID
+```
 
-# Get results
+### Get Pipeline Results
+```bash
 curl http://localhost:3000/analytics/results/TASK_ID
 ```
 
-### Method 3: Rails Console
-```ruby
-# Start the pipeline
-task_request = Tasker::Types::TaskRequest.new(
-  name: 'customer_analytics',
-  namespace: 'data_pipeline',
-  version: '1.0.0',
-  context: {
-    date_range: {
-      start_date: 7.days.ago.strftime('%Y-%m-%d'),
-      end_date: Date.current.strftime('%Y-%m-%d')
-    }
-  }
-)
-
-task_id = Tasker::HandlerFactory.instance.run_task(task_request)
+### Test with Different Date Ranges
+```bash
+curl -X POST http://localhost:3000/analytics/start \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "start_date": "2024-02-01",
+    "end_date": "2024-02-28"
+  }'
 ```
 
-## Key Features Demonstrated
+## 🔧 Key Features Demonstrated
 
 ### Parallel Processing
 The pipeline demonstrates parallel data extraction:
@@ -113,12 +142,11 @@ Different retry strategies for different failure types:
 - CRM API failures: 5 retries (external services can be flaky)
 - Dashboard updates: 3 retries (eventual consistency)
 
-### Event-Driven Monitoring
-Comprehensive observability:
-- Real-time step progress notifications
-- Failure alerting with severity levels
-- Business insight generation
-- Stakeholder notifications
+### Data Quality Assurance
+Built-in data validation and quality checks:
+- Schema validation for extracted data
+- Completeness checks for critical fields
+- Anomaly detection for unusual patterns
 
 ### Business Intelligence
 The pipeline generates actionable insights:
@@ -127,63 +155,144 @@ The pipeline generates actionable insights:
 - Revenue analysis and profit margin tracking
 - Automated business recommendations
 
-## Customization
+## 🔍 Monitoring and Observability
+
+### Docker Logs
+```bash
+# View all service logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f web
+docker-compose logs -f sidekiq
+```
+
+### Pipeline Monitoring
+```bash
+# Check running pipelines
+curl http://localhost:3000/analytics/status/TASK_ID
+
+# View detailed step information
+docker-compose exec web rails console
+# Then: Tasker::Task.find('task_id').workflow_step_sequences.last.steps
+```
+
+### Progress Tracking
+Each step provides detailed progress information:
+- Records processed vs. total records
+- Current batch being processed
+- Estimated time remaining
+- Data quality metrics
+
+## 🛠️ Customization
 
 ### Adding New Data Sources
 1. Create a new extraction step handler
 2. Add it to the YAML configuration
 3. Update transformation steps to use the new data
 
-### Modifying Alert Logic
-Edit `send_notifications_handler.rb` to customize:
-- Alert severity thresholds
-- Notification channels
-- Escalation rules
+Example:
+```ruby
+# Create app/tasks/data_pipeline/step_handlers/extract_inventory_handler.rb
+class DataPipeline::StepHandlers::ExtractInventoryHandler < Tasker::StepHandler
+  def handle
+    # Extract inventory data
+    inventory_data = fetch_inventory_data
 
-### Changing Business Logic
-Modify the insight generation in `generate_insights_handler.rb`:
-- Custom customer segmentation rules
-- Product performance thresholds
-- Recommendation algorithms
+    # Store results for downstream steps
+    step_result['inventory_data'] = inventory_data
+    step_result['records_processed'] = inventory_data.count
+  end
+end
+```
 
-## Troubleshooting
+### Modifying Business Logic
+Update the insight generation in `generate_insights_handler.rb`:
+
+```ruby
+# Custom customer segmentation rules
+def segment_customers(customer_data)
+  customer_data.group_by do |customer|
+    case customer['total_spent']
+    when 0..100 then 'bronze'
+    when 101..500 then 'silver'
+    when 501..1000 then 'gold'
+    else 'platinum'
+    end
+  end
+end
+```
+
+### Adjusting Retry Policies
+Update the YAML configuration:
+
+```yaml
+# In config/tasker/tasks/customer_analytics_handler.yaml
+step_templates:
+  - name: extract_orders
+    retryable: true
+    retry_limit: 5  # Increase retry attempts
+    timeout: 3600000  # 1 hour timeout
+```
+
+## 🔧 Troubleshooting
 
 ### Common Issues
 
+**Docker services won't start:**
+- Ensure Docker is running: `docker --version`
+- Check for port conflicts: `docker-compose ps`
+- Free up resources: `docker system prune`
+
 **Pipeline doesn't start:**
-- Ensure Sidekiq is running: `bundle exec sidekiq`
-- Check Redis is running: `redis-cli ping`
-- Verify database migrations: `rails db:migrate`
+- Ensure all services are healthy: `docker-compose ps`
+- Check Sidekiq is running: `docker-compose logs sidekiq`
+- Verify database is ready: `docker-compose exec web rails db:migrate:status`
 
-**Steps fail with database errors:**
-- Check PostgreSQL is running
-- Verify database credentials in `config/database.yml`
-- Ensure sample data exists: `rails db:seed`
+**Steps fail with data errors:**
+- Check sample data exists: `docker-compose exec web rails console`
+- Verify data quality: Check for null values or invalid formats
+- Review step logs: `docker-compose logs -f sidekiq`
 
-**No notifications appear:**
-- Check Rails logs for Slack/email simulation messages
-- Verify event subscriber is loaded: Check `app/tasks/data_pipeline/event_subscribers/`
+**No progress updates:**
+- Ensure Redis is running: `docker-compose exec redis redis-cli ping`
+- Check step handler implementations include progress tracking
+- Verify event subscribers are loaded
 
-### Logs and Monitoring
+### Getting Help
 
-**Rails Logs:**
+1. **Check service status**: `docker-compose ps`
+2. **View logs**: `docker-compose logs -f`
+3. **Restart services**: `docker-compose restart`
+4. **Clean restart**: `docker-compose down && docker-compose up`
+
+## 🔮 Related Examples
+
+- **Chapter 1**: [E-commerce Reliability](../../post-01-ecommerce-reliability/setup-scripts/) - Foundation patterns
+- **Chapter 3**: [Microservices Coordination](../../post-03-microservices-coordination/setup-scripts/) - Service orchestration
+
+## 📖 Learn More
+
+- **Blog Post**: [When Your Data Pipeline Became a Ticking Time Bomb](../blog-post.md)
+- **Code Examples**: [GitHub Repository](https://github.com/tasker-systems/tasker/tree/main/spec/blog/fixtures/post_02_data_pipeline_resilience)
+- **Integration Tests**: See how the examples are tested in the repository
+
+## 🛑 Cleanup
+
+When you're done experimenting:
+
 ```bash
-tail -f log/development.log
+# Stop all services
+docker-compose down
+
+# Remove all containers and volumes
+docker-compose down -v
+
+# Remove downloaded images (optional)
+docker image prune
 ```
 
-**Sidekiq Logs:**
-- Check the Sidekiq web UI (if enabled)
-- Monitor background job processing
-
-**Task Status:**
-```ruby
-# In Rails console
-task = Tasker::Task.find(task_id)
-task.status
-task.workflow_step_sequences.last.steps.map(&:status)
-```
-
-## Next Steps
+## 💡 Next Steps
 
 Once you have the pipeline running:
 
@@ -194,12 +303,3 @@ Once you have the pipeline running:
 5. **Scale the processing** - Test with larger datasets
 
 The patterns demonstrated here scale from simple ETL jobs to enterprise data platforms handling millions of records.
-
-## Related Examples
-
-- **Chapter 1**: [E-commerce Reliability](../../post-01-ecommerce-reliability/setup-scripts/) - Foundation patterns
-- **Chapter 3**: [Microservices Coordination](../../post-03-microservices-coordination/setup-scripts/) - API orchestration (coming soon)
-
----
-
-*This setup demonstrates production-ready patterns used in real data engineering environments. The same patterns scale from startup analytics to enterprise data lakes.*

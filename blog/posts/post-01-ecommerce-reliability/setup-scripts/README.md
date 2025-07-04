@@ -1,222 +1,258 @@
-# Setup Scripts
+# E-commerce Reliability - Setup Scripts
 
-This directory contains setup scripts and tools for quickly trying the blog examples.
+This directory contains scripts to quickly set up and test the e-commerce reliability examples from Chapter 1.
 
 ## 🚀 Quick Start
 
-### Option 1: Docker Setup (Recommended) 🐳
+### One-Command Setup (Recommended)
 The fastest way to try the example with zero local dependencies:
 
 ```bash
-# Docker with observability stack (Jaeger + Prometheus)
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
-  --app-name ecommerce-reliability-demo \
-  --tasks ecommerce \
-  --docker \
-  --with-observability \
-  --non-interactive
+# Download and run the setup script
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_01_ecommerce_reliability/setup-scripts/blog-setup.sh | bash
 
-cd ecommerce-reliability-demo
-./bin/docker-dev up-full
+# Or with custom app name
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_01_ecommerce_reliability/setup-scripts/blog-setup.sh | bash -s -- --app-name my-ecommerce-demo
 ```
 
-**Includes:**
-- Rails app with live code reloading
-- PostgreSQL 15 database
-- Redis 7 for background jobs
-- Jaeger tracing UI (http://localhost:16686)
-- Prometheus metrics (http://localhost:9090)
+**Requirements:** Docker and Docker Compose only
 
-### Option 2: Traditional Setup
-For users who prefer local development:
+### Local Setup
+If you prefer to run the setup script locally:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
-  --app-name ecommerce-reliability-demo \
-  --tasks ecommerce \
-  --non-interactive
-```
+# Download the script
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_01_ecommerce_reliability/setup-scripts/blog-setup.sh -o blog-setup.sh
+chmod +x blog-setup.sh
 
-**Requirements:** Ruby 3.2+, Rails 7.2+, PostgreSQL, Redis
-
-### Interactive Setup
-Use our interactive setup script for more control:
-
-```bash
-# Download our Chapter 1 setup script
-curl -fsSL https://raw.githubusercontent.com/your-gitbook-repo/main/blog/posts/post-01-ecommerce-reliability/setup-scripts/setup.sh | bash
-
-# This script offers:
-# 1. Traditional Rails setup
-# 2. Docker-based setup
-# 3. Docker with full observability stack
+# Run with options
+./blog-setup.sh --app-name ecommerce-demo --output-dir ./demos
 ```
 
 ## 🛠️ How It Works
 
-### Integration with Tasker Engine v1.0.0 Application Generator
+### Docker-Based Architecture
+The setup script creates a complete Docker environment with:
 
-We leverage Tasker's production-ready application generator with new Docker support:
+- **Rails application** with live code reloading
+- **PostgreSQL 15** database
+- **Redis 7** for background job processing
+- **Sidekiq** for workflow execution
+- **All tested code examples** from the GitHub repository
+
+### Integration with Tasker Repository
+All code examples are downloaded directly from the tested repository:
 
 ```bash
-# Traditional setup
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
-    --app-name ecommerce-reliability-demo \
-    --tasks ecommerce \
-    --non-interactive
+# Task handler from tested examples
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/fixtures/post_01_ecommerce_reliability/task_handler/order_processing_handler.rb
 
-# Docker setup with observability
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
-    --app-name ecommerce-reliability-demo \
-    --tasks ecommerce \
-    --docker \
-    --with-observability \
-    --non-interactive
+# Step handlers from tested examples
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/fixtures/post_01_ecommerce_reliability/step_handlers/validate_cart_handler.rb
 ```
 
-### Benefits of Docker vs Traditional Setup
-
-| Aspect | Traditional Setup | Docker Setup | Docker + Observability |
-|--------|------------------|--------------|----------------------|
-| **Local Dependencies** | Ruby, Rails, PostgreSQL, Redis | Docker only | Docker only |
-| **Setup Time** | 5-10 minutes | 2-3 minutes | 3-4 minutes |
-| **Commands to Start** | 3-4 terminals | 1 command | 1 command |
-| **Observability** | Manual setup | Not included | Built-in (Jaeger, Prometheus) |
-| **Cleanup** | Manual | `./bin/docker-dev clean` | `./bin/docker-dev clean` |
-| **Cross-Platform** | Varies by OS | Identical everywhere | Identical everywhere |
+This ensures the examples are always up-to-date and have passed integration tests.
 
 ## 📋 What Gets Created
 
-Each setup script creates a complete Rails application with:
+### Application Structure
+```
+ecommerce-blog-demo/
+├── docker-compose.yml                          # Docker services configuration
+├── Dockerfile                                  # Application container
+├── app/
+│   ├── tasks/ecommerce/
+│   │   ├── order_processing_handler.rb        # Main workflow handler
+│   │   ├── step_handlers/
+│   │   │   ├── validate_cart_handler.rb       # Cart validation with retries
+│   │   │   ├── process_payment_handler.rb     # Payment processing
+│   │   │   ├── update_inventory_handler.rb    # Inventory management
+│   │   │   ├── create_order_handler.rb        # Order creation
+│   │   │   └── send_confirmation_handler.rb   # Email confirmation
+│   │   └── models/
+│   │       ├── order.rb                       # Order model
+│   │       └── product.rb                     # Product model
+│   └── controllers/
+│       └── checkout_controller.rb              # REST API endpoints
+├── config/tasker/tasks/
+│   └── order_processing_handler.yaml          # Workflow configuration
+└── spec/integration/
+    └── order_processing_workflow_spec.rb      # Integration tests
+```
 
-### **Core Infrastructure**
-- **Rails application** with PostgreSQL database
-- **All Tasker migrations** and database objects
-- **Redis and Sidekiq** for background job processing
-- **Complete routes** and API endpoints
+### API Endpoints
+- `POST /checkout` - Start checkout workflow
+- `GET /order_status/:task_id` - Monitor order processing
 
-### **Chapter-Specific Content**
-- **Task handlers** implementing the chapter's workflow
-- **Step handlers** for each workflow step
-- **Models and controllers** for the domain (e-commerce, data pipeline, etc.)
-- **Test scenarios** demonstrating reliability features
-- **Sample data** for immediate testing
+## 🧪 Testing the Reliability Features
 
-### **Development Tools**
-- **Comprehensive documentation** for the specific example
-- **Testing scripts** for various failure scenarios
-- **Monitoring setup** (when observability features are included)
-
-## 🧪 Testing the Setup
-
-### Docker Environment
+### Start the Application
 ```bash
-cd ecommerce-reliability-demo
+cd ecommerce-blog-demo
+docker-compose up
+```
 
-# Start all services (includes observability)
-./bin/docker-dev up-full
+Wait for all services to be ready (you'll see "Ready for connections" messages).
 
-# Test the workflow
+### Test Successful Checkout
+```bash
 curl -X POST http://localhost:3000/checkout \
-  -H "Content-Type: application/json" \
-  -d '{"checkout": {...}}'
-
-# Monitor with built-in tools
-# Jaeger UI: http://localhost:16686 (trace workflows)
-# Prometheus: http://localhost:9090 (metrics)
-# GraphQL: http://localhost:3000/tasker/graphql
-
-# Stop all services
-./bin/docker-dev down
+  -H 'Content-Type: application/json' \
+  -d '{
+    "checkout": {
+      "cart_items": [{"product_id": 1, "quantity": 2}],
+      "payment_info": {"token": "test_success_visa", "amount": 100.00},
+      "customer_info": {"email": "test@example.com", "name": "Test Customer"}
+    }
+  }'
 ```
 
-### Traditional Environment
+### Test Payment Failure (Retryable)
 ```bash
-cd ecommerce-reliability-demo
-
-# Start services in separate terminals
-redis-server
-bundle exec sidekiq
-bundle exec rails server
-
-# Test the same endpoints
-curl -X POST http://localhost:3000/checkout ...
+curl -X POST http://localhost:3000/checkout \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "checkout": {
+      "cart_items": [{"product_id": 2, "quantity": 1}],
+      "payment_info": {"token": "test_timeout_gateway", "amount": 50.00},
+      "customer_info": {"email": "retry@example.com", "name": "Retry Test"}
+    }
+  }'
 ```
 
-Each chapter includes comprehensive testing guides with multiple failure scenarios.
+### Monitor Workflow Status
+```bash
+# Replace TASK_ID with the actual task ID from the response
+curl http://localhost:3000/order_status/TASK_ID
+```
+
+## 🔧 Key Features Demonstrated
+
+### Reliability Patterns
+- **Smart Retry Logic**: Different retry strategies for different failure types
+- **Circuit Breaker**: Prevents cascading failures
+- **Graceful Degradation**: Continues processing when possible
+- **Timeout Handling**: Prevents hanging operations
+
+### Error Handling
+- **Retryable Errors**: Payment timeouts, temporary service unavailability
+- **Permanent Errors**: Invalid cart items, insufficient inventory
+- **Escalation**: Failed retries trigger alerts and manual intervention
+
+### Workflow Orchestration
+- **Step Dependencies**: Each step waits for its prerequisites
+- **Parallel Processing**: Independent steps run simultaneously
+- **State Management**: Complete workflow state tracking
+- **Recovery**: Failed workflows can be resumed from last successful step
+
+## 🔍 Monitoring and Observability
+
+### Docker Logs
+```bash
+# View all service logs
+docker-compose logs -f
+
+# View specific service logs
+docker-compose logs -f web
+docker-compose logs -f sidekiq
+```
+
+### Workflow Monitoring
+```bash
+# Check running workflows
+curl http://localhost:3000/order_status/TASK_ID
+
+# View detailed step information
+docker-compose exec web rails console
+# Then: Tasker::Task.find('task_id').workflow_step_sequences.last.steps
+```
+
+## 🛠️ Customization
+
+### Adding New Products
+Edit the step handlers to include your product catalog:
+
+```ruby
+# In validate_cart_handler.rb
+AVAILABLE_PRODUCTS = {
+  1 => { name: 'Widget A', price: 50.00, inventory: 100 },
+  2 => { name: 'Widget B', price: 75.00, inventory: 50 },
+  # Add your products here
+}
+```
+
+### Modifying Retry Logic
+Update the YAML configuration:
+
+```yaml
+# In config/tasker/tasks/order_processing_handler.yaml
+step_templates:
+  - name: process_payment
+    retryable: true
+    retry_limit: 5  # Increase retry attempts
+    timeout: 30000  # 30 second timeout
+```
+
+### Adding New Failure Scenarios
+Create new payment tokens in `process_payment_handler.rb`:
+
+```ruby
+case payment_token
+when 'test_network_error'
+  raise Tasker::RetryableError, 'Network timeout - will retry'
+when 'test_fraud_detected'
+  raise Tasker::PermanentError, 'Fraud detected - will not retry'
+end
+```
 
 ## 🔧 Troubleshooting
 
-### Docker Issues
+### Common Issues
 
-**"Docker setup fails"**
-- Ensure Docker is installed and running: `docker --version`
-- Check Docker daemon: `docker ps`
-- Free up disk space: `docker system prune`
+**Docker services won't start:**
+- Ensure Docker is running: `docker --version`
+- Check for port conflicts: `docker-compose ps`
+- Free up resources: `docker system prune`
 
-**"Services won't start"**
-- Check port conflicts: `./bin/docker-dev status`
-- View service logs: `./bin/docker-dev logs`
-- Restart services: `./bin/docker-dev restart`
+**Application not responding:**
+- Wait for database initialization (30-60 seconds)
+- Check logs: `docker-compose logs web`
+- Verify all services are healthy: `docker-compose ps`
 
-**"Can't access observability UIs"**
-- Verify full stack is running: `./bin/docker-dev up-full`
-- Check if ports are available: `lsof -i :16686,9090`
-- Wait for services to initialize (30-60 seconds)
-
-### Traditional Setup Issues
-
-**"Rails app creation fails"**
-- Ensure Ruby 3.2+ and Rails 7.2+ are installed
-- Check PostgreSQL is running
-- Verify all dependencies in diagnostic output
-
-**"Background jobs not processing"**
-- Start Redis: `redis-server`
-- Start Sidekiq: `bundle exec sidekiq`
-- Check Redis connectivity: `redis-cli ping`
+**Workflows not processing:**
+- Ensure Sidekiq is running: `docker-compose logs sidekiq`
+- Check Redis connectivity: `docker-compose exec redis redis-cli ping`
+- Verify database migrations: `docker-compose exec web rails db:migrate:status`
 
 ### Getting Help
 
-1. **Run diagnostics** from the troubleshooting guide
-2. **Check logs**: `tail -f log/development.log`
-3. **Try clean environment**: Fresh terminal, restart services
-4. **Report issues**: Include diagnostic output and error messages
+1. **Check service status**: `docker-compose ps`
+2. **View logs**: `docker-compose logs -f`
+3. **Restart services**: `docker-compose restart`
+4. **Clean restart**: `docker-compose down && docker-compose up`
 
-## 🔮 Future Chapters
+## 🔮 Related Examples
 
-All upcoming chapters will support both traditional and Docker-based setup:
+- **Chapter 2**: [Data Pipeline Resilience](../../post-02-data-pipeline-resilience/setup-scripts/) - Batch processing patterns
+- **Chapter 3**: [Microservices Coordination](../../post-03-microservices-coordination/setup-scripts/) - Service orchestration
+
+## 📖 Learn More
+
+- **Blog Post**: [When Your E-commerce Checkout Became a House of Cards](../blog-post.md)
+- **Code Examples**: [GitHub Repository](https://github.com/tasker-systems/tasker/tree/main/spec/blog/fixtures/post_01_ecommerce_reliability)
+- **Integration Tests**: See how the examples are tested in the repository
+
+## 🛑 Cleanup
+
+When you're done experimenting:
 
 ```bash
-# Chapter 2: Data Pipeline Resilience (Coming Soon)
-# Docker with observability
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
-  --app-name data-pipeline-demo \
-  --tasks data_processing \
-  --docker \
-  --with-observability
+# Stop all services
+docker-compose down
 
-# Chapter 3: Microservices Coordination (Planned)
-# Docker setup
-curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
-  --app-name microservices-demo \
-  --tasks inventory,notifications,integrations \
-  --docker
+# Remove all containers and volumes
+docker-compose down -v
+
+# Remove downloaded images (optional)
+docker image prune
 ```
-
-**Each chapter provides:**
-- **Docker-first approach** with zero local dependencies
-- **Built-in observability** (Jaeger + Prometheus)
-- **Chapter-specific task templates**
-- **Comprehensive testing scenarios**
-- **Production-ready examples**
-
-## 📚 Related Documentation
-
-- **[Tasker Application Generator](../../../../docs/APPLICATION_GENERATOR.md)**: Complete documentation of the underlying generator
-- **[Getting Started Guide](../../../../getting-started.md)**: Manual Tasker setup instructions
-- **[Troubleshooting Guide](../../../../appendices/troubleshooting.md)**: Comprehensive problem-solving guide
-
----
-
-*These setup scripts provide the fastest path from curiosity to working example, while maintaining the quality and consistency of the main Tasker tooling.*

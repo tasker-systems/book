@@ -93,7 +93,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 **Query Parameters**:
 
 * `namespace` (optional) - Filter by task namespace
-* `name` (optional) - Filter by task name  
+* `name` (optional) - Filter by task name
 * `version` (optional) - Filter by task version
 * `period` (optional) - Analysis period in hours (default: 24)
 
@@ -120,7 +120,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   ],
   "slowest_steps": [
     {
-      "step_name": "payment_processing", 
+      "step_name": "payment_processing",
       "task_name": "process_order",
       "avg_duration_ms": 2800,
       "retry_rate": 0.08
@@ -136,7 +136,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
   "recommendations": [
     {
       "type": "timeout_optimization",
-      "step": "payment_processing", 
+      "step": "payment_processing",
       "current_timeout": 30,
       "suggested_timeout": 45,
       "rationale": "95th percentile execution time is 42s"
@@ -535,70 +535,7 @@ curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
 }
 ```
 
-### Get Task Diagram
 
-**Endpoint**: `GET /tasker/tasks/{task_id}/task_diagrams`
-
-**Description**: Get Mermaid task diagram for visualization. New in v1.0.0.
-
-**Parameters**:
-
-* `task_id` (path) - The task ID
-* `format` (query, optional) - Response format (json, html)
-
-**Example Request**:
-
-```bash
-curl -H "Authorization: Bearer YOUR_JWT_TOKEN" \
-     https://your-app.com/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/task_diagrams?format=json
-```
-
-**Example Response**:
-
-```json
-{
-  "nodes": [
-    {
-      "id": "validate_payment",
-      "label": "Validate Payment",
-      "shape": "rectangle",
-      "style": "fill:#90EE90",
-      "url": "/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps/validate_payment",
-      "attributes": {
-        "status": "complete",
-        "duration_ms": 1000
-      }
-    },
-    {
-      "id": "charge_card", 
-      "label": "Charge Card",
-      "shape": "rectangle",
-      "style": "fill:#FFE4B5",
-      "url": "/tasker/tasks/550e8400-e29b-41d4-a716-446655440000/workflow_steps/charge_card",
-      "attributes": {
-        "status": "in_progress",
-        "duration_ms": null
-      }
-    }
-  ],
-  "edges": [
-    {
-      "source_id": "validate_payment",
-      "target_id": "charge_card",
-      "label": "depends_on",
-      "type": "dependency",
-      "direction": "forward",
-      "attributes": {}
-    }
-  ],
-  "direction": "TD",
-  "title": "payments.process_payment@1.0.0",
-  "attributes": {
-    "task_id": "550e8400-e29b-41d4-a716-446655440000",
-    "status": "in_progress"
-  }
-}
-```
 
 ## Workflow Steps API
 
@@ -867,11 +804,7 @@ class TaskerClient {
     return response.data;
   }
 
-  async getTaskDiagram(id, format = 'json') {
-    const params = { format };
-    const response = await this.client.get(`/tasks/${id}/task_diagrams`, { params });
-    return response.data;
-  }
+
 
   async getPerformanceAnalytics() {
     const response = await this.client.get('/analytics/performance');
@@ -885,7 +818,7 @@ class TaskerClient {
     if (name) params.name = name;
     if (version) params.version = version;
     if (period) params.period = period;
-    
+
     const response = await this.client.get('/analytics/bottlenecks', { params });
     return response.data;
   }
@@ -910,10 +843,9 @@ const handlers = await tasker.getHandlers('payments');
 const handlerDetails = await tasker.getHandlerDetails('payments', 'process_payment', '1.0.0');
 const task = await tasker.createTask('process_payment', 'payments', '1.0.0', { payment_id: 123 });
 
-// Monitor performance and get task visualization (v1.0.0)
+// Monitor performance (v1.0.0)
 const performance = await tasker.getPerformanceAnalytics();
 const bottlenecks = await tasker.getBottleneckAnalysis({ namespace: 'payments', period: 24 });
-const diagram = await tasker.getTaskDiagram(task.id, 'json');
 const health = await tasker.getHealthStatus();
 ```
 

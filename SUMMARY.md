@@ -72,7 +72,7 @@
 ## Advanced Topics
 
 * [System Flow Charts](docs/FLOW_CHART.md)
-* [Task Diagrams](docs/TASK_DIAGRAM.md)
+
 * [Project Roadmap](docs/ROADMAP.md)
 
 ## Strategic Documentation

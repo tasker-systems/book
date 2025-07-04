@@ -1,20 +1,20 @@
 #!/bin/bash
 
-# Data Pipeline Resilience Blog Post Demo Setup
+# Microservices Coordination Blog Post Demo Setup
 # Leverages Docker and GitHub resources for the blog post example
 #
 # Usage:
-#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_02_data_pipeline_resilience/setup-scripts/blog-setup.sh | bash
+#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_03_microservices_coordination/setup-scripts/blog-setup.sh | bash
 #
 #   Or with options:
-#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_02_data_pipeline_resilience/setup-scripts/blog-setup.sh | bash -s -- --app-name data-pipeline-demo
+#   curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/spec/blog/post_03_microservices_coordination/setup-scripts/blog-setup.sh | bash -s -- --app-name microservices-demo
 
 set -e
 
 # Configuration
 GITHUB_REPO="tasker-systems/tasker"
 BRANCH="main"
-BLOG_FIXTURES_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/spec/blog/fixtures/post_02_data_pipeline_resilience"
+BLOG_FIXTURES_BASE="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/spec/blog/fixtures/post_03_microservices_coordination"
 DOCKER_COMPOSE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/docker-compose.yml"
 DOCKERFILE_URL="https://raw.githubusercontent.com/${GITHUB_REPO}/${BRANCH}/Dockerfile"
 
@@ -36,7 +36,7 @@ log_success() {
 }
 
 log_header() {
-    echo -e "${CYAN}📊 $1${NC}"
+    echo -e "${CYAN}🔗 $1${NC}"
 }
 
 log_error() {
@@ -44,7 +44,7 @@ log_error() {
 }
 
 # Parse command line arguments
-APP_NAME="data-pipeline-demo"
+APP_NAME="microservices-demo"
 OUTPUT_DIR="."
 
 while [[ $# -gt 0 ]]; do
@@ -108,7 +108,8 @@ setup_project() {
     curl -fsSL "$DOCKERFILE_URL" -o Dockerfile
 
     # Create directories for blog examples
-    mkdir -p app/tasks/data_pipeline/step_handlers
+    mkdir -p app/tasks/user_onboarding/step_handlers
+    mkdir -p app/concerns/api_handling
     mkdir -p config/tasker/tasks
     mkdir -p spec/integration
 
@@ -120,22 +121,28 @@ download_examples() {
     log_info "Downloading blog post examples from GitHub..."
 
     # Download task handler
-    curl -fsSL "${BLOG_FIXTURES_BASE}/task_handler/customer_analytics_handler.rb" \
-        -o app/tasks/data_pipeline/customer_analytics_handler.rb
+    curl -fsSL "${BLOG_FIXTURES_BASE}/task_handler/create_user_account_handler.rb" \
+        -o app/tasks/user_onboarding/create_user_account_handler.rb
 
     # Download step handlers
-    for handler in extract_orders_handler transform_customer_metrics_handler generate_insights_handler; do
+    for handler in create_user_account_handler validate_user_info_handler setup_billing_handler configure_preferences_handler; do
         curl -fsSL "${BLOG_FIXTURES_BASE}/step_handlers/${handler}.rb" \
-            -o "app/tasks/data_pipeline/step_handlers/${handler}.rb"
+            -o "app/tasks/user_onboarding/step_handlers/${handler}.rb"
+    done
+
+    # Download API concerns
+    for concern in user_service_api billing_service_api notification_service_api; do
+        curl -fsSL "${BLOG_FIXTURES_BASE}/concerns/${concern}.rb" \
+            -o "app/concerns/api_handling/${concern}.rb"
     done
 
     # Download YAML configuration
-    curl -fsSL "${BLOG_FIXTURES_BASE}/config/customer_analytics_handler.yaml" \
-        -o config/tasker/tasks/customer_analytics_handler.yaml
+    curl -fsSL "${BLOG_FIXTURES_BASE}/config/create_user_account_handler.yaml" \
+        -o config/tasker/tasks/create_user_account_handler.yaml
 
     # Download integration tests
-    curl -fsSL "${BLOG_FIXTURES_BASE}/integration/customer_analytics_workflow_spec.rb" \
-        -o spec/integration/customer_analytics_workflow_spec.rb
+    curl -fsSL "${BLOG_FIXTURES_BASE}/integration/user_onboarding_workflow_spec.rb" \
+        -o spec/integration/user_onboarding_workflow_spec.rb
 
     log_success "Blog post examples downloaded"
 }
@@ -146,21 +153,14 @@ create_demo_controller() {
 
     mkdir -p app/controllers
 
-    cat > app/controllers/analytics_controller.rb << 'EOF'
-class AnalyticsController < ApplicationController
-  def start
+    cat > app/controllers/user_onboarding_controller.rb << 'EOF'
+class UserOnboardingController < ApplicationController
+  def create
     task_request = Tasker::Types::TaskRequest.new(
-      name: 'customer_analytics',
-      namespace: 'data_pipeline',
+      name: 'create_user_account',
+      namespace: 'user_onboarding',
       version: '1.0.0',
-      context: {
-        date_range: {
-          start_date: params[:start_date] || 30.days.ago.strftime('%Y-%m-%d'),
-          end_date: params[:end_date] || Date.current.strftime('%Y-%m-%d')
-        },
-        force_refresh: params[:force_refresh] == 'true',
-        notification_channels: params[:notification_channels] || ['#data-team']
-      }
+      context: onboarding_params.to_h
     )
 
     task_id = Tasker::HandlerFactory.instance.run_task(task_request)
@@ -170,12 +170,12 @@ class AnalyticsController < ApplicationController
       success: true,
       task_id: task.task_id,
       status: task.status,
-      monitor_url: analytics_status_path(task_id: task.task_id)
+      monitor_url: user_onboarding_status_path(task_id: task.task_id)
     }
   rescue Tasker::ValidationError => e
     render json: {
       success: false,
-      error: 'Invalid analytics request',
+      error: 'Invalid user onboarding data',
       details: e.message
     }, status: :unprocessable_entity
   end
@@ -188,7 +188,7 @@ class AnalyticsController < ApplicationController
       {
         name: step.name,
         status: step.status,
-        progress: step.annotations['progress_message'],
+        service: step.annotations['service_name'],
         started_at: step.started_at,
         completed_at: step.completed_at,
         duration: step.duration_ms
@@ -210,9 +210,13 @@ class AnalyticsController < ApplicationController
 
     if task.status == 'completed'
       sequence = task.workflow_step_sequences.last
-      insights_step = sequence.steps.find { |s| s.name == 'generate_insights' }
+      final_step = sequence.steps.find { |s| s.name == 'configure_preferences' }
 
-      render json: insights_step&.result || { error: 'No results available' }
+      render json: {
+        user_id: final_step&.result&.dig('user_id'),
+        account_status: final_step&.result&.dig('account_status'),
+        services_configured: final_step&.result&.dig('services_configured') || []
+      }
     else
       render json: { error: 'Task not completed yet', status: task.status }
     end
@@ -220,8 +224,12 @@ class AnalyticsController < ApplicationController
 
   private
 
-  def analytics_params
-    params.permit(:start_date, :end_date, :force_refresh, notification_channels: [])
+  def onboarding_params
+    params.require(:user_onboarding).permit(
+      user_info: [:email, :first_name, :last_name, :phone],
+      billing_info: [:plan_type, :payment_method, :billing_address],
+      preferences: [:newsletter_opt_in, :sms_notifications, :data_sharing_consent]
+    )
   end
 end
 EOF
@@ -231,9 +239,9 @@ EOF
 
 # Main setup
 main() {
-    log_header "Data Pipeline Resilience Demo Setup"
+    log_header "Microservices Coordination Demo Setup"
     echo
-    log_info "This demo showcases Tasker's resilience features through a real data pipeline workflow"
+    log_info "This demo showcases Tasker's coordination features through a real microservices workflow"
     echo
 
     check_dependencies
@@ -242,43 +250,43 @@ main() {
     create_demo_controller
 
     echo
-    log_success "Data pipeline demo application created successfully!"
+    log_success "Microservices demo application created successfully!"
     echo
 
     # Provide blog-post specific instructions
     log_header "Blog Post Demo Ready!"
     echo
     echo "📚 This demo demonstrates the concepts from:"
-    echo "   'When Your Data Pipeline Became a Ticking Time Bomb'"
+    echo "   'When Your Microservices Became a Distributed Monolith'"
     echo
     echo "🚀 Quick Start:"
     echo "   1. Start the application: docker-compose up"
     echo "   2. Wait for all services to be ready"
     echo "   3. The application will be available at http://localhost:3000"
     echo
-    echo "🧪 Test the Pipeline Resilience Features:"
+    echo "🧪 Test the Microservices Coordination Features:"
     echo
-    echo "   # Start analytics pipeline"
-    echo "   curl -X POST http://localhost:3000/analytics/start \\"
+    echo "   # Create new user account"
+    echo "   curl -X POST http://localhost:3000/user_onboarding \\"
     echo "     -H 'Content-Type: application/json' \\"
-    echo "     -d '{\"start_date\": \"2024-01-01\", \"end_date\": \"2024-01-31\", \"force_refresh\": true}'"
+    echo "     -d '{\"user_onboarding\": {\"user_info\": {\"email\": \"test@example.com\", \"first_name\": \"John\", \"last_name\": \"Doe\", \"phone\": \"+1234567890\"}, \"billing_info\": {\"plan_type\": \"premium\", \"payment_method\": \"credit_card\", \"billing_address\": \"123 Main St\"}, \"preferences\": {\"newsletter_opt_in\": true, \"sms_notifications\": false, \"data_sharing_consent\": true}}}'"
     echo
-    echo "   # Monitor pipeline progress"
-    echo "   curl http://localhost:3000/analytics/status/TASK_ID"
+    echo "   # Monitor onboarding progress"
+    echo "   curl http://localhost:3000/user_onboarding/status/TASK_ID"
     echo
-    echo "   # Get pipeline results"
-    echo "   curl http://localhost:3000/analytics/results/TASK_ID"
+    echo "   # Get onboarding results"
+    echo "   curl http://localhost:3000/user_onboarding/results/TASK_ID"
     echo
-    echo "   # Test with different date ranges"
-    echo "   curl -X POST http://localhost:3000/analytics/start \\"
+    echo "   # Test with different plan types"
+    echo "   curl -X POST http://localhost:3000/user_onboarding \\"
     echo "     -H 'Content-Type: application/json' \\"
-    echo "     -d '{\"start_date\": \"2024-02-01\", \"end_date\": \"2024-02-28\"}'"
+    echo "     -d '{\"user_onboarding\": {\"user_info\": {\"email\": \"premium@example.com\", \"first_name\": \"Jane\", \"last_name\": \"Smith\"}, \"billing_info\": {\"plan_type\": \"enterprise\", \"payment_method\": \"invoice\"}, \"preferences\": {\"newsletter_opt_in\": false, \"sms_notifications\": true}}}'"
     echo
     echo "📖 Read the full blog post at:"
-    echo "   https://github.com/$GITHUB_REPO/blob/$BRANCH/blog/posts/post-02-data-pipeline-resilience/blog-post.md"
+    echo "   https://github.com/$GITHUB_REPO/blob/$BRANCH/blog/posts/post-03-microservices-coordination/blog-post.md"
     echo
     echo "🔧 Explore the tested code examples at:"
-    echo "   https://github.com/$GITHUB_REPO/tree/$BRANCH/spec/blog/fixtures/post_02_data_pipeline_resilience"
+    echo "   https://github.com/$GITHUB_REPO/tree/$BRANCH/spec/blog/fixtures/post_03_microservices_coordination"
     echo
     echo "🐳 Stop the application:"
     echo "   docker-compose down"
