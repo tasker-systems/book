@@ -30,11 +30,13 @@
 ## Part III: Scale & Enterprise
 
 * [Chapter 4: Team Scaling Challenges](blog/posts/post-04-team-scaling/README.md)
-  * [Coming Soon: From Startup to Scale-up](blog/posts/post-04-team-scaling/preview.md)
+  * [The Story: When Team Growth Became a Namespace War](blog/posts/post-04-team-scaling/blog-post.md)
+  * [Testing Guide](blog/posts/post-04-team-scaling/TESTING.md)
+  * [Quick Setup](blog/posts/post-04-team-scaling/setup-scripts/README.md)
 * [Chapter 5: Production Observability](blog/posts/post-05-production-observability/README.md)
-  * [Coming Soon: When Workflows Become Black Boxes](blog/posts/post-05-production-observability/preview.md)
-* [Chapter 6: Enterprise Security](blog/posts/post-06-enterprise-security/README.md)
-  * [Coming Soon: Workflows in a Zero-Trust World](blog/posts/post-06-enterprise-security/preview.md)
+  * [The Story: When Your Workflows Become Black Boxes](blog/posts/post-05-production-observability/blog-post.md)
+  * [Testing Guide](blog/posts/post-05-production-observability/TESTING.md)
+  * [Quick Setup](blog/posts/post-05-production-observability/setup-scripts/README.md)
 
 ## Developer Documentation
 
@@ -48,6 +50,7 @@
 ### Developer Reference
 
 * [Developer Guide](docs/DEVELOPER_GUIDE.md)
+* [Step Handler Best Practices](docs/STEP_HANDLER_BEST_PRACTICES.md)
 * [REST API Reference](docs/REST_API.md)
 * [SQL Functions Reference](docs/SQL_FUNCTIONS.md)
 * [Application Generator](docs/APPLICATION_GENERATOR.md)
