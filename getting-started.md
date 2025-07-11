@@ -1,29 +1,18 @@
 # Getting Started with Tasker
 
-## What if your most complex business processes were as reliable as database transactions?
+Tasker is a Rails engine that provides workflow orchestration through atomic, retryable steps. This guide introduces the core framework concepts and installation methods.
 
-Every engineering team faces the same challenge: **multi-step workflows that break in production**. E-commerce checkouts, data pipelines, user onboarding flows, microservices coordination – these critical processes fail unpredictably, sometimes untraceably, and create those dreaded 3 AM wake-up calls.
+## Core Framework Concepts
 
-**Tasker transforms brittle processes into bulletproof workflows.**
+### **Tasks and Steps**
 
-## The Problem with Traditional Approaches
+- **Tasks** represent complete workflows (e.g., "process_order", "sync_data")
+- **Steps** are atomic units of work within a task (e.g., "validate_cart", "charge_payment")
+- **Step Dependencies** define execution order through `depends_on_step` relationships
 
-Most systems treat workflows as giant, all-or-nothing operations. When step 3 of 8 fails, you lose everything and start over. This fragility creates:
+### **YAML Configuration**
 
-- **Monolithic procedures**: One failure kills the entire process
-- **Manual state management**: Hand-coded retry logic and dependency tracking
-- **No observability**: When things break, you're playing detective
-- **Technical debt**: Each workflow becomes a custom solution
-
-**The real issue?** Traditional approaches often assume perfect execution in an imperfect world. And usually not initially! It's just that things chain together over time and retryability and idempotency show up as a problem of structure.
-
-## How Tasker Solves This
-
-Tasker is a production-ready Rails engine that makes workflows reliable through three core principles:
-
-### 1. **Declarative Configuration**
-
-Define what should happen, not how it should happen:
+Tasks are defined declaratively in YAML files:
 
 ```yaml
 # config/tasker/tasks/ecommerce/order_processing.yaml
@@ -43,184 +32,245 @@ step_templates:
     handler_class: Ecommerce::SendConfirmationHandler
 ```
 
-### 2. **Atomic Step Execution**
+### **Step Handlers**
 
-Each step is isolated, retryable, and idempotent:
+Ruby classes that implement the business logic for each step:
 
 ```ruby
 class Ecommerce::ProcessPaymentHandler < Tasker::StepHandler::Base
   def process(task, sequence, step)
+    # Business logic here
     payment_result = PaymentService.charge(
       amount: task.context['total_amount'],
       token: task.context['payment_token']
     )
 
-    # Permanent failure - don't retry
+    # Error handling
     raise Tasker::PermanentError, "Card declined" if payment_result.declined?
-
-    # Retryable failure - will retry with exponential backoff
     raise Tasker::RetryableError, "Gateway timeout" if payment_result.timeout?
 
+    # Return step results
     { payment_id: payment_result.id, status: 'charged' }
   end
 end
 ```
 
-### 3. **Seamless Observability**
+### **State Management**
 
-React to any workflow event with your own logic:
+- **Task States**: `pending`, `processing`, `completed`, `failed`
+- **Step States**: `pending`, `processing`, `completed`, `failed`, `cancelled`
+- **Retryable vs Permanent Failures**: Different error types trigger different retry behaviors
+
+### **Event System**
+
+Tasker publishes 56 built-in events for observability:
 
 ```ruby
 class OrderTrackingSubscriber < Tasker::Events::Subscribers::BaseSubscriber
   subscribe_to 'task.completed', 'step.failed'
 
   def handle_task_completed(event)
-    return unless event[:task_name] == 'process_order'
     Analytics.track('order_completed', event[:context])
   end
 
   def handle_step_failed(event)
-    if event[:step_name] == 'process_payment'
-      SlackNotifier.urgent_alert(
-        "Payment failure for order #{event[:context][:order_id]}: #{event[:error_message]}"
-      )
-    end
+    NotificationService.alert("Step failed: #{event[:step_name]}")
   end
 end
 ```
 
-## Real-World Impact
+## Installation Methods
 
-Teams using Tasker report transformational improvements:
+### **Quick Demo Installation**
 
-### **Before Tasker**
+For trying Tasker with complete demo workflows:
 
-- Checkout failures during peak traffic require hours of manual reconciliation
-- 3 AM alerts when ETL pipelines fail mid-process
-- Custom retry logic scattered across every workflow
-- Zero visibility into why processes fail
+```bash
+# With Docker (recommended for exploration)
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name my-tasker-demo \
+  --tasks ecommerce,inventory,customer \
+  --docker \
+  --with-observability \
+  --non-interactive
 
-### **After Tasker**
+# Traditional Rails setup
+curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
+  --app-name my-tasker-demo \
+  --tasks ecommerce,inventory,customer \
+  --non-interactive
+```
 
-- **98% of transient failures** recover automatically
-- **Sub-50ms workflow analysis** even for complex dependencies
-- **56 built-in events** provide complete lifecycle visibility
-- **Intelligent retries** handle different failure types appropriately
+**[→ Try the demo workflows](./QUICK_START.md)**
 
-## What Makes This Possible
+### **Existing Rails Application**
 
-### **Rails Engine Architecture**
+To add Tasker to your existing Rails app:
 
-- **Seamless integration**: Mounts at `/tasker` in existing Rails apps
-- **Zero architectural rewrites**: Enhances your existing code
-- **Production-ready**: 1,692 passing tests, comprehensive documentation
+#### 1. Add to Gemfile
 
-### **High-Performance SQL Functions**
+```ruby
+gem 'tasker-engine', '~> 1.0.5'
+```
 
-- **50-100x faster** than traditional view-based approaches
-- **Enterprise scale**: Complex workflow analysis in milliseconds
-- **Horizontal scaling**: Performance degrades gracefully under load
+#### 2. Install and Setup
 
-### **Event-Driven Design**
+```bash
+bundle install
+bundle exec rails tasker:install:migrations
+bundle exec rails tasker:install:database_objects  # Critical: installs SQL functions
+bundle exec rails db:migrate
+```
 
-- **56 built-in events**: Complete workflow lifecycle tracking
-- **OpenTelemetry integration**: Distributed tracing out of the box
-- **Custom integrations**: React to any workflow event
+#### 3. Mount the Engine
 
-## 🚀 Ready to Try It?
+```ruby
+# config/routes.rb
+Rails.application.routes.draw do
+  mount Tasker::Engine, at: '/tasker'
+  # ... your existing routes
+end
+```
 
-**[→ Get Tasker running in 5 minutes](./QUICK_START.md)**
+#### 4. Configure (Optional)
 
-The quickstart includes:
+```ruby
+# config/initializers/tasker.rb
+Tasker.configure do |config|
+  config.execution.min_concurrent_steps = 2
+  config.execution.max_concurrent_steps_limit = 10
+  config.execution.concurrency_cache_duration = 300
+end
+```
 
-- One-line installation with Docker support
-- Three complete demo workflows (e-commerce, inventory, customer management)
-- Built-in observability with Jaeger and Prometheus
-- GraphQL and REST API interfaces
+## Framework Architecture
 
-## Real Engineering Scenarios
+### **Rails Engine Structure**
 
-This guide walks through six proven use cases with complete, runnable code:
+- **Mounts at `/tasker`** in your application
+- **Database tables** for tasks, steps, and execution tracking
+- **SQL functions** for high-performance workflow analysis
+- **Background jobs** for async step execution
 
-### **For Reliability Problems**
+### **Core Components**
 
-- **[Chapter 1: E-commerce Checkout](./blog/posts/01-ecommerce-reliability/)** - Transform checkout failures into bulletproof workflows
-- **[Chapter 2: Data Pipeline Resilience](./blog/posts/02-data-pipeline-resilience/)** - Handle ETL failures with intelligent recovery
+#### **Task Handler**
 
-### **For Coordination Issues**
+Manages overall workflow execution:
 
-- **[Chapter 3: Microservices Coordination](./blog/posts/03-microservices-coordination/)** - Orchestrate API calls across service boundaries
-- **[Chapter 4: Team Scaling](./blog/posts/04-team-scaling/)** - Multi-team workflow organization
+```ruby
+class Ecommerce::OrderProcessingHandler < Tasker::TaskHandler::Base
+  def validate_context(context)
+    # Validate required context data
+  end
 
-### **For Debugging Difficulties**
+  def before_task_start(task)
+    # Pre-execution setup
+  end
 
-- **[Chapter 5: Production Observability](./blog/posts/05-production-observability/)** - Complete visibility into workflow execution
-- **[Chapter 6: Enterprise Security](./blog/posts/06-enterprise-security/)** - Compliance with audit trails
+  def after_task_complete(task)
+    # Post-execution cleanup
+  end
+end
+```
 
-## Learning Approach
+#### **Step Execution**
 
-Each scenario follows the same proven formula:
+Steps run through the orchestration engine:
 
-1. **The Problem**: A relatable engineering nightmare (3 AM alerts, Black Friday failures)
-2. **Why It Matters**: Technical deep-dive into what goes wrong and why
-3. **The Solution**: Step-by-step Tasker implementation
-4. **The Results**: Concrete metrics showing the improvement
-5. **Try It Yourself**: Complete, runnable code you can test immediately
+- **Dependency Resolution**: Determines which steps can run
+- **Parallel Execution**: Independent steps run concurrently
+- **Error Handling**: Retryable vs permanent failure logic
+- **State Persistence**: Progress saved between executions
 
-## What You'll Learn
+#### **SQL Functions**
 
-### **Technical Skills**
+High-performance PostgreSQL functions for:
 
-- Design atomic, retryable workflow steps
-- Implement intelligent retry strategies for different failure types
-- Build complete observability into workflow execution
-- Handle complex dependencies and parallel operations
+- **Dependency Analysis**: Finding ready-to-run steps
+- **State Transitions**: Atomic state updates
+- **Performance Metrics**: Analytics and monitoring
 
-### **Engineering Judgment**
+## Creating Your First Workflow
 
-- Recognize when processes need workflow orchestration
-- Choose appropriate retry and recovery strategies
-- Balance reliability with complexity
-- Design for observability from the beginning
+### **1. Generate Task Structure**
 
-### **Business Impact**
+```bash
+rails generate tasker:task_handler WelcomeUser --module_namespace WelcomeUser
+```
 
-- Reduce manual intervention in critical processes
-- Improve system reliability and uptime
-- Accelerate debugging and incident resolution
-- Meet compliance and audit requirements
+This creates:
 
-## Three Ways to Start
+- **Handler class**: `app/tasks/welcome_user/welcome_user_handler.rb`
+- **YAML config**: `config/tasker/tasks/welcome_user/welcome_user.yaml`
+- **Test file**: `spec/tasks/welcome_user/welcome_user_handler_spec.rb`
 
-### **1. Browse the Examples**
+### **2. Define Step Templates**
 
-Read through the scenarios that match your current challenges. Each includes complete explanations and working code.
+```yaml
+# config/tasker/tasks/welcome_user/welcome_user.yaml
+name: welcome_user
+module_namespace: WelcomeUser
+task_handler_class: WelcomeUserHandler
 
-### **2. Run the Quickstart**
+step_templates:
+  - name: validate_user
+    handler_class: WelcomeUser::StepHandler::ValidateUserHandler
+  - name: send_welcome_email
+    depends_on_step: validate_user
+    handler_class: WelcomeUser::StepHandler::SendWelcomeEmailHandler
+    default_retryable: true
+```
 
-[Install Tasker](./QUICK_START.md) and try the demo workflows. See the patterns in action before diving into the theory.
+### **3. Implement Step Handlers**
 
-### **3. Adapt to Your Context**
+```ruby
+class WelcomeUser::StepHandler::ValidateUserHandler < Tasker::StepHandler::Base
+  def process(task, sequence, step)
+    user = User.find(task.context['user_id'])
+    raise Tasker::PermanentError, "User not found" unless user
 
-Use the examples as starting points. Every engineering team has workflow challenges – these patterns help you solve yours.
+    { user_email: user.email, user_name: user.name }
+  end
+end
+```
+
+### **4. Execute the Workflow**
+
+```ruby
+# Create and execute a task
+task = Tasker::Task.create!(
+  task_name: 'welcome_user',
+  context: { user_id: 123 }
+)
+
+# Execute synchronously
+Tasker::Orchestration::TaskOrchestrator.execute_task(task)
+
+# Or queue for background execution
+Tasker::Jobs::TaskExecutorJob.perform_later(task.task_id)
+```
+
+## Next Steps
+
+### **Framework Exploration**
+
+- **[Core Concepts](./docs/core-concepts.md)** - Deeper dive into framework architecture
+- **[Step Handler Best Practices](./docs/STEP_HANDLER_BEST_PRACTICES.md)** - Patterns for reliable step handlers
+- **[Event System](./docs/EVENT_SYSTEM.md)** - Complete event reference and custom subscribers
+
+### **Real-World Examples**
+
+- **[E-commerce Workflows](./blog/posts/post-01-ecommerce-reliability/)** - Order processing, inventory, payments
+- **[Data Pipeline Workflows](./blog/posts/post-02-data-pipeline-resilience/)** - ETL, data validation, report generation
+- **[Microservices Coordination](./blog/posts/post-03-microservices-coordination/)** - API orchestration, circuit breakers
+
+### **Production Setup**
+
+- **[Authentication & Authorization](./docs/AUTH.md)** - Securing workflow access
+- **[Health Monitoring](./docs/HEALTH.md)** - Kubernetes-ready health checks
+- **[Metrics & Observability](./docs/TELEMETRY.md)** - Prometheus, OpenTelemetry, custom metrics
 
 ---
 
-## The Stories Behind the Code
-
-These aren't abstract examples. Every scenario is based on real engineering challenges:
-
-- **Black Friday checkout failures** that cost $50K/hour
-- **3 AM data pipeline alerts** that ruin everyone's sleep
-- **Microservices coordination** that turns simple operations into chaos
-- **Team scaling pains** where workflows conflict and block each other
-- **Production debugging** where you can't see what's happening
-- **Enterprise compliance** that turns workflows into security nightmares
-
-**Ready to transform your workflow chaos into reliability?**
-
-**[→ Start with the 5-minute quickstart](./QUICK_START.md)**
-
----
-
-_"Every great engineering solution starts with a problem that keeps you up at night. Let's solve yours."_
+**Ready to build reliable workflows?** Start with the [5-minute quickstart](./QUICK_START.md) to see complete examples in action.
