@@ -1,6 +1,6 @@
 # Tasker Application Template Generator
 
-The Tasker Application Template Generator provides a one-line creation experience for building production-ready applications that leverage Tasker's enterprise workflow orchestration capabilities. Version 1.0.0 introduces Docker-based development environments and comprehensive dry-run validation.
+The Tasker Application Template Generator provides a one-line creation experience for building production-ready applications that leverage Tasker's enterprise workflow orchestration capabilities. Version 1.0.6 introduces Docker-based development environments and comprehensive dry-run validation.
 
 ## Quick Start
 
@@ -15,7 +15,7 @@ This will:
 3. Run an interactive setup to customize your application
 4. Create a complete Rails application with Tasker integration
 
-### Docker-Based Development (NEW in v1.0.0)
+### Docker-Based Development
 ```bash
 # Create a Docker-based development environment
 curl -fsSL https://raw.githubusercontent.com/tasker-systems/tasker/main/scripts/install-tasker-app.sh | bash -s -- \
@@ -147,7 +147,7 @@ Choose from three business domains:
 - Clear logging of all operations
 - Fail-fast error handling
 
-## Docker Development Environment (v1.0.0)
+## Docker Development Environment
 
 ### Quick Start with Docker
 The Docker mode provides a complete containerized development environment, eliminating setup friction:
@@ -204,7 +204,7 @@ The `./bin/docker-dev` helper script provides 15+ commands for Docker management
 - **Health checks**: Automatic service dependency management
 - **Network isolation**: Secure bridge network for all services
 
-## Dry-Run Validation System (v1.0.0)
+## Dry-Run Validation System
 
 ### Overview
 The generator includes a comprehensive dry-run validation system that tests template consistency without generating files:

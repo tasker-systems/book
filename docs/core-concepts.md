@@ -48,7 +48,7 @@ flowchart TB
 - Register with the handler registry
 - Configure retry policies and timeouts
 
-### Modern Architecture (Tasker Engine v1.0.0)
+### Modern Architecture (Tasker Engine v0.1.0)
 
 **Primary Pattern: ConfiguredTask with YAML**
 
@@ -404,7 +404,7 @@ class OrderMonitor < Tasker::EventSubscriber::Base
 end
 ```
 
-## 5. Enterprise Features (v1.0.0)
+## 5. Enterprise Features
 *Production-ready capabilities*
 
 **Purpose**: Provide enterprise-grade features for production workflow orchestration at scale.

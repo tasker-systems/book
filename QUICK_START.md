@@ -67,7 +67,7 @@ docker --version
 
 ```ruby
 # In your Gemfile
-gem 'tasker-engine', '~> 1.0.0'
+gem 'tasker-engine', '~> 0.1'
 
 # Then run
 bundle install

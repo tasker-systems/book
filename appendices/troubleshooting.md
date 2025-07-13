@@ -351,7 +351,7 @@ Include this information:
 - OS: [macOS 13.0, Ubuntu 22.04, etc.]
 - Ruby version: [3.2.0]
 - Rails version: [7.0.4]
-- Tasker version: [1.0.0]
+- Tasker version: [0.1.0]
 
 **What I was trying to do**:
 [Describe the goal]

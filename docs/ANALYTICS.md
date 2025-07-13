@@ -1,8 +1,6 @@
 # Tasker Analytics System
 
 > **📊 Advanced Performance Analytics & Bottleneck Analysis for Production Workflows**
-> 
-> **New in Tasker Engine v1.0.0** - Comprehensive analytics endpoints with intelligent caching, EventRouter architecture, and performance insights.
 
 The Tasker Analytics system provides real-time performance monitoring and bottleneck analysis for your workflow orchestration. Built on SQL-driven analytics functions with intelligent caching, it delivers sub-100ms analytics responses for production environments.
 
@@ -94,7 +92,7 @@ Authorization: Bearer <token>
 
 **Response includes:**
 - **Slowest Tasks** - Tasks taking longest to complete
-- **Slowest Steps** - Individual step performance analysis  
+- **Slowest Steps** - Individual step performance analysis
 - **Error Pattern Analysis** - Common failure points and retry patterns
 - **Performance Distribution** - Statistical analysis of execution times
 - **Actionable Recommendations** - Specific optimization suggestions
@@ -153,7 +151,7 @@ Tasker's analytics system leverages high-performance SQL functions for fast data
 -- Performance metrics aggregation
 SELECT * FROM function_based_analytics_metrics('2024-07-01'::date, 24);
 
--- Slowest tasks analysis  
+-- Slowest tasks analysis
 SELECT * FROM function_based_slowest_tasks('ecommerce', 24);
 
 -- Step-level bottleneck identification
@@ -169,7 +167,7 @@ SELECT * FROM function_based_slowest_steps('process_order', 'ecommerce', 24);
 - **Headers:** Proper cache control for CDNs
 
 **Bottleneck Endpoint Caching:**
-- **TTL:** 2 minutes  
+- **TTL:** 2 minutes
 - **Invalidation:** Scope-aware (per namespace/task)
 - **Cache Key:** Parameters + timestamp
 - **Concurrency:** Thread-safe cache operations
@@ -230,7 +228,7 @@ end
 # Analyze step-level performance
 slow_steps = Tasker::Functions::FunctionBasedSlowestSteps.call(
   task_name: 'process_order',
-  namespace: 'ecommerce', 
+  namespace: 'ecommerce',
   hours: 24,
   limit: 10
 )
@@ -272,7 +270,7 @@ avg_duration = v2_tasks.average(:duration_ms)
 
 **Performance Characteristics:**
 - **Sub-100ms Response** - Cached analytics responses
-- **Concurrent Safety** - Thread-safe registry operations  
+- **Concurrent Safety** - Thread-safe registry operations
 - **Intelligent Invalidation** - Activity-based cache versioning
 - **Index Utilization** - Optimized for existing schema
 
@@ -306,20 +304,20 @@ Tasker.configuration do |config|
   config.analytics do |analytics|
     # Enable/disable analytics endpoints
     analytics.enabled = true
-    
+
     # Cache configuration
     analytics.performance_cache_ttl = 90      # seconds
     analytics.bottlenecks_cache_ttl = 120     # seconds
-    
+
     # Query limits
     analytics.max_bottleneck_results = 50
     analytics.max_analysis_period_hours = 168 # 7 days
-    
+
     # Background processing
     analytics.enable_background_aggregation = false
     analytics.aggregation_interval = 15.minutes
   end
-  
+
   # Authentication requirements
   config.telemetry do |tel|
     tel.metrics_auth_required = true
@@ -354,31 +352,31 @@ TASKER_ANALYTICS_READ_REPLICA_URL=postgresql://read-replica/db
 describe 'Analytics API', type: :request do
   describe 'GET /tasker/analytics/performance' do
     before { create_list(:completed_task, 10) }
-    
+
     it 'returns performance metrics' do
       get '/tasker/analytics/performance',
           headers: auth_headers
-      
+
       expect(response).to have_http_status(:ok)
       expect(json_response['system_health_score']).to be > 0
       expect(json_response['task_statistics']).to be_present
     end
-    
+
     it 'respects cache headers' do
       get '/tasker/analytics/performance', headers: auth_headers
       expect(response.headers['Cache-Control']).to include('max-age=90')
     end
   end
-  
+
   describe 'GET /tasker/analytics/bottlenecks' do
     it 'filters by namespace' do
       create(:slow_task, namespace: 'ecommerce')
       create(:fast_task, namespace: 'billing')
-      
+
       get '/tasker/analytics/bottlenecks',
           params: { namespace: 'ecommerce' },
           headers: auth_headers
-      
+
       bottlenecks = json_response['slowest_tasks']
       expect(bottlenecks.map { |t| t['namespace'] }).to all(eq('ecommerce'))
     end
@@ -394,12 +392,12 @@ describe 'Analytics Performance' do
   it 'responds within 100ms for cached requests' do
     # Warm the cache
     get '/tasker/analytics/performance', headers: auth_headers
-    
+
     # Measure cached response
     start_time = Time.current
     get '/tasker/analytics/performance', headers: auth_headers
     duration = (Time.current - start_time) * 1000
-    
+
     expect(duration).to be < 100  # milliseconds
   end
 end
@@ -428,13 +426,13 @@ end
 <!-- app/views/admin/dashboard.html.erb -->
 <div class="system-health">
   <h2>System Health: <%= @system_health['system_health_score'] %>%</h2>
-  
+
   <div class="metrics-grid">
     <div class="metric">
       <span class="value"><%= @system_health['task_statistics']['completed'] %></span>
       <span class="label">Tasks Completed (24h)</span>
     </div>
-    
+
     <div class="metric">
       <span class="value"><%= @system_health['processing_times']['p95'] %>ms</span>
       <span class="label">95th Percentile Duration</span>
@@ -461,7 +459,7 @@ end
 class AnalyticsMonitoringJob < ApplicationJob
   def perform
     metrics = Tasker::Analytics.performance_metrics
-    
+
     # Alert on low system health
     if metrics['system_health_score'] < 85
       AlertService.notify(
@@ -469,11 +467,11 @@ class AnalyticsMonitoringJob < ApplicationJob
         severity: :warning
       )
     end
-    
+
     # Alert on high failure rate
     stats = metrics['task_statistics']
     failure_rate = stats['failed'].to_f / stats['total_tasks']
-    
+
     if failure_rate > 0.05  # 5% failure rate
       AlertService.notify(
         "High failure rate detected: #{(failure_rate * 100).round(1)}%",
@@ -491,7 +489,7 @@ end
 class Metrics::GrafanaController < ApplicationController
   def analytics_metrics
     metrics = Tasker::Analytics.performance_metrics
-    
+
     render json: {
       system_health: metrics['system_health_score'],
       completion_rate: metrics['performance_trends']['1h']['completion_rate'],
@@ -500,10 +498,10 @@ class Metrics::GrafanaController < ApplicationController
       timestamp: Time.current.to_i
     }
   end
-  
+
   def bottleneck_summary
     bottlenecks = Tasker::Analytics.bottleneck_analysis(period: 1)
-    
+
     render json: {
       slowest_task_duration: bottlenecks['slowest_tasks'].first&.dig('avg_duration_ms'),
       error_count: bottlenecks['error_patterns'].sum { |p| p['frequency'] },

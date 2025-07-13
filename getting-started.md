@@ -110,7 +110,7 @@ To add Tasker to your existing Rails app:
 #### 1. Add to Gemfile
 
 ```ruby
-gem 'tasker-engine', '~> 1.0.5'
+gem 'tasker-engine', '~> 0.1'
 ```
 
 #### 2. Install and Setup

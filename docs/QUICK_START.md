@@ -4,7 +4,7 @@
 
 This guide will get you from zero to a working Tasker application with complete workflows in **5 minutes**. We'll use our automated demo application builder to create a full-featured Rails app with real-world workflow examples, then explore how to customize and extend them.
 
-**🚀 New in Tasker Engine 1.0.0**: This guide leverages our enterprise-grade demo application builder with advanced analytics capabilities:
+**🚀 New in Tasker Engine 1.0.6**: This guide leverages our enterprise-grade demo application builder with advanced analytics capabilities:
 - **Automated Setup**: One-command installation with complete Rails application
 - **Real-World Examples**: E-commerce, inventory, and customer management workflows
 - **Performance Analytics**: Advanced bottleneck analysis and performance monitoring
@@ -74,7 +74,7 @@ If you have an existing Rails application:
 
 ```bash
 # Add to Gemfile
-echo 'gem "tasker-engine", "~> 1.0.0"' >> Gemfile
+echo 'gem "tasker-engine", "~> 1.0"' >> Gemfile
 
 # Install and setup
 bundle install

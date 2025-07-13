@@ -11,7 +11,7 @@ This guide provides a comprehensive overview of developing with Tasker, covering
 5. **YAML Configuration** - Declarative workflow and step configuration with namespace support
 6. **Authentication & Authorization** - Secure your workflows with flexible authentication strategies
 
-## New in Tasker 1.0.0: TaskNamespace + Versioning Architecture
+## New in Tasker 1.0.6: TaskNamespace + Versioning Architecture
 
 Tasker now supports **hierarchical task organization** and **semantic versioning** for enterprise-scale workflow management:
 
@@ -2321,7 +2321,7 @@ Validates OpenTelemetry distributed tracing integration:
 
 **Sample Results**:
 ```
-🎯 Tasker 1.0.0 - Jaeger Integration Validator
+🎯 Tasker 1.0.6 - Jaeger Integration Validator
 ✅ Jaeger Connection: PASS - Successfully connected to Jaeger
 ✅ Workflow Execution: PASS - Created and executed 3 workflows
 ✅ Trace Collection: PASS - Successfully collected 13 spans
@@ -2352,7 +2352,7 @@ Validates metrics collection and Prometheus integration:
 
 **Sample Results**:
 ```
-🎯 Tasker 1.0.0 - Prometheus Integration Validator
+🎯 Tasker 1.0.6 - Prometheus Integration Validator
 ✅ MetricsSubscriber registered successfully
 ✅ Prometheus Connection: PASS - Successfully connected to Prometheus
 ✅ Metrics Endpoint: PASS - Tasker metrics endpoint accessible
@@ -2529,7 +2529,7 @@ The validation scripts provide comprehensive diagnostics:
 ```
 
 **Common Issues & Solutions**:
-- **No Metrics Collected**: Ensure `MetricsSubscriber` is registered (automatic in Tasker 1.0.0+)
+- **No Metrics Collected**: Ensure `MetricsSubscriber` is registered (automatic in Tasker 1.0.6+)
 - **Missing Spans**: Verify OpenTelemetry exporter configuration
 - **Connection Failures**: Check service ports and network connectivity
 - **Query Failures**: Validate Prometheus data retention and configuration
@@ -2546,7 +2546,7 @@ The integration validation scripts provide:
 
 **Status**: **COMPLETE** - Both Jaeger and Prometheus integration validators fully implemented and tested with 100% success rates, proving Tasker's production readiness through comprehensive observability stack validation.
 
-## Application Template Validation (v1.0.0)
+## Application Template Validation
 
 Tasker includes a comprehensive dry-run validation system for application template generation that ensures template consistency and correctness without generating files. This system is essential for maintaining template quality and CI/CD pipeline integration.
 

@@ -41,15 +41,10 @@ The Tasker system uses eleven key SQL functions to optimize workflow execution:
 4. **`get_task_execution_contexts_batch`** - Batch execution context for multiple tasks
 5. **`calculate_dependency_levels`** - Calculates dependency levels for workflow steps
 
-### Enhanced Analytics Functions (v1.0.0)
+### Enhanced Analytics Functions
 6. **`function_based_analytics_metrics`** - System-wide performance analytics with intelligent caching
 7. **`function_based_slowest_tasks`** - Task performance analysis with namespace/version filtering and scope-aware caching
 8. **`function_based_slowest_steps`** - Step-level bottleneck identification with detailed timing analysis
-
-### Legacy Analytics Functions (Deprecated in v1.0.0)
-9. **`get_analytics_metrics_v01`** - Legacy analytics aggregation (replaced by `function_based_analytics_metrics`)
-10. **`get_slowest_tasks_v01`** - Legacy task analysis (replaced by `function_based_slowest_tasks`)
-11. **`get_slowest_steps_v01`** - Legacy step analysis (replaced by `function_based_slowest_steps`)
 
 These functions replace expensive view-based queries with optimized stored procedures, providing O(1) performance for critical workflow decisions.
 
@@ -833,13 +828,13 @@ END
 ```sql
 -- Count steps by status using most recent transitions
 step_count = COUNT(ws.workflow_step_id)
-completed_steps = COUNT(CASE 
-  WHEN wst.to_state IN ('complete', 'resolved_manually') AND wst.most_recent = true 
-  THEN 1 
+completed_steps = COUNT(CASE
+  WHEN wst.to_state IN ('complete', 'resolved_manually') AND wst.most_recent = true
+  THEN 1
 END)
-error_steps = COUNT(CASE 
-  WHEN wst.to_state = 'error' AND wst.most_recent = true 
-  THEN 1 
+error_steps = COUNT(CASE
+  WHEN wst.to_state = 'error' AND wst.most_recent = true
+  THEN 1
 END)
 ```
 
@@ -1166,7 +1161,7 @@ WHEN COUNT(dep_edges.from_step_id) = 0 THEN true  -- Zero dependencies
    - Creates `calculate_dependency_levels` function
    - Loads from `db/functions/calculate_dependency_levels_v01.sql`
 
-**Analytics Functions Added in v1.0.0:**
+**Analytics Functions Added:**
 
 6. **`get_analytics_metrics_v01`** (Via system migrations)
    - Comprehensive system metrics aggregation
@@ -1417,9 +1412,9 @@ These functions are critical components that make Tasker's concurrent workflow e
 
 ---
 
-## Enhanced Analytics Functions (v1.0.0)
+## Enhanced Analytics Functions
 
-Tasker Engine v1.0.0 introduces three new high-performance analytics functions that replace the legacy `_v01` versions with enhanced caching, filtering capabilities, and performance optimizations.
+Tasker Engine introduces three new high-performance analytics functions with enhanced caching, filtering capabilities, and performance optimizations.
 
 ### Function 9: `function_based_analytics_metrics`
 
@@ -1575,7 +1570,7 @@ slow_steps.each do |step|
   puts "#{step.step_name} (#{step.task_name}): #{step.avg_duration_ms}ms"
   puts "  Retry rate: #{step.retry_rate * 100}%"
   puts "  Optimization score: #{step.optimization_score}"
-  
+
   if step.timeout_rate > 0.05  # 5% timeout rate
     puts "  ⚠️  High timeout rate: #{step.timeout_rate * 100}%"
   end
@@ -1587,21 +1582,21 @@ high_impact_steps = slow_steps.select { |s| s.optimization_score > 80 }
 
 ### Analytics Function Integration
 
-#### Controller Integration (v1.0.0)
+#### Controller Integration
 ```ruby
 # app/controllers/tasker/analytics_controller.rb
 class Tasker::AnalyticsController < ApplicationController
   before_action :authenticate_analytics_access!
-  
+
   def performance
     @metrics = Tasker::Functions::FunctionBasedAnalyticsMetrics.call(
       start_date: 24.hours.ago,
       hours: 24
     )
-    
+
     render json: @metrics, status: :ok
   end
-  
+
   def bottlenecks
     @bottlenecks = {
       slowest_tasks: Tasker::Functions::FunctionBasedSlowestTasks.call(
@@ -1616,14 +1611,14 @@ class Tasker::AnalyticsController < ApplicationController
         limit_count: 10
       )
     }
-    
+
     render json: @bottlenecks, status: :ok
   end
 end
 ```
 
 #### Caching Strategy
-The v1.0.0 analytics functions implement intelligent caching:
+The analytics functions implement intelligent caching:
 
 ```ruby
 # Performance metrics: 90-second TTL with activity-based invalidation
@@ -1639,9 +1634,9 @@ def cache_key_bottlenecks(namespace, task_name, hours)
 end
 ```
 
-### Performance Benchmarks (v1.0.0)
+### Performance Benchmarks
 
-| Metric | Legacy (_v01) | Enhanced (v1.0.0) | Improvement |
+| Metric | Legacy (_v01) | Enhanced | Improvement |
 |--------|---------------|-------------------|-------------|
 | Analytics Response | 45-120ms | <10ms (cached) | **5-12x faster** |
 | Cache Hit Rate | N/A | 95%+ | **New capability** |
@@ -1664,7 +1659,7 @@ new_metrics = Tasker::Functions::FunctionBasedAnalyticsMetrics.call
 ```
 
 #### Feature Comparison
-| Feature | Legacy _v01 | Enhanced v1.0.0 | Migration Required |
+| Feature | Legacy _v01 | Enhanced | Migration Required |
 |---------|-------------|-----------------|-------------------|
 | Basic Metrics | ✅ | ✅ | No |
 | Performance Filtering | ⚠️ Limited | ✅ Enhanced | Optional |
@@ -1692,12 +1687,12 @@ end
 class AnalyticsMonitoringJob < ApplicationJob
   def perform
     metrics = Tasker::Functions::FunctionBasedAnalyticsMetrics.call
-    
+
     # Alert on degraded performance
     if metrics.system_health_score < 90
       AlertService.performance_degradation(metrics)
     end
-    
+
     # Track bottlenecks
     bottlenecks = Tasker::Functions::FunctionBasedSlowestTasks.call(limit_count: 5)
     if bottlenecks.any? { |task| task.avg_duration_ms > 30000 }  # 30 seconds
@@ -1707,4 +1702,4 @@ class AnalyticsMonitoringJob < ApplicationJob
 end
 ```
 
-The enhanced v1.0.0 analytics functions provide production-ready performance monitoring with intelligent caching, making real-time analytics dashboards feasible for high-volume Tasker deployments.
+The enhanced analytics functions provide production-ready performance monitoring with intelligent caching, making real-time analytics dashboards feasible for high-volume Tasker deployments.
