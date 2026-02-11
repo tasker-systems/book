@@ -144,7 +144,6 @@
 - [Cluster Testing Guide](testing/cluster-testing-guide.md)
 - [Comprehensive Lifecycle Testing Guide](testing/comprehensive-lifecycle-testing-guide.md)
 - [Decision Point E2e Tests](testing/decision-point-e2e-tests.md)
-- [TAS 42 Implementation Summary](testing/TAS-42-implementation-summary.md)
 
 ---
 
@@ -157,15 +156,15 @@
 # Decisions
 
 - [Architectural Decisions](decisions/README.md)
+  - [Adr 001 Actor Pattern](decisions/adr-001-actor-pattern.md)
+  - [Adr 002 Bounded Mpsc Channels](decisions/adr-002-bounded-mpsc-channels.md)
+  - [Adr 003 Ownership Removal](decisions/adr-003-ownership-removal.md)
+  - [Adr 004 Backoff Consolidation](decisions/adr-004-backoff-consolidation.md)
+  - [Adr 005 Dual Event System](decisions/adr-005-dual-event-system.md)
+  - [Adr 006 Worker Decomposition](decisions/adr-006-worker-decomposition.md)
+  - [Adr 007 Ffi Over Wasm](decisions/adr-007-ffi-over-wasm.md)
+  - [Adr 008 Composition Pattern](decisions/adr-008-composition-pattern.md)
   - [Rca Parallel Execution Timing Bugs](decisions/rca-parallel-execution-timing-bugs.md)
-  - [TAS 100 Ffi Over Wasm](decisions/TAS-100-ffi-over-wasm.md)
-  - [TAS 112 Composition Pattern](decisions/TAS-112-composition-pattern.md)
-  - [TAS 46 Actor Pattern](decisions/TAS-46-actor-pattern.md)
-  - [TAS 51 Bounded Mpsc Channels](decisions/TAS-51-bounded-mpsc-channels.md)
-  - [TAS 54 Ownership Removal](decisions/TAS-54-ownership-removal.md)
-  - [TAS 57 Backoff Consolidation](decisions/TAS-57-backoff-consolidation.md)
-  - [TAS 67 Dual Event System](decisions/TAS-67-dual-event-system.md)
-  - [TAS 69 Worker Decomposition](decisions/TAS-69-worker-decomposition.md)
 
 ---
 
