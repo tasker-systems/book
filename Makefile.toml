@@ -1,0 +1,169 @@
+# =============================================================================
+# Tasker Documentation Hub - cargo-make Task Definitions
+# =============================================================================
+#
+# Documentation build pipeline for the Tasker ecosystem.
+# Syncs content from tasker-core and tasker-contrib, then builds with mdBook.
+#
+# Quick Start:
+#   cargo make serve          # Sync + build + serve locally
+#   cargo make build          # Sync + build static site
+#   cargo make sync           # Pull content from sibling repos
+#   cargo make clean          # Remove build artifacts
+#
+# Content Pipeline:
+#   cargo make sync           # Step 1: Sync from source repos
+#   cargo make summary        # Step 2: Regenerate SUMMARY.md
+#   cargo make mdbook-build   # Step 3: Build the book
+#
+# Full Refresh:
+#   cargo make refresh        # All three steps + open in browser
+#
+# =============================================================================
+
+[config]
+default_to_workspace = false
+skip_core_tasks = true
+
+[env]
+# Sibling repo paths (override via environment if layout differs)
+TASKER_CORE_DIR = { value = "../tasker-core", condition = { env_not_set = ["TASKER_CORE_DIR"] } }
+TASKER_CONTRIB_DIR = { value = "../tasker-contrib", condition = { env_not_set = ["TASKER_CONTRIB_DIR"] } }
+SCRIPTS_DIR = "cargo-make/scripts"
+
+# =============================================================================
+# Top-Level Composite Tasks
+# =============================================================================
+
+[tasks.default]
+description = "Show available tasks"
+script = '''
+echo "Tasker Documentation Hub - cargo-make Tasks"
+echo "============================================="
+echo ""
+echo "Common:"
+echo "  cargo make serve       (s)   Sync + build + serve locally"
+echo "  cargo make build       (b)   Sync + build static site"
+echo "  cargo make sync              Pull from sibling repos"
+echo "  cargo make clean             Remove build artifacts"
+echo ""
+echo "Pipeline Steps:"
+echo "  cargo make sync              Sync content from source repos"
+echo "  cargo make summary           Regenerate SUMMARY.md from content"
+echo "  cargo make mdbook-build      Build mdBook (no sync)"
+echo "  cargo make mdbook-serve      Serve mdBook (no sync)"
+echo ""
+echo "Full Workflow:"
+echo "  cargo make refresh     (r)   Sync + summary + build"
+echo ""
+echo "CI:"
+echo "  cargo make ci-build          Build for CI (no sync, content committed)"
+echo "  cargo make linkcheck         Validate all links"
+echo ""
+echo "Environment:"
+echo "  TASKER_CORE_DIR=${TASKER_CORE_DIR}"
+echo "  TASKER_CONTRIB_DIR=${TASKER_CONTRIB_DIR}"
+'''
+
+# =============================================================================
+# Aliases
+# =============================================================================
+
+[tasks.s]
+alias = "serve"
+
+[tasks.b]
+alias = "build"
+
+[tasks.r]
+alias = "refresh"
+
+# =============================================================================
+# Content Sync Tasks
+# =============================================================================
+
+[tasks.sync]
+description = "Sync content from tasker-core and tasker-contrib"
+dependencies = ["sync-core", "sync-contrib"]
+
+[tasks.sync-core]
+description = "Sync documentation from tasker-core/docs"
+script = '''
+bash ${SCRIPTS_DIR}/sync-core.sh
+'''
+
+[tasks.sync-contrib]
+description = "Sync documentation from tasker-contrib"
+script = '''
+bash ${SCRIPTS_DIR}/sync-contrib.sh
+'''
+
+# =============================================================================
+# SUMMARY.md Generation
+# =============================================================================
+
+[tasks.summary]
+description = "Regenerate SUMMARY.md from directory structure"
+script = '''
+bash ${SCRIPTS_DIR}/generate-summary.sh
+'''
+
+# =============================================================================
+# mdBook Tasks (raw, no sync)
+# =============================================================================
+
+[tasks.mdbook-build]
+description = "Build mdBook (no sync step)"
+command = "mdbook"
+args = ["build"]
+
+[tasks.mdbook-serve]
+description = "Serve mdBook with hot reload (no sync step)"
+command = "mdbook"
+args = ["serve", "--open"]
+
+[tasks.mdbook-test]
+description = "Test mdBook content"
+command = "mdbook"
+args = ["test"]
+
+# =============================================================================
+# Composite Build Tasks (sync + build)
+# =============================================================================
+
+[tasks.build]
+description = "Sync content then build"
+dependencies = ["sync", "summary", "mdbook-build"]
+
+[tasks.serve]
+description = "Sync content then serve locally"
+dependencies = ["sync", "summary", "mdbook-serve"]
+
+[tasks.refresh]
+description = "Full refresh: sync + summary + build"
+dependencies = ["sync", "summary", "mdbook-build"]
+
+# =============================================================================
+# CI Tasks
+# =============================================================================
+
+[tasks.ci-build]
+description = "CI build (content already committed, no sync needed)"
+dependencies = ["mdbook-build"]
+
+[tasks.linkcheck]
+description = "Validate all links in the built book"
+dependencies = ["mdbook-build"]
+command = "mdbook-linkcheck"
+args = ["--standalone"]
+
+# =============================================================================
+# Clean
+# =============================================================================
+
+[tasks.clean]
+description = "Remove build artifacts"
+script = '''
+rm -rf book/
+echo "Cleaned build artifacts."
+'''

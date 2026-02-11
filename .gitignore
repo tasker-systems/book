@@ -1,9 +1,5 @@
-# GitBook build outputs
-_book/
-node_modules/
-
-# GitBook metadata
-.bookignore
+# mdBook build output
+book/
 
 # OS files
 .DS_Store
@@ -20,17 +16,8 @@ Thumbs.db
 *.tmp
 *.temp
 
-# Ruby files (for code examples)
-.ruby-lsp/
-Gemfile.lock
-
 # Log files
 *.log
 
-# Generated files
-site/
-
-# Docker build files (development only)
-# Note: Keep these commented out if you want to commit them
-# Dockerfile
-# bin/build-site.sh
+# Development context (never publish)
+memory-bank/

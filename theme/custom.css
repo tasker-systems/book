@@ -1,0 +1,21 @@
+/* Tasker Documentation - Custom Theme Overrides */
+
+/* Slightly wider content area */
+.content {
+    max-width: 900px;
+}
+
+/* Better code block styling */
+pre code {
+    font-size: 0.9em;
+}
+
+/* Table styling improvements */
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+table th, table td {
+    padding: 8px 12px;
+}
