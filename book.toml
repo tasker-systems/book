@@ -1,0 +1,47 @@
+# =============================================================================
+# Tasker Documentation Hub - mdBook Configuration
+# =============================================================================
+#
+# Build:  mdbook build
+# Serve:  mdbook serve (hot reload at http://localhost:3000)
+# Test:   mdbook-linkcheck (CI link validation)
+#
+# Content is synced from sibling repos via cargo-make:
+#   cargo make sync-docs    # Pull from tasker-core/docs + tasker-contrib/docs
+#   cargo make build        # Sync + mdbook build
+#   cargo make serve        # Sync + mdbook serve
+#
+# =============================================================================
+
+[book]
+title = "Tasker Documentation"
+description = "PostgreSQL-backed workflow orchestration with cross-language workers"
+authors = ["Tasker Systems"]
+language = "en"
+src = "src"
+
+[build]
+build-dir = "book"
+create-missing = false
+
+[output.html]
+git-repository-url = "https://github.com/tasker-systems/tasker-book"
+edit-url-template = "https://github.com/tasker-systems/tasker-book/edit/main/{path}"
+default-theme = "navy"
+preferred-dark-theme = "navy"
+site-url = "/tasker-book/"
+additional-css = ["theme/custom.css"]
+# NOTE: mdbook-admonish.css re-added when admonish supports mdbook 0.5.x
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[output.html.fold]
+enable = true
+level = 1
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+# NOTE: admonish disabled until it supports mdbook 0.5.x
+# [preprocessor.admonish]
+# command = "mdbook-admonish"
+# assets_version = "3.1.0"
