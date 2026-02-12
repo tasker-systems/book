@@ -121,7 +121,7 @@ The base trait for all orchestration actors, defined in `tasker-orchestration/sr
 ///
 /// 1. **Construction**: Actor is created by ActorRegistry
 /// 2. **Initialization**: `started()` is called during registry build
-/// 3. **Operation**: Actor processes messages via Handler<M> implementations
+/// 3. **Operation**: Actor processes messages via `Handler<M>` implementations
 /// 4. **Shutdown**: `stopped()` is called during registry shutdown
 pub trait OrchestrationActor: Send + Sync + 'static {
     /// Returns the unique name of this actor
@@ -184,7 +184,7 @@ The message handling trait, enabling type-safe message processing:
 ```rust
 /// Message handler trait for specific message types
 ///
-/// Actors implement Handler<M> for each message type they can process.
+/// Actors implement `Handler<M>` for each message type they can process.
 /// This provides type-safe, asynchronous message handling with clear
 /// input/output contracts.
 #[async_trait]
@@ -552,7 +552,7 @@ result_processing/ (889 lines → 4 files)
          │
          ▼
 ┌─────────────────┐
-│   Operation     │  Actors process messages via Handler<M>::handle()
+│   Operation     │  Actors process messages via `Handler<M>`::handle()
 └────────┬────────┘
          │
          ▼
@@ -629,7 +629,7 @@ All lifecycle components follow the same pattern:
 
 - Uniform initialization via `started()`
 - Uniform cleanup via `stopped()`
-- Uniform message handling via `Handler<M>`
+- Uniform message handling via ``Handler<M>``
 
 ### 2. Type Safety
 

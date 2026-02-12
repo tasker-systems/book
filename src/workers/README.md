@@ -285,11 +285,13 @@ Common across all workers:
 ### Language-Specific
 
 **Ruby**:
+
 | Variable | Description |
 |----------|-------------|
 | `RUBY_GC_HEAP_GROWTH_FACTOR` | GC tuning for production |
 
 **Python**:
+
 | Variable | Description |
 |----------|-------------|
 | `PYTHON_HANDLER_PATH` | Path for handler auto-discovery |

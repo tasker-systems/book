@@ -39,6 +39,7 @@ WorkerCore
 ```
 
 **Five Actors**:
+
 | Actor | Responsibility | Messages |
 |-------|----------------|----------|
 | StepExecutorActor | Step execution coordination | 4 |
@@ -48,6 +49,7 @@ WorkerCore
 | WorkerStatusActor | Status and health | 4 |
 
 **Three Services**:
+
 | Service | Lines | Purpose |
 |---------|-------|---------|
 | StepExecutorService | ~400 | Step claiming, verification, FFI invocation |

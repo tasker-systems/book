@@ -205,6 +205,7 @@ StepHandlerResult.failure_handler_result(
 ```
 
 **Key Differences**:
+
 | Aspect | Ruby | Python |
 |--------|------|--------|
 | Factory method names | `.success()`, `.error()` | `.success_handler_result()`, `.failure_handler_result()` |

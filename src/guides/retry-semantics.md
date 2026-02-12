@@ -51,6 +51,7 @@ retry:
 ```
 
 **Behavior**:
+
 | attempts | retry_eligible | Outcome |
 |----------|---------------|---------|
 | 0 | ✅ true | First execution allowed |
@@ -69,6 +70,7 @@ retry:
 ```
 
 **Behavior**:
+
 | attempts | retry_eligible | Outcome |
 |----------|---------------|---------|
 | 0 | ✅ true | First execution allowed |
