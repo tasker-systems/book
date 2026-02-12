@@ -8,16 +8,16 @@
 # Getting Started
 
 - [Getting Started](getting-started/README.md)
-  - [Core Concepts](getting-started/concepts.md)
-  - [Installation](getting-started/install.md)
   - [Choosing Your Package](getting-started/choosing-your-package.md)
-  - [Your First Handler](getting-started/first-handler.md)
-  - [Your First Workflow](getting-started/first-workflow.md)
+  - [Concepts](getting-started/concepts.md)
+  - [First Handler](getting-started/first-handler.md)
+  - [First Workflow](getting-started/first-workflow.md)
+  - [Install](getting-started/install.md)
   - [Next Steps](getting-started/next-steps.md)
-  - [Rust](getting-started/rust.md)
-  - [Ruby](getting-started/ruby.md)
   - [Python](getting-started/python.md)
-  - [TypeScript](getting-started/typescript.md)
+  - [Ruby](getting-started/ruby.md)
+  - [Rust](getting-started/rust.md)
+  - [Typescript](getting-started/typescript.md)
 
 ---
 
@@ -34,6 +34,7 @@
   - [Idempotency And Atomicity](architecture/idempotency-and-atomicity.md)
   - [Messaging Abstraction](architecture/messaging-abstraction.md)
   - [States And Lifecycles](architecture/states-and-lifecycles.md)
+  - [Tasker Ctl](architecture/tasker-ctl.md)
   - [Worker Actors](architecture/worker-actors.md)
   - [Worker Event Systems](architecture/worker-event-systems.md)
 

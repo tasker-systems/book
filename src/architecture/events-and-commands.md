@@ -735,7 +735,7 @@ The complete event-to-actor flow:
        │
        ▼
 ┌──────────────────┐
-│ `Handler<M>`::     │ Actor processes message
+│ Handler<M>::     │ Actor processes message
 │    handle()      │ Delegates to underlying service
 └──────┬───────────┘
        │
