@@ -96,25 +96,9 @@ generate_section() {
     echo "[Why Tasker?](why-tasker.md)"
 
     # -----------------------------------------------------------------------
-    # Getting Started (hand-written, fixed structure)
+    # Auto-generated sections from directory structure
     # -----------------------------------------------------------------------
-    echo ""
-    echo "---"
-    echo ""
-    echo "# Getting Started"
-    echo ""
-    echo "- [Getting Started](getting-started/README.md)"
-    echo "  - [Overview](getting-started/overview.md)"
-    echo "  - [Core Concepts](getting-started/concepts.md)"
-    echo "  - [Installation](getting-started/install.md)"
-    echo "  - [Choosing Your Package](getting-started/choosing-your-package.md)"
-    echo "  - [Your First Handler](getting-started/first-handler.md)"
-    echo "  - [Your First Workflow](getting-started/first-workflow.md)"
-    echo "  - [Next Steps](getting-started/next-steps.md)"
-
-    # -----------------------------------------------------------------------
-    # Auto-generated sections from synced content
-    # -----------------------------------------------------------------------
+    generate_section "Getting Started" "getting-started" "Getting Started"
     generate_section "Architecture"    "architecture"   "Architecture Overview"
     generate_section "Guides"          "guides"         "Operational Guides"
     generate_section "Workers"         "workers"        "Worker Guides"
