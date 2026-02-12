@@ -111,13 +111,19 @@
 
 ---
 
-# Configuration Reference
+# Generated Reference
 
-- [Configuration Reference](generated/index.md)
+- [Generated Reference](generated/index.md)
+  - [Adr Summary](generated/adr-summary.md)
+  - [Config Operational Guide](generated/config-operational-guide.md)
   - [Config Reference Common](generated/config-reference-common.md)
   - [Config Reference Complete](generated/config-reference-complete.md)
   - [Config Reference Orchestration](generated/config-reference-orchestration.md)
   - [Config Reference Worker](generated/config-reference-worker.md)
+  - [Crate Dependency Graph](generated/crate-dependency-graph.md)
+  - [Database Schema](generated/database-schema.md)
+  - [Error Troubleshooting Guide](generated/error-troubleshooting-guide.md)
+  - [State Machine Diagrams](generated/state-machine-diagrams.md)
 
 ---
 

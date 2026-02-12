@@ -1,0 +1,28 @@
+#!/bin/bash
+# Pre-commit hook: lint staged markdown files
+# Install via: cargo make setup-hooks
+
+# Get staged .md files (exclude deleted files)
+STAGED_MD=$(git diff --cached --name-only --diff-filter=d -- '*.md')
+
+if [ -z "$STAGED_MD" ]; then
+    exit 0
+fi
+
+echo "Linting staged markdown files..."
+
+# Run markdownlint on staged files
+# shellcheck disable=SC2086
+npx --yes markdownlint-cli2 $STAGED_MD
+RESULT=$?
+
+if [ $RESULT -ne 0 ]; then
+    echo ""
+    echo "Markdown lint errors found. Fix them with:"
+    echo "  cargo make fix"
+    echo ""
+    echo "Then re-stage and commit."
+    exit 1
+fi
+
+exit 0

@@ -3,21 +3,23 @@
 # =============================================================================
 #
 # Documentation build pipeline for the Tasker ecosystem.
-# Syncs content from tasker-core and tasker-contrib, then builds with mdBook.
+# Syncs content from tasker-core and tasker-contrib, generates diagrams
+# from static analysis, then builds with mdBook.
 #
 # Quick Start:
-#   cargo make serve          # Sync + build + serve locally
-#   cargo make build          # Sync + build static site
+#   cargo make serve          # Sync + generate + build + serve locally
+#   cargo make build          # Sync + generate + build static site
 #   cargo make sync           # Pull content from sibling repos
 #   cargo make clean          # Remove build artifacts
 #
 # Content Pipeline:
 #   cargo make sync           # Step 1: Sync from source repos
-#   cargo make summary        # Step 2: Regenerate SUMMARY.md
-#   cargo make mdbook-build   # Step 3: Build the book
+#   cargo make generate       # Step 2: Generate diagrams from source analysis
+#   cargo make summary        # Step 3: Regenerate SUMMARY.md
+#   cargo make mdbook-build   # Step 4: Build the book
 #
 # Full Refresh:
-#   cargo make refresh        # All three steps + open in browser
+#   cargo make refresh        # All steps + open in browser
 #
 # =============================================================================
 
@@ -42,19 +44,37 @@ echo "Tasker Documentation Hub - cargo-make Tasks"
 echo "============================================="
 echo ""
 echo "Common:"
-echo "  cargo make serve       (s)   Sync + build + serve locally"
-echo "  cargo make build       (b)   Sync + build static site"
+echo "  cargo make serve       (s)   Sync + generate + build + serve locally"
+echo "  cargo make build       (b)   Sync + generate + build static site"
 echo "  cargo make sync              Pull from sibling repos"
+echo "  cargo make generate    (g)   Generate diagrams from source analysis"
 echo "  cargo make clean             Remove build artifacts"
 echo ""
 echo "Pipeline Steps:"
-echo "  cargo make sync              Sync content from source repos"
-echo "  cargo make summary           Regenerate SUMMARY.md from content"
-echo "  cargo make mdbook-build      Build mdBook (no sync)"
-echo "  cargo make mdbook-serve      Serve mdBook (no sync)"
+echo "  cargo make sync              Step 1: Sync content from source repos"
+echo "  cargo make generate          Step 2: Generate diagrams from source analysis"
+echo "  cargo make summary           Step 3: Regenerate SUMMARY.md from content"
+echo "  cargo make mdbook-build      Step 4: Build mdBook (no sync)"
+echo "  cargo make mdbook-serve      Step 4 alt: Serve mdBook (no sync)"
+echo ""
+echo "Individual Generators:"
+echo "  cargo make generate-crate-deps       Crate dependency graph"
+echo "  cargo make generate-state-machines   State machine diagrams"
+echo "  cargo make generate-db-schema        Database ER diagram"
+echo ""
+echo "LLM-Powered Generators (opt-in, use Ollama when available):"
+echo "  cargo make generate-adr-summary      ADR summary table"
+echo "  cargo make generate-config-guide     Configuration operational guide"
+echo "  cargo make generate-error-guide      Error troubleshooting guide"
+echo "  cargo make generate-all              All generators including LLM-powered"
 echo ""
 echo "Full Workflow:"
-echo "  cargo make refresh     (r)   Sync + summary + build"
+echo "  cargo make refresh     (r)   Sync + generate + summary + build"
+echo ""
+echo "Quality:"
+echo "  cargo make lint        (l)   Check markdown formatting"
+echo "  cargo make fix               Auto-fix markdown formatting"
+echo "  cargo make setup-hooks       Install git pre-commit hook"
 echo ""
 echo "CI:"
 echo "  cargo make ci-build          Build for CI (no sync, content committed)"
@@ -75,8 +95,14 @@ alias = "serve"
 [tasks.b]
 alias = "build"
 
+[tasks.g]
+alias = "generate"
+
 [tasks.r]
 alias = "refresh"
+
+[tasks.l]
+alias = "lint"
 
 # =============================================================================
 # Content Sync Tasks
@@ -96,6 +122,60 @@ bash ${SCRIPTS_DIR}/sync-core.sh
 description = "Sync documentation from tasker-contrib"
 script = '''
 bash ${SCRIPTS_DIR}/sync-contrib.sh
+'''
+
+# =============================================================================
+# Documentation Generation (from source analysis)
+# =============================================================================
+
+[tasks.generate]
+description = "Generate diagrams from tasker-core source analysis"
+dependencies = ["generate-crate-deps", "generate-state-machines", "generate-db-schema", "generate-index"]
+
+[tasks.generate-all]
+description = "Run all generators including opt-in LLM-powered guides"
+dependencies = ["generate", "generate-adr-summary", "generate-config-guide", "generate-error-guide"]
+
+[tasks.generate-crate-deps]
+description = "Generate crate dependency graph (Mermaid)"
+script = '''
+bash ${SCRIPTS_DIR}/generate-crate-deps.sh
+'''
+
+[tasks.generate-state-machines]
+description = "Generate state machine diagrams (Mermaid)"
+script = '''
+bash ${SCRIPTS_DIR}/generate-state-machines.sh
+'''
+
+[tasks.generate-db-schema]
+description = "Generate database schema ER diagram (Mermaid)"
+script = '''
+bash ${SCRIPTS_DIR}/generate-db-schema.sh
+'''
+
+[tasks.generate-index]
+description = "Generate the Generated Reference index page"
+script = '''
+bash ${SCRIPTS_DIR}/generate-index.sh
+'''
+
+[tasks.generate-adr-summary]
+description = "Generate ADR summary table (opt-in, uses Ollama if available)"
+script = '''
+bash ${SCRIPTS_DIR}/generate-adr-summary.sh
+'''
+
+[tasks.generate-config-guide]
+description = "Generate config operational guide (opt-in, uses Ollama if available)"
+script = '''
+bash ${SCRIPTS_DIR}/generate-config-guide.sh
+'''
+
+[tasks.generate-error-guide]
+description = "Generate error troubleshooting guide (opt-in, uses Ollama if available)"
+script = '''
+bash ${SCRIPTS_DIR}/generate-error-guide.sh
 '''
 
 # =============================================================================
@@ -133,15 +213,15 @@ args = ["test"]
 
 [tasks.build]
 description = "Sync content then build"
-dependencies = ["sync", "summary", "mdbook-build"]
+dependencies = ["sync", "generate", "summary", "mdbook-build"]
 
 [tasks.serve]
 description = "Sync content then serve locally"
-dependencies = ["sync", "summary", "mdbook-serve"]
+dependencies = ["sync", "generate", "summary", "mdbook-serve"]
 
 [tasks.refresh]
-description = "Full refresh: sync + summary + build"
-dependencies = ["sync", "summary", "mdbook-build"]
+description = "Full refresh: sync + generate + summary + build"
+dependencies = ["sync", "generate", "summary", "mdbook-build"]
 
 # =============================================================================
 # CI Tasks
@@ -156,6 +236,43 @@ description = "Validate all links in the built book"
 dependencies = ["mdbook-build"]
 command = "mdbook-linkcheck"
 args = ["--standalone"]
+
+# =============================================================================
+# Quality (Markdown Linting)
+# =============================================================================
+
+[tasks.lint]
+description = "Check markdown formatting (no changes)"
+command = "npx"
+args = ["--yes", "markdownlint-cli2"]
+
+[tasks.fix]
+description = "Auto-fix markdown formatting"
+command = "npx"
+args = ["--yes", "markdownlint-cli2", "--fix"]
+
+[tasks.setup-hooks]
+description = "Install git pre-commit hook"
+script = '''
+HOOK_DIR=".git/hooks"
+HOOK_SRC="../../cargo-make/scripts/git-hooks/pre-commit"
+HOOK_DST="${HOOK_DIR}/pre-commit"
+
+if [ ! -d "${HOOK_DIR}" ]; then
+    echo "Error: .git/hooks directory not found. Are you in a git repository?"
+    exit 1
+fi
+
+if [ -e "${HOOK_DST}" ] && [ ! -L "${HOOK_DST}" ]; then
+    echo "Warning: existing pre-commit hook found (not a symlink)."
+    echo "Back it up or remove it, then re-run this task."
+    exit 1
+fi
+
+ln -sf "${HOOK_SRC}" "${HOOK_DST}"
+chmod +x "${HOOK_DST}"
+echo "Installed pre-commit hook: ${HOOK_DST} -> ${HOOK_SRC}"
+'''
 
 # =============================================================================
 # Clean

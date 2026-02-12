@@ -122,17 +122,17 @@ generate_section() {
     generate_section "Principles"      "principles"     "Design Principles"
     generate_section "Reference"       "reference"      "Reference"
 
-    # Generated config docs as its own section
+    # Generated reference docs (diagrams, config, schema) as its own section
     if [[ -d "${SRC_DIR}/generated" ]]; then
         gen_count=$(find "${SRC_DIR}/generated" -maxdepth 1 -name '*.md' ! -name 'CLAUDE.md' | wc -l | tr -d ' ')
         if [[ "${gen_count}" -gt 0 ]]; then
             echo ""
             echo "---"
             echo ""
-            echo "# Configuration Reference"
+            echo "# Generated Reference"
             echo ""
             if [[ -f "${SRC_DIR}/generated/index.md" ]]; then
-                echo "- [Configuration Reference](generated/index.md)"
+                echo "- [Generated Reference](generated/index.md)"
             fi
             # Skip index.md too (already used as landing page)
             find "${SRC_DIR}/generated" -maxdepth 1 -name '*.md' \

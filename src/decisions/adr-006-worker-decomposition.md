@@ -18,6 +18,7 @@ The tasker-worker crate had a monolithic command processor architecture:
 Transform the worker from monolithic command processor to **actor-based design**, mirroring the orchestration actor pattern.
 
 **Before: Monolithic Design**
+
 ```
 WorkerCore
     └── WorkerProcessor (1,575 LOC)
@@ -25,6 +26,7 @@ WorkerCore
 ```
 
 **After: Actor-Based Design**
+
 ```
 WorkerCore
     └── ActorCommandProcessor (~350 LOC)
