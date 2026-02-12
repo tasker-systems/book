@@ -11,17 +11,11 @@ Tasker is a distributed workflow orchestration system that coordinates complex, 
 
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
-│                        tasker-engine (Rails)                        │
-│  • REST API for task submission                                     │
-│  • Admin dashboard                                                  │
-│  • PostgreSQL state persistence                                     │
-└─────────────────────────────────────────────────────────────────────┘
-                                  │
-                                  ▼
-┌─────────────────────────────────────────────────────────────────────┐
 │                        tasker-core (Rust)                           │
+│  • REST API for task submission                                     │
 │  • Workflow orchestration                                           │
 │  • Step execution and dependency resolution                         │
+│  • PostgreSQL state persistence                                     │
 │  • Event publishing (NATS)                                          │
 └─────────────────────────────────────────────────────────────────────┘
                                   │

@@ -374,21 +374,6 @@ class ProcessPaymentHandler < TaskerCore::StepHandler::Base
 end
 ```
 
-## Rails Integration
-
-For Rails applications, see the `tasker-engine` gem which provides:
-
-- ActiveRecord models for tasks and workflows
-- Background job integration
-- Admin dashboard
-- API endpoints
-
-```ruby path=null start=null
-# Gemfile
-gem 'tasker-engine'
-gem 'tasker-rb'
-```
-
 ## Submitting Tasks via Client SDK
 
 The `tasker-rb` gem includes FFI bindings to the orchestration client API, allowing you to submit tasks from Ruby:
