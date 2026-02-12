@@ -65,6 +65,19 @@ SKIP_DIRS=(
 )
 
 # ---------------------------------------------------------------------------
+# Files to preserve in generated/ (locally-generated content)
+# These are created by local scripts, not synced from tasker-core
+# ---------------------------------------------------------------------------
+LOCAL_GENERATED_FILES=(
+    "adr-summary.md"
+    "config-operational-guide.md"
+    "crate-dependency-graph.md"
+    "database-schema.md"
+    "error-troubleshooting-guide.md"
+    "state-machine-diagrams.md"
+)
+
+# ---------------------------------------------------------------------------
 # Sync directories
 # ---------------------------------------------------------------------------
 for dir in "${SYNC_DIRS[@]}"; do
@@ -73,10 +86,21 @@ for dir in "${SYNC_DIRS[@]}"; do
 
     if [[ -d "${src}" ]]; then
         mkdir -p "${dest}"
-        rsync -a --delete \
-            --exclude='.DS_Store' \
-            --exclude='CLAUDE.md' \
-            "${src}/" "${dest}/"
+
+        # Build rsync exclude args
+        RSYNC_EXCLUDES=(
+            --exclude='.DS_Store'
+            --exclude='CLAUDE.md'
+        )
+
+        # For generated/, also preserve locally-generated files
+        if [[ "${dir}" == "generated" ]]; then
+            for file in "${LOCAL_GENERATED_FILES[@]}"; do
+                RSYNC_EXCLUDES+=(--exclude="${file}")
+            done
+        fi
+
+        rsync -a --delete "${RSYNC_EXCLUDES[@]}" "${src}/" "${dest}/"
         count=$(find "${dest}" -name '*.md' | wc -l | tr -d ' ')
         echo "  ${dir}/ -> ${count} files"
     else

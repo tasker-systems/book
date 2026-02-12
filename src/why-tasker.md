@@ -1,8 +1,8 @@
 # Why Tasker
 
-**Last Updated**: 2025-01-09
+**Last Updated**: 2025-02-12
 **Audience**: Engineers evaluating workflow orchestration tools
-**Status**: Pre-Alpha
+**Status**: Early Release (0.1.x)
 
 ---
 
@@ -139,23 +139,23 @@ Tasker may not be the right choice when:
 
 ## Current State
 
-Tasker is pre-alpha software. This is important context:
+Tasker is in early release (0.1.x). This is important context:
 
 **What this means:**
 
-- The architecture is solidifying but breaking changes are expected
-- Documentation is comprehensive but evolving
-- There are no production deployments (that I know of) outside development
-- You should not bet critical business processes on Tasker today
+- The architecture has solidified but breaking changes may still occur
+- Documentation is comprehensive and continuously improving
+- Early adopters are beginning to explore the system
+- We follow semantic versioning and aim to communicate breaking changes clearly
 
-**What this enables:**
+**Our commitment:**
 
-- Rapid iteration based on real feedback
-- Willingness to break APIs to get the design right
-- Focus on architectural correctness over backward compatibility
-- Honest experimentation without legacy constraints
+- Intentional about breaking changes—we weigh architectural correctness against user impact
+- Migration guidance provided where practical
+- Release notes document all significant changes
+- Responsive to community feedback
 
-If you're evaluating Tasker, I'd encourage you to explore it for non-critical workloads, provide feedback, and help shape what it becomes. If you need production-ready workflow orchestration today, please consider the established tools above—I genuinely recommend them for their respective strengths.
+If you're evaluating Tasker, we encourage you to explore it, provide feedback, and help shape its direction. For production-critical workloads, evaluate whether the current stability level meets your needs, or consider the established tools above.
 
 ---
 

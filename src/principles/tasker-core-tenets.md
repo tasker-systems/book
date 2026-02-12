@@ -148,24 +148,24 @@ But not enforced for:
 
 ---
 
-### 8. Pre-Alpha Freedom
+### 8. Early Release Iteration
 
-**Break things early to get architecture right.**
+**Refine architecture intentionally while adoption is limited.**
 
-In pre-alpha phase:
+In the 0.1.x series:
 
-- Breaking changes are encouraged when architecture is fundamentally unsound
-- No backward compatibility required for greenfield work
-- Migration debt is cheaper than technical debt
-- "Perfect" is the enemy of "architecturally sound"
+- Breaking changes may still occur when architecture is fundamentally unsound
+- We follow semantic versioning and provide migration guidance where practical
+- Architectural correctness remains a priority, balanced with user impact
+- We communicate breaking changes clearly in release notes
 
-This freedom enables:
+This approach enables:
 
-- Rapid iteration on core patterns
-- Learning from real implementation
-- Correcting course before users depend on specifics
+- Continued refinement of core patterns
+- Learning from real-world feedback
+- Building trust through predictable releases
 
-**Origin**: All major refactoring efforts made breaking changes that improved architecture fundamentally.
+**Origin**: All major refactoring efforts made breaking changes that improved architecture fundamentally. As the project matures, we balance this with user expectations.
 
 ---
 
