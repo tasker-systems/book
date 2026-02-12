@@ -22,10 +22,10 @@ Tasker supports multiple languages through FFI bindings. Each language package p
 
 ### Use Ruby
 
-- Have an existing Rails application
-- Want to integrate with `tasker-engine` for admin dashboards and ActiveRecord models
+- Have an existing Rails or Ruby application
 - Prefer Ruby's expressive DSL capabilities
 - Value rapid development with convention-over-configuration
+- Want seamless integration with Ruby ecosystem gems
 
 ### Use Python
 
