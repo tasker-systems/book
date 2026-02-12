@@ -19,5 +19,11 @@ Thumbs.db
 # Log files
 *.log
 
+# Local environment configuration
+.env
+
+# Node.js (npx may create transiently)
+node_modules/
+
 # Development context (never publish)
 memory-bank/

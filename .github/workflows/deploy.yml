@@ -32,6 +32,10 @@ jobs:
           # NOTE: admonish disabled until it supports mdbook 0.5.x
           tool: mdbook-mermaid@0.17.0
 
+      - name: Lint markdown
+        run: npx --yes markdownlint-cli2 "src/**/*.md" "*.md"
+        continue-on-error: true  # Non-blocking initially; change to false after cleanup
+
       - name: Build book
         run: mdbook build
 

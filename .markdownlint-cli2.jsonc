@@ -1,0 +1,87 @@
+// Markdownlint configuration for tasker-book
+// Rules tuned for mdBook documentation with generated content (Mermaid diagrams, config tables)
+// Docs: https://github.com/DavidAnson/markdownlint/blob/main/doc/Rules.md
+{
+  "config": {
+    // --- Relaxed rules (generated content + mdBook compatibility) ---
+
+    // Line length: 120 chars, exempt tables and code blocks (Mermaid diagrams)
+    "MD013": {
+      "line_length": 120,
+      "tables": false,
+      "code_blocks": false
+    },
+
+    // Allow specific HTML elements used in mdBook content
+    "MD033": {
+      "allowed_elements": ["details", "summary", "br", "kbd", "div"]
+    },
+
+    // Bare URLs: disabled — generated content has bare URLs
+    "MD034": false,
+
+    // First line heading: disabled — some files have metadata comments or frontmatter
+    "MD041": false,
+
+    // Duplicate headings: allow same heading text in sibling sections (e.g., "Overview")
+    "MD024": { "siblings_only": true },
+
+    // Emphasis as heading: disabled — bold text is legitimately used for emphasis, not headings
+    "MD036": false,
+
+    // Fenced code language: disabled — synced content has many unlabeled code blocks
+    "MD040": false,
+
+    // Table column style: disabled — synced content has varying table formatting
+    "MD058": false,
+    "MD060": false,
+
+    // --- Disabled: style-only rules that fire heavily in synced upstream content ---
+    // These are read-only files synced via rsync --delete; fix upstream in tasker-core.
+
+    // Line length: disabled — synced prose regularly exceeds any limit
+    "MD013": false,
+
+    // Heading increment: disabled — synced docs skip heading levels for readability
+    "MD001": false,
+
+    // Heading style: disabled — synced docs mix ATX styles
+    "MD003": false,
+
+    // Single top-level heading: disabled — synced docs use multiple H1s
+    "MD025": false,
+
+    // --- Strict rules (catch real issues) ---
+
+    // No multiple consecutive blank lines
+    "MD012": true,
+
+    // No space after hash in ATX heading
+    "MD018": true,
+
+    // No multiple spaces after hash in ATX heading
+    "MD019": true,
+
+    // Blanks around headings
+    "MD022": true,
+
+    // Blanks around fences
+    "MD031": true,
+
+    // Files should end with a single trailing newline
+    "MD047": true
+  },
+
+  // Paths to lint (relative to config file)
+  "globs": [
+    "src/**/*.md",
+    "*.md"
+  ],
+
+  // Paths to ignore
+  "ignores": [
+    "book/**",
+    "archive/**",
+    "**/CLAUDE.md"
+  ]
+}
