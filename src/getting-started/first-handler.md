@@ -97,15 +97,15 @@ impl RustStepHandler for GreetingHandler {
 
 ## Registering Handlers
 
-Handlers are registered by class name matching the `handler_class` in task templates:
+Handlers are resolved by matching the `handler.callable` field in task templates:
 
 ```python
 # Python - handler_name attribute maps to task template
 class GreetingHandler(StepHandler):
-    handler_name = "greeting"  # matches handler_class in YAML
+    handler_name = "greeting"  # matches handler.callable in YAML
 ```
 
-The handler class name (e.g., `"GreetingHandler"`) must match the `handler_class` in your task template YAML.
+The `handler.callable` in your task template YAML must match either the registered handler name or the class path (e.g., `"GreetingHandler"`).
 
 ## Error Handling
 

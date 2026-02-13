@@ -13,7 +13,7 @@ A **Task** is a unit of work submitted to Tasker for execution. Tasks have:
 
 ```json
 {
-  "task_name": "order_fulfillment",
+  "name": "order_fulfillment",
   "initiator": "api:checkout",
   "context": {
     "order_id": "ORD-12345",
@@ -32,19 +32,25 @@ A **Task Template** is a YAML definition of a workflow. It specifies:
 
 ```yaml
 name: order_fulfillment
+namespace_name: ecommerce
+version: 1.0.0
 steps:
   - name: validate_order
-    handler_class: OrderValidationHandler
-    
+    handler:
+      callable: OrderValidationHandler
+    dependencies: []
+
   - name: reserve_inventory
-    handler_class: InventoryHandler
-    depends_on:
-      - step: validate_order
-    
+    handler:
+      callable: InventoryHandler
+    dependencies:
+      - validate_order
+
   - name: charge_payment
-    handler_class: PaymentHandler
-    depends_on:
-      - step: validate_order
+    handler:
+      callable: PaymentHandler
+    dependencies:
+      - validate_order
 ```
 
 ## Steps
@@ -110,9 +116,10 @@ A **Workflow Step** is a special step that starts another task as a sub-workflow
 ```yaml
 steps:
   - name: process_line_items
-    handler_class: WorkflowHandler
-    handler_config:
-      task_template: line_item_processing
+    handler:
+      callable: WorkflowHandler
+      initialization:
+        task_template: line_item_processing
 ```
 
 This enables composing complex workflows from simpler building blocks.

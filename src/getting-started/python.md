@@ -324,9 +324,9 @@ steps:
 Register handlers using the registry:
 
 ```python path=null start=null
-from tasker_core.registry import Registry
+from tasker_core import HandlerRegistry
 
-registry = Registry()
+registry = HandlerRegistry()
 registry.register(ValidateCartHandler)
 registry.register(ProcessPaymentHandler)
 ```
@@ -490,72 +490,66 @@ class BatchProcessHandler(StepHandler):
 
 ## Submitting Tasks via Client SDK
 
-The `tasker-py` package includes PyO3 FFI bindings to the orchestration client API:
+The `tasker-py` package includes a `TaskerClient` wrapper that provides keyword-argument methods with sensible defaults and returns typed dataclass responses:
 
 ```python path=null start=null
-import uuid
-from tasker_core._tasker_core import (
-    bootstrap_worker,
-    stop_worker,
-    client_create_task,
-    client_get_task,
-    client_list_tasks,
-    client_list_task_steps,
-    client_health_check,
-)
+from tasker_core import TaskerClient
 
-# Bootstrap the worker (initializes client connection)
-result = bootstrap_worker(None)
-assert result["status"] == "started"
+# Create a client (defaults: initiator="tasker-core-python", source_system="tasker-core")
+client = TaskerClient(initiator="my-service", source_system="my-api")
 
 # Create a task
-request = {
-    "name": "order_fulfillment",
-    "namespace": "ecommerce",
-    "version": "1.0.0",
-    "context": {
+response = client.create_task(
+    "order_fulfillment",
+    namespace="ecommerce",
+    context={
         "customer": {"id": 123, "email": "customer@example.com"},
         "items": [
             {"product_id": 1, "quantity": 2, "price": 29.99}
-        ]
+        ],
     },
-    "initiator": "my-service",
-    "source_system": "api",
-    "reason": "New order received",
-}
-
-response = client_create_task(request)
-print(f"Task created: {response['task_uuid']}")
+    reason="New order received",
+)
+print(f"Task created: {response.task_uuid}")
+print(f"Status: {response.status}")
 
 # Get task status
-task = client_get_task(response["task_uuid"])
-print(f"Task status: {task['status']}")
+task = client.get_task(response.task_uuid)
+print(f"Task status: {task.status}")
+
+# List tasks with filters
+task_list = client.list_tasks(namespace="ecommerce", limit=10)
+for t in task_list.tasks:
+    print(f"  {t.task_uuid}: {t.status}")
+print(f"Total: {task_list.pagination.total_count}")
 
 # List task steps
-steps = client_list_task_steps(response["task_uuid"])
+steps = client.list_task_steps(response.task_uuid)
 for step in steps:
-    print(f"Step {step['name']}: {step['current_state']}")
+    print(f"Step {step.name}: {step.current_state}")
 
 # Check health
-health = client_health_check()
-print(f"API healthy: {health['healthy']}")
+health = client.health_check()
+print(f"API healthy: {health.healthy}")
 
-# Clean up
-stop_worker()
+# Cancel a task
+client.cancel_task(response.task_uuid)
 ```
 
-### Available Client Functions
+### Available Client Methods
 
-| Function | Description |
-|----------|-------------|
-| `client_create_task(request)` | Create a new task |
-| `client_get_task(uuid)` | Get task by UUID |
-| `client_list_tasks(limit, offset, namespace, status)` | List tasks with filters |
-| `client_cancel_task(uuid)` | Cancel a task |
-| `client_list_task_steps(task_uuid)` | List workflow steps |
-| `client_get_step(task_uuid, step_uuid)` | Get specific step |
-| `client_get_step_audit_history(task_uuid, step_uuid)` | Get step audit trail |
-| `client_health_check()` | Check API health |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create_task(name, *, namespace, context, version, reason, **kwargs)` | `TaskResponse` | Create a new task |
+| `get_task(task_uuid)` | `TaskResponse` | Get task by UUID |
+| `list_tasks(*, limit, offset, namespace, status)` | `TaskListResponse` | List tasks with filters |
+| `cancel_task(task_uuid)` | `dict` | Cancel a task |
+| `list_task_steps(task_uuid)` | `list[StepResponse]` | List workflow steps |
+| `get_step(task_uuid, step_uuid)` | `StepResponse` | Get specific step |
+| `get_step_audit_history(task_uuid, step_uuid)` | `list[StepAuditResponse]` | Get step audit trail |
+| `health_check()` | `HealthResponse` | Check API health |
+
+Response types are frozen dataclasses with typed fields (e.g., `TaskResponse.task_uuid`, `TaskResponse.status`, `TaskListResponse.pagination.total_count`).
 
 ## Next Steps
 

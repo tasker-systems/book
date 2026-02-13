@@ -8,5 +8,4 @@
 | ID | Time | T | Title | Read |
 |----|------|---|-------|------|
 | #5597 | 5:22 PM | 🔵 | Complete SUMMARY.md Navigation Shows 123-Entry Documentation Structure | ~691 |
-| #5437 | 2:17 PM | 🔵 | tasker-book SUMMARY.md Table of Contents | ~590 |
 </claude-mem-context>

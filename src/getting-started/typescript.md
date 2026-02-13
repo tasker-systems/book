@@ -211,7 +211,7 @@ class ValidateCartHandler extends StepHandler {
       }
 
       validatedItems.push({
-        product_id: product_id,
+        product_id: item.product_id,
         name: product.name,
         price: product.price,
         quantity: item.quantity,
@@ -339,11 +339,8 @@ Register handlers using the registry:
 import { HandlerRegistry } from '@tasker-systems/tasker';
 
 const registry = new HandlerRegistry();
-registry.register(ValidateCartHandler);
-registry.register(ProcessPaymentHandler);
-
-// Or register with explicit name
-registry.registerWithName('custom_name', CustomHandler);
+registry.register('ecommerce.step_handlers.ValidateCartHandler', ValidateCartHandler);
+registry.register('ecommerce.step_handlers.ProcessPaymentHandler', ProcessPaymentHandler);
 ```
 
 ## Testing
@@ -573,78 +570,74 @@ await WorkerBootstrap.start(config);
 
 ## Submitting Tasks via Client SDK
 
-The `@tasker-systems/tasker` package includes FFI bindings to the orchestration client API:
+The `@tasker-systems/tasker` package includes a `TaskerClient` class that provides typed methods with sensible defaults. It wraps the raw FFI `ClientResult` envelope and returns typed response objects directly, throwing `TaskerClientError` on failures:
 
 ```typescript path=null start=null
-import { getRuntime, type ClientResult } from '@tasker-systems/tasker';
+import { FfiLayer, TaskerClient } from '@tasker-systems/tasker';
 
 async function submitTask() {
-  const runtime = getRuntime();
+  // Initialize the FFI layer and client
+  const ffiLayer = new FfiLayer();
+  await ffiLayer.load();
+  const client = new TaskerClient(ffiLayer);
 
-  // Bootstrap the worker (initializes client connection)
-  const bootstrapResult = runtime.bootstrapWorker();
-  if (bootstrapResult.status !== 'started') {
-    throw new Error('Bootstrap failed');
-  }
-
-  // Create a task
-  const request = {
+  // Create a task (defaults: initiator="tasker-core-typescript", sourceSystem="tasker-core")
+  const response = client.createTask({
     name: 'order_fulfillment',
     namespace: 'ecommerce',
-    version: '1.0.0',
     context: {
       customer: { id: 123, email: 'customer@example.com' },
       items: [
         { product_id: 1, quantity: 2, price: 29.99 }
-      ]
+      ],
     },
     initiator: 'my-service',
-    source_system: 'api',
+    sourceSystem: 'my-api',
     reason: 'New order received',
-  };
-
-  const createResult: ClientResult = runtime.clientCreateTask(JSON.stringify(request));
-  if (!createResult.success) {
-    throw new Error(`Failed to create task: ${createResult.error}`);
-  }
-
-  const taskResponse = createResult.data;
-  console.log(`Task created: ${taskResponse.task_uuid}`);
+  });
+  console.log(`Task created: ${response.task_uuid}`);
+  console.log(`Status: ${response.status}`);
 
   // Get task status
-  const getResult = runtime.clientGetTask(taskResponse.task_uuid);
-  if (getResult.success) {
-    console.log(`Task status: ${getResult.data.status}`);
+  const task = client.getTask(response.task_uuid);
+  console.log(`Task status: ${task.status}`);
+
+  // List tasks with filters
+  const taskList = client.listTasks({ namespace: 'ecommerce', limit: 10 });
+  for (const t of taskList.tasks) {
+    console.log(`  ${t.task_uuid}: ${t.status}`);
   }
+  console.log(`Total: ${taskList.pagination.total_count}`);
 
   // List task steps
-  const stepsResult = runtime.clientListTaskSteps(taskResponse.task_uuid);
-  if (stepsResult.success) {
-    for (const step of stepsResult.data) {
-      console.log(`Step ${step.name}: ${step.current_state}`);
-    }
+  const steps = client.listTaskSteps(response.task_uuid);
+  for (const step of steps) {
+    console.log(`Step ${step.name}: ${step.current_state}`);
   }
 
   // Check health
-  const healthResult = runtime.clientHealthCheck();
-  console.log(`API healthy: ${healthResult.success}`);
+  const health = client.healthCheck();
+  console.log(`Status: ${health.status}`);
+
+  // Cancel a task
+  client.cancelTask(response.task_uuid);
 }
 ```
 
 ### Available Client Methods
 
-| Method | Description |
-|--------|-------------|
-| `clientCreateTask(requestJson)` | Create a new task |
-| `clientGetTask(uuid)` | Get task by UUID |
-| `clientListTasks(paramsJson)` | List tasks with filters |
-| `clientCancelTask(uuid)` | Cancel a task |
-| `clientListTaskSteps(taskUuid)` | List workflow steps |
-| `clientGetStep(taskUuid, stepUuid)` | Get specific step |
-| `clientGetStepAuditHistory(taskUuid, stepUuid)` | Get step audit trail |
-| `clientHealthCheck()` | Check API health |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `createTask(options)` | `ClientTaskResponse` | Create a new task |
+| `getTask(taskUuid)` | `ClientTaskResponse` | Get task by UUID |
+| `listTasks(options?)` | `ClientTaskListResponse` | List tasks with filters |
+| `cancelTask(taskUuid)` | `void` | Cancel a task |
+| `listTaskSteps(taskUuid)` | `ClientStepResponse[]` | List workflow steps |
+| `getStep(taskUuid, stepUuid)` | `ClientStepResponse` | Get specific step |
+| `getStepAuditHistory(taskUuid, stepUuid)` | `ClientStepAuditResponse[]` | Get step audit trail |
+| `healthCheck()` | `ClientHealthResponse` | Check API health |
 
-All methods return a `ClientResult` with `success`, `data`, `error`, and `recoverable` fields.
+Methods throw `TaskerClientError` on failure, with a `recoverable` flag indicating whether a retry is appropriate.
 
 ## Next Steps
 

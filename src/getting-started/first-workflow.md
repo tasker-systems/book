@@ -34,31 +34,39 @@ Let's build an order processing workflow with these steps:
 Create a YAML file defining the workflow structure:
 
 ```yaml
-# task_templates/order_processing.yaml
+# config/tasker/templates/order_processing.yaml
 name: order_processing
+namespace_name: default
+version: 1.0.0
 description: Process a customer order
+
 steps:
   - name: validate_order
-    handler_class: ValidateOrderHandler
     description: Validate order data
-    
+    handler:
+      callable: ValidateOrderHandler
+    dependencies: []
+
   - name: reserve_inventory
-    handler_class: ReserveInventoryHandler
     description: Reserve items in warehouse
-    depends_on:
-      - step: validate_order
-    
+    handler:
+      callable: ReserveInventoryHandler
+    dependencies:
+      - validate_order
+
   - name: notify_customer
-    handler_class: NotifyCustomerHandler
     description: Send order confirmation email
-    depends_on:
-      - step: validate_order
-    
+    handler:
+      callable: NotifyCustomerHandler
+    dependencies:
+      - validate_order
+
   - name: charge_payment
-    handler_class: ChargePaymentHandler
     description: Charge the customer
-    depends_on:
-      - step: reserve_inventory
+    handler:
+      callable: ChargePaymentHandler
+    dependencies:
+      - reserve_inventory
 ```
 
 ## Step 2: Implement Handlers
@@ -122,22 +130,25 @@ class ChargePaymentHandler(StepHandler):
 Use the client SDK to submit tasks:
 
 ```python
-from tasker_core import client_create_task
+from tasker_core import TaskerClient
 
-result = client_create_task({
-    "task_name": "order_processing",
-    "initiator": "api:checkout",
-    "context": {
+client = TaskerClient()
+
+result = client.create_task(
+    "order_processing",
+    context={
         "order_id": "ORD-12345",
         "customer_email": "customer@example.com",
         "items": [
             {"sku": "WIDGET-A", "price": 29.99, "quantity": 2},
-            {"sku": "GADGET-B", "price": 49.99, "quantity": 1}
-        ]
-    }
-})
+            {"sku": "GADGET-B", "price": 49.99, "quantity": 1},
+        ],
+    },
+    initiator="api:checkout",
+    reason="New order received",
+)
 
-print(f"Task created: {result['task_id']}")
+print(f"Task created: {result.task_uuid}")
 ```
 
 ## Execution Flow

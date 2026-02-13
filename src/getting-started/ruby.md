@@ -247,14 +247,15 @@ steps:
 
 ## Handler Registration
 
-Handlers are registered automatically via the resolver chain. For explicit registration:
+Handlers are discovered automatically via the resolver chain from template `callable` fields. For explicit registration:
 
 ```ruby path=null start=null
-# config/initializers/tasker.rb
-TaskerCore::Registry.configure do |config|
-  config.register_handler('validate_order', ValidateOrderHandler)
-  config.register_handler('process_payment', ProcessPaymentHandler)
-end
+# Register handlers by their callable name
+registry = TaskerCore::Registry::HandlerRegistry.instance
+registry.register_handler(
+  'OrderFulfillment::StepHandlers::ValidateOrderHandler',
+  OrderFulfillment::StepHandlers::ValidateOrderHandler
+)
 ```
 
 ## Testing
@@ -376,61 +377,67 @@ end
 
 ## Submitting Tasks via Client SDK
 
-The `tasker-rb` gem includes FFI bindings to the orchestration client API, allowing you to submit tasks from Ruby:
+The `tasker-rb` gem includes a `TaskerCore::Client` module that provides keyword-argument methods with sensible defaults and wraps responses into typed `Dry::Struct` objects:
 
 ```ruby path=null start=null
 require 'tasker_core'
 
-# Bootstrap the worker (initializes client connection)
-result = TaskerCore::FFI.bootstrap_worker
-raise "Bootstrap failed" unless result['status'] == 'started'
-
-# Create a task
-request = {
-  'name' => 'order_fulfillment',
-  'namespace' => 'ecommerce',
-  'version' => '1.0.0',
-  'context' => {
-    'customer' => { 'id' => 123, 'email' => 'customer@example.com' },
-    'items' => [
-      { 'product_id' => 1, 'quantity' => 2, 'price' => 29.99 }
+# Create a task (defaults: initiator="tasker-core-ruby", source_system="tasker-core")
+response = TaskerCore::Client.create_task(
+  name: 'order_fulfillment',
+  namespace: 'ecommerce',
+  context: {
+    customer: { id: 123, email: 'customer@example.com' },
+    items: [
+      { product_id: 1, quantity: 2, price: 29.99 }
     ]
   },
-  'initiator' => 'my-service',
-  'source_system' => 'api',
-  'reason' => 'New order received'
-}
-
-response = TaskerCore::FFI.client_create_task(request)
-puts "Task created: #{response['task_uuid']}"
+  initiator: 'my-service',
+  source_system: 'my-api',
+  reason: 'New order received'
+)
+puts "Task created: #{response.task_uuid}"
+puts "Status: #{response.status}"
 
 # Get task status
-task = TaskerCore::FFI.client_get_task(response['task_uuid'])
-puts "Task status: #{task['status']}"
+task = TaskerCore::Client.get_task(response.task_uuid)
+puts "Task status: #{task.status}"
+
+# List tasks with filters
+task_list = TaskerCore::Client.list_tasks(namespace: 'ecommerce', limit: 10)
+task_list.tasks.each do |t|
+  puts "  #{t.task_uuid}: #{t.status}"
+end
+puts "Total: #{task_list.pagination.total_count}"
 
 # List task steps
-steps = TaskerCore::FFI.client_list_task_steps(response['task_uuid'])
+steps = TaskerCore::Client.list_task_steps(response.task_uuid)
 steps.each do |step|
-  puts "Step #{step['name']}: #{step['current_state']}"
+  puts "Step #{step.name}: #{step.current_state}"
 end
 
 # Check health
-health = TaskerCore::FFI.client_health_check
-puts "API healthy: #{health['healthy']}"
+health = TaskerCore::Client.health_check
+puts "Status: #{health.status}"
+
+# Cancel a task
+TaskerCore::Client.cancel_task(response.task_uuid)
 ```
 
 ### Available Client Methods
 
-| Method | Description |
-|--------|-------------|
-| `client_create_task(request)` | Create a new task |
-| `client_get_task(uuid)` | Get task by UUID |
-| `client_list_tasks(limit, offset, namespace, status)` | List tasks with filters |
-| `client_cancel_task(uuid)` | Cancel a task |
-| `client_list_task_steps(task_uuid)` | List workflow steps |
-| `client_get_step(task_uuid, step_uuid)` | Get specific step |
-| `client_get_step_audit_history(task_uuid, step_uuid)` | Get step audit trail |
-| `client_health_check` | Check API health |
+| Method | Returns | Description |
+|--------|---------|-------------|
+| `create_task(name:, namespace:, context:, version:, **opts)` | `ClientTypes::TaskResponse` | Create a new task |
+| `get_task(task_uuid)` | `ClientTypes::TaskResponse` | Get task by UUID |
+| `list_tasks(limit:, offset:, namespace:, status:)` | `ClientTypes::TaskListResponse` | List tasks with filters |
+| `cancel_task(task_uuid)` | `Hash` | Cancel a task |
+| `list_task_steps(task_uuid)` | `Array<ClientTypes::StepResponse>` | List workflow steps |
+| `get_step(task_uuid, step_uuid)` | `ClientTypes::StepResponse` | Get specific step |
+| `get_step_audit_history(task_uuid, step_uuid)` | `Array<ClientTypes::StepAuditResponse>` | Get step audit trail |
+| `health_check` | `ClientTypes::HealthResponse` | Check API health |
+
+Response types are `Dry::Struct` objects with typed attributes (e.g., `response.task_uuid`, `response.status`, `task_list.pagination.total_count`).
 
 ## Next Steps
 
