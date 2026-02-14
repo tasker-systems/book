@@ -62,6 +62,7 @@
 
 - [Worker Guides](workers/README.md)
   - [Api Convergence Matrix](workers/api-convergence-matrix.md)
+  - [Client Wrapper](workers/client-wrapper.md)
   - [Example Handlers](workers/example-handlers.md)
   - [Ffi Safety](workers/ffi-safety.md)
   - [Memory Management](workers/memory-management.md)
@@ -70,7 +71,6 @@
   - [Ruby](workers/ruby.md)
   - [Rust](workers/rust.md)
   - [Typescript](workers/typescript.md)
-  - [Client Wrapper](workers/client-wrapper.md)
 
 ---
 
@@ -195,3 +195,7 @@
 # Stories
 
 - [Engineering Stories](stories/README.md)
+  - [Post 01 Ecommerce Checkout](stories/post-01-ecommerce-checkout.md)
+  - [Post 02 Data Pipeline](stories/post-02-data-pipeline.md)
+  - [Post 03 Microservices Coordination](stories/post-03-microservices-coordination.md)
+  - [Post 04 Team Scaling](stories/post-04-team-scaling.md)

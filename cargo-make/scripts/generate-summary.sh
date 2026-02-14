@@ -165,14 +165,9 @@ generate_section() {
     fi
 
     # -----------------------------------------------------------------------
-    # Stories (hand-written, placeholder for now)
+    # Stories (hand-written blog series)
     # -----------------------------------------------------------------------
-    echo ""
-    echo "---"
-    echo ""
-    echo "# Stories"
-    echo ""
-    echo "- [Engineering Stories](stories/README.md)"
+    generate_section "Stories"          "stories"        "Engineering Stories"
 
 } > "${SUMMARY}"
 
