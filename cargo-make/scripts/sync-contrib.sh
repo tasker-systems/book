@@ -51,18 +51,6 @@ elif [[ -f "${CONTRIB_DIR}/README.md" ]]; then
 fi
 
 # ---------------------------------------------------------------------------
-# Sync examples
-# ---------------------------------------------------------------------------
-if [[ -d "${CONTRIB_DIR}/examples" ]]; then
-    mkdir -p "${DEST}/examples"
-    rsync -a --delete \
-        --exclude='.DS_Store' \
-        "${CONTRIB_DIR}/examples/" "${DEST}/examples/"
-    count=$(find "${DEST}/examples" -name '*.md' | wc -l | tr -d ' ')
-    echo "  examples/ -> ${count} files"
-fi
-
-# ---------------------------------------------------------------------------
 # Sync contrib-specific docs (skip ticket-specs)
 # ---------------------------------------------------------------------------
 for dir in "architecture" "guides"; do

@@ -188,10 +188,6 @@
 # Contrib
 
 - [Framework Integrations](contrib/README.md)
-  - [Examples](contrib/examples/README.md)
-    - [Approval System](contrib/examples/approval-system/README.md)
-    - [E Commerce Workflow](contrib/examples/e-commerce-workflow/README.md)
-    - [Etl Pipeline](contrib/examples/etl-pipeline/README.md)
 
 ---
 
