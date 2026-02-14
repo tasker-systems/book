@@ -17,6 +17,7 @@
   - [Python](getting-started/python.md)
   - [Ruby](getting-started/ruby.md)
   - [Rust](getting-started/rust.md)
+  - [Tasker Ctl](getting-started/tasker-ctl.md)
   - [Typescript](getting-started/typescript.md)
 
 ---

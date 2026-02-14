@@ -24,9 +24,6 @@
 
 ## Architecture
 
-The [foundations document](ticket-specs/TAS-126/foundations.md) covers:
-
-- Design rationale (why separate repos, why Railtie over Engine)
 - Framework integration patterns (lifecycle, events, generators)
 - Configuration architecture (three-layer model)
 - Testing architecture (unit, integration, E2E)

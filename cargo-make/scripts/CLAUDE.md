@@ -9,4 +9,7 @@
 |----|------|---|-------|------|
 | #5604 | 5:25 PM | ⚖️ | TAS-268 Implementation Plan Designed for Custom Documentation Generation Tooling | ~1075 |
 | #5596 | 5:22 PM | 🔵 | sync-contrib.sh content synchronization script structure | ~547 |
+| #5440 | 2:18 PM | 🔵 | generate-summary.sh Script Analysis | ~571 |
+| #5439 | 2:17 PM | 🔵 | sync-contrib.sh Script Analysis | ~503 |
+| #5438 | " | 🔵 | sync-core.sh Script Analysis | ~566 |
 </claude-mem-context>
