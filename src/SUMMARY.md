@@ -70,6 +70,7 @@
   - [Ruby](workers/ruby.md)
   - [Rust](workers/rust.md)
   - [Typescript](workers/typescript.md)
+  - [Client Wrapper](workers/client-wrapper.md)
 
 ---
 

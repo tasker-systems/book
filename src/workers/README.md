@@ -22,6 +22,7 @@ The tasker-core workspace provides four worker implementations for executing wor
 | [Ruby Worker](ruby.md) | Ruby gem for Rails integration |
 | [Python Worker](python.md) | Python package for data pipelines |
 | [TypeScript Worker](typescript.md) | TypeScript/JS for Bun/Node/Deno |
+| [Client Wrapper](client-wrapper.md) | Client library for interacting with tasker-orchestration |
 
 ---
 
