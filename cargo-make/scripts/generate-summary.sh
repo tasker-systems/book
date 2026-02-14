@@ -104,6 +104,7 @@ generate_section() {
     generate_section "Workers"         "workers"        "Worker Guides"
     generate_section "Observability"   "observability"  "Observability"
     generate_section "Principles"      "principles"     "Design Principles"
+    generate_section "Vision"          "vision"         "Vision"
     generate_section "Reference"       "reference"      "Reference"
 
     # Generated reference docs (diagrams, config, schema) as its own section

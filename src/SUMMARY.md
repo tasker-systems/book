@@ -104,6 +104,19 @@
 
 ---
 
+# Vision
+
+- [Vision](vision/README.md)
+  - [01 Vision](vision/01-vision.md)
+  - [02 Technical Approach](vision/02-technical-approach.md)
+  - [03 Phase 1 Handler Catalog](vision/03-phase-1-handler-catalog.md)
+  - [04 Phase 2 Planning Interface](vision/04-phase-2-planning-interface.md)
+  - [05 Phase 3 Wasm Broker](vision/05-phase-3-wasm-broker.md)
+  - [06 Phase 4 Recursive Planning](vision/06-phase-4-recursive-planning.md)
+  - [07 Complexity Management](vision/07-complexity-management.md)
+
+---
+
 # Reference
 
 - [Reference](reference/README.md)
