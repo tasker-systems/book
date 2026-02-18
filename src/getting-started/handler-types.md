@@ -1,6 +1,6 @@
 # Handler Types
 
-Tasker provides four specialized handler types that cover the most common workflow patterns. Each handler type extends the base `StepHandler` with purpose-built behavior, so you write business logic instead of boilerplate.
+Tasker provides four specialized handler types that cover the most common workflow patterns. Each type is a composable mixin that you combine with the base `StepHandler` via multiple inheritance, adding purpose-built methods so you write business logic instead of boilerplate.
 
 ## Cross-Language Availability
 
@@ -58,65 +58,48 @@ Available for all four languages: `tasker-contrib-rails`, `tasker-contrib-python
 
 ## API Handler
 
-An async handler designed for HTTP service calls with built-in error classification.
+A mixin that adds HTTP client methods with built-in error classification. The `APIMixin` provides `self.get()`, `self.post()`, `self.put()`, `self.patch()`, `self.delete()` methods that return an `ApiResponse` wrapper, plus `self.api_success()` and `self.api_failure()` helpers that automatically classify HTTP errors as retryable or permanent.
 
-**When to use**: Calling external APIs where you need to distinguish retryable errors (5xx, timeouts) from permanent errors (4xx). The handler pattern provides structured error handling so the orchestrator knows whether to retry.
+**When to use**: Calling external APIs where you need to distinguish retryable errors (5xx, timeouts) from permanent errors (4xx). The mixin handles error classification so the orchestrator knows whether to retry.
 
 ```python
 import httpx
 
-from tasker_core import StepHandler, StepContext, StepHandlerResult, ErrorType
+from tasker_core.step_handler import StepHandler
+from tasker_core.step_handler.mixins import APIMixin
 
 
-class FetchOrderHandler(StepHandler):
+class FetchOrderHandler(APIMixin, StepHandler):
     handler_name = "fetch_order"
-    handler_version = "1.0.0"
+    base_url = "https://api.example.com"
+    default_timeout = 30.0
 
-    async def call(self, context: StepContext) -> StepHandlerResult:
-        base_url = context.step_config.get("base_url", "https://api.example.com")
-        endpoint = context.input_data.get("endpoint", "/resource")
-        url = f"{base_url}{endpoint}"
+    def call(self, context):
+        order_id = context.input_data["order_id"]
 
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.get(url)
+            response = self.get(f"/orders/{order_id}")
+        except httpx.ConnectError as e:
+            return self.connection_error(e, "fetching order")
+        except httpx.TimeoutException as e:
+            return self.timeout_error(e, "fetching order")
 
-            if response.is_success:
-                return StepHandlerResult.success(
-                    result=response.json(),
-                    metadata={
-                        "status_code": response.status_code,
-                        "endpoint": endpoint,
-                    },
-                )
-            else:
-                retryable = response.status_code >= 500
-                return StepHandlerResult.failure(
-                    message=f"API request failed: HTTP {response.status_code}",
-                    error_type=(
-                        ErrorType.RETRYABLE_ERROR if retryable
-                        else ErrorType.PERMANENT_ERROR
-                    ),
-                    retryable=retryable,
-                    metadata={
-                        "status_code": response.status_code,
-                        "endpoint": endpoint,
-                    },
-                )
-
-        except httpx.TimeoutException as exc:
-            return StepHandlerResult.failure(
-                message=f"API timeout: {exc}",
-                error_type=ErrorType.TIMEOUT,
-                retryable=True,
-            )
-        except httpx.ConnectError as exc:
-            return StepHandlerResult.failure(
-                message=f"API connection failed: {exc}",
-                error_type=ErrorType.RETRYABLE_ERROR,
-                retryable=True,
-            )
+        if response.ok:
+            return self.api_success(response)
+        return self.api_failure(response)
 ```
+
+The `APIMixin` provides:
+
+| Method | Purpose |
+|--------|---------|
+| `self.get()`, `self.post()`, etc. | HTTP methods returning `ApiResponse` |
+| `self.api_success(response)` | Success result with response metadata |
+| `self.api_failure(response)` | Failure with automatic error classification (4xx = permanent, 5xx/429 = retryable) |
+| `self.connection_error(exc)` | Retryable failure for connection errors |
+| `self.timeout_error(exc)` | Retryable failure for timeouts |
+
+The `ApiResponse` wrapper exposes `.ok`, `.is_retryable`, `.is_client_error`, `.is_server_error`, and `.retry_after` for fine-grained control when you need it.
 
 **Generate with tasker-ctl**:
 
@@ -127,57 +110,52 @@ tasker-ctl template generate step_handler_api \
   --param base_url=https://api.example.com
 ```
 
-**Cross-language notes**: Ruby and TypeScript API handlers follow the same error classification pattern. Ruby uses `Faraday`, TypeScript uses the built-in `fetch` API.
+**Cross-language notes**: Ruby and TypeScript provide equivalent API handler mixins with the same error classification pattern.
 
 ## Decision Handler
 
-A handler that routes the workflow by selecting which downstream steps should execute.
+A mixin that adds workflow routing methods. The `DecisionMixin` provides `self.decision_success()` to activate downstream steps and `self.skip_branches()` when no steps should execute.
 
 **When to use**: Conditional branching — when the next steps depend on runtime data. The decision handler returns a list of step names to activate, enabling dynamic workflow paths without hardcoding logic into the DAG definition.
 
 ```python
-from tasker_core import DecisionHandler, StepContext, StepHandlerResult
+from tasker_core.step_handler import StepHandler
+from tasker_core.step_handler.mixins import DecisionMixin
 
 
-class OrderRoutingHandler(DecisionHandler):
+class OrderRoutingHandler(DecisionMixin, StepHandler):
     handler_name = "order_routing"
-    handler_version = "1.0.0"
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        input_data = context.input_data
-        route_key = input_data.get("route_key", "default")
+    def call(self, context):
+        order_type = context.input_data.get("order_type")
 
-        if route_key == "fast_track":
+        if order_type == "premium":
             return self.decision_success(
-                steps=["fast_track_processing"],
-                result_data={
-                    "route": "fast_track",
-                    "reason": "Meets fast-track criteria",
-                },
+                ["validate_premium", "process_premium"],
+                routing_context={"order_type": order_type},
             )
-        elif route_key == "review_required":
+        elif order_type == "review_required":
             return self.decision_success(
-                steps=["manual_review", "approval_gate"],
-                result_data={
-                    "route": "review",
-                    "reason": "Review required",
-                },
+                ["manual_review", "approval_gate"],
+                routing_context={"order_type": order_type},
             )
         else:
-            return self.decision_success(
-                steps=["standard_processing"],
-                result_data={
-                    "route": "standard",
-                    "reason": "Default routing",
-                },
-            )
+            return self.decision_success(["standard_processing"])
 ```
+
+The `DecisionMixin` provides:
+
+| Method | Purpose |
+|--------|---------|
+| `self.decision_success(steps, routing_context)` | Activate downstream steps by name |
+| `self.skip_branches(reason)` | Successful outcome with no follow-up steps |
+| `self.decision_failure(message)` | Decision could not be made (usually not retryable) |
 
 Key differences from a regular step handler:
 
-- Extends `DecisionHandler` instead of `StepHandler`
-- Returns `self.decision_success(steps=[...])` with a list of step names to activate
-- The `result_data` is stored as the step result for downstream access
+- Composes `DecisionMixin` with `StepHandler` via multiple inheritance
+- Returns `self.decision_success(["step_name", ...])` with step names to activate
+- The `routing_context` is stored as part of the step result for downstream access
 
 **Generate with tasker-ctl**:
 
@@ -191,9 +169,9 @@ tasker-ctl template generate step_handler_decision \
 
 ## Batchable Handler
 
-A handler that splits large workloads into parallel batches using a cursor-based pagination pattern.
+A mixin that adds batch processing methods for splitting large workloads into parallel cursor-based batches. The `Batchable` mixin provides `self.create_batch_outcome()` and `self.batch_analyzer_success()` for the analyzer role, plus batch worker context helpers and aggregation utilities.
 
-**When to use**: Processing large datasets where you want to divide work across multiple parallel workers. The batchable handler acts as both an **analyzer** (dividing work into cursor ranges) and a **worker** (processing individual batches).
+**When to use**: Processing large datasets where you want to divide work across multiple parallel workers.
 
 **Workflow pattern**:
 
@@ -201,89 +179,83 @@ A handler that splits large workloads into parallel batches using a cursor-based
 2. **Worker steps** — Tasker spawns parallel workers, each processing one batch
 3. **Aggregator step** — (optional) combines results from all workers
 
+### Analyzer
+
 ```python
-from datetime import datetime, timezone
+from tasker_core.step_handler import StepHandler
+from tasker_core.batch_processing import Batchable
 
-from tasker_core import StepHandler, StepContext, StepHandlerResult
 
+class CsvAnalyzerHandler(StepHandler, Batchable):
+    handler_name = "analyze_csv"
 
-class DataExportHandler(StepHandler):
-    handler_name = "data_export"
-    handler_version = "1.0.0"
+    def call(self, context):
+        total_rows = int(context.input_data.get("total_rows", 10000))
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # Check if this is a batch worker invocation
-        batch_inputs = context.step_inputs or {}
-        if batch_inputs.get("cursor") or batch_inputs.get("is_no_op"):
-            return self._process_batch(context, batch_inputs)
-
-        # Otherwise, this is the analyzer
-        return self._analyze_and_create_batches(context)
-
-    def _analyze_and_create_batches(
-        self, context: StepContext
-    ) -> StepHandlerResult:
-        total_items = int(context.input_data.get("total_items", 1000))
-        worker_count = int(context.step_config.get("worker_count", 5))
-
-        items_per_worker = -(-total_items // worker_count)  # ceiling division
-        cursor_configs = []
-        for i in range(worker_count):
-            start = i * items_per_worker
-            end = min(start + items_per_worker, total_items)
-            if start >= total_items:
-                break
-            cursor_configs.append({
-                "batch_id": f"{i + 1:03d}",
-                "start_cursor": start,
-                "end_cursor": end,
-                "batch_size": end - start,
-            })
-
-        return StepHandlerResult.success(
-            result={
-                "batch_processing_outcome": {
-                    "type": "create_batches",
-                    "worker_template_name": "data_export_batch",
-                    "worker_count": len(cursor_configs),
-                    "cursor_configs": cursor_configs,
-                    "total_items": total_items,
-                },
-                "analyzed_at": datetime.now(timezone.utc).isoformat(),
-            }
+        outcome = self.create_batch_outcome(
+            total_items=total_rows,
+            batch_size=100,
         )
+        return self.batch_analyzer_success(outcome)
+```
 
-    def _process_batch(
-        self, context: StepContext, batch_inputs: dict
-    ) -> StepHandlerResult:
-        if batch_inputs.get("is_no_op"):
-            return StepHandlerResult.success(
-                result={
-                    "batch_id": batch_inputs.get(
-                        "cursor", {}
-                    ).get("batch_id", "no_op"),
-                    "no_op": True,
-                    "processed_count": 0,
-                }
-            )
+### Worker
 
-        cursor = batch_inputs.get("cursor", {})
-        start = cursor.get("start_cursor", 0)
-        end = cursor.get("end_cursor", 0)
-        batch_id = cursor.get("batch_id", "unknown")
+```python
+class CsvBatchProcessorHandler(StepHandler, Batchable):
+    handler_name = "process_csv_batch"
 
-        # Process items in the batch range
-        items_processed = end - start
+    def call(self, context):
+        batch_context = self.get_batch_worker_context(context)
+        cursor = batch_context.cursor
 
-        return StepHandlerResult.success(
-            result={
-                "items_processed": items_processed,
-                "items_succeeded": items_processed,
-                "items_failed": 0,
-                "batch_id": batch_id,
-            }
+        # Process rows in the assigned range
+        rows_processed = cursor.end_cursor - cursor.start_cursor
+
+        return self.batch_worker_success(
+            batch_context,
+            result={"rows_processed": rows_processed},
         )
 ```
+
+### Aggregator
+
+```python
+from tasker_core.batch_processing import Batchable, BatchAggregationScenario
+
+
+class CsvResultsAggregatorHandler(StepHandler, Batchable):
+    handler_name = "aggregate_csv_results"
+
+    def call(self, context):
+        scenario = BatchAggregationScenario.detect(
+            context.dependency_results,
+            "analyze_csv",
+            "process_csv_batch_",
+        )
+
+        if scenario.is_no_batches:
+            return self.success({"total_rows": 0, "skipped": True})
+
+        total = sum(
+            r.get("rows_processed", 0)
+            for r in scenario.batch_results.values()
+        )
+        return self.success({
+            "total_rows": total,
+            "worker_count": scenario.worker_count,
+        })
+```
+
+The `Batchable` mixin provides:
+
+| Method | Role | Purpose |
+|--------|------|---------|
+| `self.create_batch_outcome(total_items, batch_size)` | Analyzer | Create cursor ranges dividing work into batches |
+| `self.batch_analyzer_success(outcome)` | Analyzer | Return batch config for worker spawning |
+| `self.get_batch_worker_context(context)` | Worker | Extract cursor and batch metadata |
+| `self.batch_worker_success(batch_context, result)` | Worker | Return per-batch results |
+| `BatchAggregationScenario.detect(...)` | Aggregator | Detect whether batches ran and collect results |
 
 **Generate with tasker-ctl**:
 
