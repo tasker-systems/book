@@ -1,5 +1,8 @@
 # Tasker Contrib Documentation
 
+> Consumer-facing documentation is published in [The Tasker Book](https://github.com/tasker-systems/tasker-book).
+> See the [Documentation Architecture](https://github.com/tasker-systems/tasker-book/blob/main/DOCUMENTATION-ARCHITECTURE.md) for the cross-repo ownership model.
+
 ## Quick Links
 
 | Document | Description |
@@ -24,6 +27,9 @@
 
 ## Architecture
 
+The [foundations document](ticket-specs/TAS-126/foundations.md) covers:
+
+- Design rationale (why separate repos, why Railtie over Engine)
 - Framework integration patterns (lifecycle, events, generators)
 - Configuration architecture (three-layer model)
 - Testing architecture (unit, integration, E2E)

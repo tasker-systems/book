@@ -94,8 +94,10 @@ Sync scripts pull from sibling repos with selective exclusions:
 
 - **Included from tasker-core/docs**: architecture, auth, benchmarks, decisions, generated, guides,
   observability, operations, principles, reference, security, testing, workers
-- **Excluded**: ticket-specs (internal), development (contributor-focused), CLAUDE.md files
+- **Excluded**: ticket-specs (internal), development (contributor-focused), getting-started (book-owned), CLAUDE.md files
 - **Included from tasker-contrib**: docs/README.md, examples/
+
+See [DOCUMENTATION-ARCHITECTURE.md](DOCUMENTATION-ARCHITECTURE.md) for the full ownership model.
 
 ### Content Refresh Workflow
 
