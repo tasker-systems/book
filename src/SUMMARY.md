@@ -66,7 +66,6 @@
   - [Client Wrapper](workers/client-wrapper.md)
   - [Example Handlers](workers/example-handlers.md)
   - [Ffi Safety](workers/ffi-safety.md)
-  - [Memory Management](workers/memory-management.md)
   - [Patterns And Practices](workers/patterns-and-practices.md)
   - [Python](workers/python.md)
   - [Ruby](workers/ruby.md)
@@ -189,6 +188,7 @@
   - [Adr 006 Worker Decomposition](decisions/adr-006-worker-decomposition.md)
   - [Adr 007 Ffi Over Wasm](decisions/adr-007-ffi-over-wasm.md)
   - [Adr 008 Composition Pattern](decisions/adr-008-composition-pattern.md)
+  - [Adr 009 Napi Rs Replaces Koffi](decisions/adr-009-napi-rs-replaces-koffi.md)
   - [Rca Parallel Execution Timing Bugs](decisions/rca-parallel-execution-timing-bugs.md)
 
 ---
