@@ -58,10 +58,10 @@
   - [Caching](guides/caching.md)
   - [Conditional Workflows](guides/conditional-workflows.md)
   - [Configuration Management](guides/configuration-management.md)
+  - [Contributing To Tasker](guides/contributing-to-tasker.md)
   - [Dlq System](guides/dlq-system.md)
   - [Handler Resolution](guides/handler-resolution.md)
   - [Identity Strategy](guides/identity-strategy.md)
-  - [Quick Start](guides/quick-start.md)
   - [Retry Semantics](guides/retry-semantics.md)
   - [Use Cases And Patterns](guides/use-cases-and-patterns.md)
 

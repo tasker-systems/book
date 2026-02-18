@@ -37,5 +37,5 @@ The [Engineering Stories](../stories/README.md) series teaches Tasker concepts t
 
 ## Contributing
 
-- [tasker-contrib](../contrib/README.md) — Framework integrations and example applications
+- [Contributing to Tasker](../guides/contributing-to-tasker.md) — Development setup, workflow, and PR process for tasker-core and tasker-contrib
 - [GitHub Issues](https://github.com/tasker-systems/tasker-core/issues) — Report bugs or request features
