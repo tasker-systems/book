@@ -53,8 +53,7 @@ SYNC_DIRS=(
     "reference"
     "security"
     "testing"
-    "workers",
-    "getting-started"
+    "workers"
 )
 
 # Directories to SKIP (internal-only)
