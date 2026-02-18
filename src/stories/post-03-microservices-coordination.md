@@ -316,3 +316,7 @@ The complete user registration workflow is implemented in all four supported lan
 ## What's Next
 
 Workflows within a single team are manageable, but what happens when multiple teams define workflows with overlapping names? In [Post 04: Team Scaling with Namespaces](post-04-team-scaling.md), we'll see how Tasker's namespace system lets teams like Customer Success and Payments each own a `process_refund` workflow without naming conflicts — and how cross-namespace coordination enables clean team boundaries.
+
+---
+
+*See this pattern implemented in all four frameworks on the [Example Apps](../contrib/example-apps.md) page.*

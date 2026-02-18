@@ -354,3 +354,7 @@ The namespace isolation pattern is demonstrated across all four supported langua
 ## What's Next
 
 With namespaces, your teams can scale independently. But as your workflow count grows, you need visibility into what's happening across all those namespaces. The next posts in this series will explore observability (OpenTelemetry integration and domain events), batch processing patterns, and production debugging workflows.
+
+---
+
+*See this pattern implemented in all four frameworks on the [Example Apps](../contrib/example-apps.md) page.*

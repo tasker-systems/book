@@ -132,6 +132,10 @@ class ValidatingHandler(StepHandler):
         return StepHandlerResult.success({"processed": result})
 ```
 
+## See It in Action
+
+The [example apps](../contrib/example-apps.md) implement step handlers for five real-world workflows in all four languages. Compare the same handler across Rails, FastAPI, Bun, and Axum to see how each framework's idioms map to the Tasker contract.
+
 ## Next Steps
 
 - [Your First Workflow](first-workflow.md) — Connect handlers into a workflow

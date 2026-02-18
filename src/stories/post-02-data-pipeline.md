@@ -314,3 +314,7 @@ The complete analytics pipeline is implemented in all four supported languages:
 ## What's Next
 
 Parallel extraction is powerful, but real-world workflows often have a **diamond pattern** — a step that fans out to parallel branches that must converge before continuing. In [Post 03: Microservices Coordination](post-03-microservices-coordination.md), we'll build a user registration workflow where account creation fans out to billing and preferences setup in parallel, then converges for the welcome sequence — demonstrating how Tasker replaces custom circuit breakers with declarative dependency management.
+
+---
+
+*See this pattern implemented in all four frameworks on the [Example Apps](../contrib/example-apps.md) page.*

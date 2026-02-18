@@ -71,7 +71,17 @@ The orchestration engine coordinates the workflow — validating the order, rese
 
 ### What you just ran
 
-Each example app implements five real-world workflow patterns. See the [Example Apps](../contrib/README.md) page for the full list and how they map to the [Engineering Stories](../stories/README.md).
+Each example app implements five real-world workflow patterns:
+
+| Pattern | Workflow | Story |
+|---------|----------|-------|
+| Linear pipeline | E-commerce Order Processing | [Post 01](../stories/post-01-ecommerce-checkout.md) |
+| Parallel DAG | Data Pipeline Analytics | [Post 02](../stories/post-02-data-pipeline.md) |
+| Diamond convergence | Microservices User Registration | [Post 03](../stories/post-03-microservices-coordination.md) |
+| Namespace isolation | Customer Success Refund | [Post 04](../stories/post-04-team-scaling.md) |
+| Cross-team coordination | Payments Compliance | [Post 04](../stories/post-04-team-scaling.md) |
+
+See the [Example Apps](../contrib/example-apps.md) page for full details on each app, or read the [Engineering Stories](../stories/README.md) for the narrative walkthrough.
 
 ## Path B: Bootstrap with tasker-ctl (10 minutes)
 

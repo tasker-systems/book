@@ -182,6 +182,9 @@ generate_section() {
         if [[ -f "${SRC_DIR}/contrib/README.md" ]]; then
             echo "- [Framework Integrations](contrib/README.md)"
         fi
+        if [[ -f "${SRC_DIR}/contrib/example-apps.md" ]]; then
+            echo "  - [Example Apps](contrib/example-apps.md)"
+        fi
 
         if [[ -d "${SRC_DIR}/contrib/examples" ]]; then
             if [[ -f "${SRC_DIR}/contrib/examples/README.md" ]]; then

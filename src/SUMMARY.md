@@ -211,6 +211,7 @@
 # Contrib
 
 - [Framework Integrations](contrib/README.md)
+  - [Example Apps](contrib/example-apps.md)
 
 ---
 

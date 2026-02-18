@@ -52,7 +52,9 @@ tasker-ctl template generate step_handler \
 
 Available for all four languages: `tasker-contrib-rails`, `tasker-contrib-python`, `tasker-contrib-typescript`, `tasker-contrib-rust`.
 
-**Next**: [Your First Handler](first-handler.md) walks through writing and registering a step handler end-to-end.
+**See it in action**: All five workflows in the [example apps](../contrib/example-apps.md) use step handlers. Start with the e-commerce checkout ([Post 01](../stories/post-01-ecommerce-checkout.md)) for the simplest example.
+
+**Next**: [Your First Handler](../building/first-handler.md) walks through writing and registering a step handler end-to-end.
 
 ## API Handler
 
@@ -327,7 +329,7 @@ tasker-ctl template generate task_template \
 
 Task templates are language-agnostic — the same YAML structure works across all four languages. The `handler.callable` field maps to the handler's registered name or class path.
 
-For a complete walkthrough of building a multi-step workflow with templates, see [Your First Workflow](first-workflow.md).
+For a complete walkthrough of building a multi-step workflow with templates, see [Your First Workflow](../building/first-workflow.md).
 
 ## Why Rust Has Only Step Handler
 

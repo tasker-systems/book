@@ -161,6 +161,10 @@ When this task runs:
 
 The total execution time is determined by the longest path through the DAG.
 
+## See It in Action
+
+The [example apps](../contrib/example-apps.md) implement complete multi-step workflows in all four languages. The order processing workflow from this guide maps directly to the e-commerce pattern in each example app.
+
 ## Next Steps
 
 - [Language Guides](../getting-started/choosing-your-package.md) — Complete guides for each language
