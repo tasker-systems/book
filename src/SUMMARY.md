@@ -12,6 +12,7 @@
   - [Concepts](getting-started/concepts.md)
   - [First Handler](getting-started/first-handler.md)
   - [First Workflow](getting-started/first-workflow.md)
+  - [Handler Types](getting-started/handler-types.md)
   - [Install](getting-started/install.md)
   - [Next Steps](getting-started/next-steps.md)
   - [Python](getting-started/python.md)
