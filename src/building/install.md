@@ -104,6 +104,6 @@ npx tasker --version
 
 ## Next Steps
 
-- [Choosing Your Package](choosing-your-package.md) — Language-specific guidance
+- [Choosing Your Package](../getting-started/choosing-your-package.md) — Language-specific guidance
 - [Your First Handler](first-handler.md) — Write your first step handler
 - [Your First Workflow](first-workflow.md) — Create a complete workflow

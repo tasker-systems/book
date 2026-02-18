@@ -96,9 +96,41 @@ generate_section() {
     echo "[Why Tasker?](why-tasker.md)"
 
     # -----------------------------------------------------------------------
+    # Getting Started (Understand track) — hand-written structure
+    # -----------------------------------------------------------------------
+    echo ""
+    echo "---"
+    echo ""
+    echo "# Getting Started"
+    echo ""
+    echo "- [Getting Started](getting-started/README.md)"
+    echo "  - [Core Concepts](getting-started/concepts.md)"
+    echo "  - [Handler Types](getting-started/handler-types.md)"
+    echo "  - [Choosing Your Package](getting-started/choosing-your-package.md)"
+
+    # -----------------------------------------------------------------------
+    # Build Your First Project (Build track) — hand-written structure
+    # -----------------------------------------------------------------------
+    echo ""
+    echo "---"
+    echo ""
+    echo "# Build Your First Project"
+    echo ""
+    echo "- [Build Your First Project](building/README.md)"
+    echo "  - [Quick Start](building/quick-start.md)"
+    echo "  - [Installation](building/install.md)"
+    echo "  - [Using tasker-ctl](building/tasker-ctl.md)"
+    echo "  - [Your First Handler](building/first-handler.md)"
+    echo "  - [Your First Workflow](building/first-workflow.md)"
+    echo "  - [Ruby](building/ruby.md)"
+    echo "  - [Python](building/python.md)"
+    echo "  - [TypeScript](building/typescript.md)"
+    echo "  - [Rust](building/rust.md)"
+    echo "  - [Next Steps](building/next-steps.md)"
+
+    # -----------------------------------------------------------------------
     # Auto-generated sections from directory structure
     # -----------------------------------------------------------------------
-    generate_section "Getting Started" "getting-started" "Getting Started"
     generate_section "Architecture"    "architecture"   "Architecture Overview"
     generate_section "Guides"          "guides"         "Operational Guides"
     generate_section "Workers"         "workers"        "Worker Guides"

@@ -157,6 +157,6 @@ def call(self, context):
 
 ## Next Steps
 
-- [Installation](install.md) — Set up Tasker
-- [Your First Handler](first-handler.md) — Write your first step handler
-- [Your First Workflow](first-workflow.md) — Create a complete workflow
+- [Handler Types](handler-types.md) — The four handler types and when to use each
+- [Your First Handler](../building/first-handler.md) — Write your first step handler
+- [Your First Workflow](../building/first-workflow.md) — Create a complete workflow

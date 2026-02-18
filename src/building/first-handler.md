@@ -135,4 +135,4 @@ class ValidatingHandler(StepHandler):
 ## Next Steps
 
 - [Your First Workflow](first-workflow.md) — Connect handlers into a workflow
-- [Language Guides](choosing-your-package.md) — Deep dives for each language
+- [Language Guides](../getting-started/choosing-your-package.md) — Deep dives for each language

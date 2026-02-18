@@ -8,18 +8,25 @@
 # Getting Started
 
 - [Getting Started](getting-started/README.md)
-  - [Choosing Your Package](getting-started/choosing-your-package.md)
-  - [Concepts](getting-started/concepts.md)
-  - [First Handler](getting-started/first-handler.md)
-  - [First Workflow](getting-started/first-workflow.md)
+  - [Core Concepts](getting-started/concepts.md)
   - [Handler Types](getting-started/handler-types.md)
-  - [Install](getting-started/install.md)
-  - [Next Steps](getting-started/next-steps.md)
-  - [Python](getting-started/python.md)
-  - [Ruby](getting-started/ruby.md)
-  - [Rust](getting-started/rust.md)
-  - [Tasker Ctl](getting-started/tasker-ctl.md)
-  - [Typescript](getting-started/typescript.md)
+  - [Choosing Your Package](getting-started/choosing-your-package.md)
+
+---
+
+# Build Your First Project
+
+- [Build Your First Project](building/README.md)
+  - [Quick Start](building/quick-start.md)
+  - [Installation](building/install.md)
+  - [Using tasker-ctl](building/tasker-ctl.md)
+  - [Your First Handler](building/first-handler.md)
+  - [Your First Workflow](building/first-workflow.md)
+  - [Ruby](building/ruby.md)
+  - [Python](building/python.md)
+  - [TypeScript](building/typescript.md)
+  - [Rust](building/rust.md)
+  - [Next Steps](building/next-steps.md)
 
 ---
 

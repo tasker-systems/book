@@ -163,6 +163,6 @@ The total execution time is determined by the longest path through the DAG.
 
 ## Next Steps
 
-- [Language Guides](choosing-your-package.md) — Complete guides for each language
+- [Language Guides](../getting-started/choosing-your-package.md) — Complete guides for each language
 - [Architecture Overview](../architecture/README.md) — Understand Tasker internals
 - [Testing Guide](../testing/README.md) — Test your workflows
