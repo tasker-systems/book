@@ -20,7 +20,7 @@ Ruby step handlers inherit from `TaskerCore::StepHandler::Base`:
 class MyHandler < TaskerCore::StepHandler::Base
   def call(context)
     # Your handler logic here
-    TaskerCore::Types::StepHandlerCallResult.success(
+    success(
       result: { processed: true }
     )
   end
@@ -42,7 +42,7 @@ class LinearStep1Handler < TaskerCore::StepHandler::Base
     logger.info "Linear Step 1: #{even_number}² = #{result}"
 
     # Return standardized result
-    TaskerCore::Types::StepHandlerCallResult.success(
+    success(
       result: result,
       metadata: {
         operation: 'square',
@@ -68,16 +68,16 @@ items = task_context['items']
 
 ### Accessing Dependency Results
 
-Access results from upstream steps using `context.sequence`:
+Access results from upstream steps using `get_dependency_result()`:
 
 ```ruby path=null start=null
-# Get result from a specific upstream step
-previous_result = context.sequence.get('previous_step_name')
+# Get result from a specific upstream step (returns the result value directly)
+previous_result = context.get_dependency_result('previous_step_name')
 
-# Access the computed result value
-value = previous_result['result']
+# Extract a nested field from a dependency result
+value = context.get_dependency_field('previous_step_name', 'nested_key')
 
-# Or use the dependency_results hash directly
+# Or use the dependency_results object directly
 all_results = context.dependency_results
 ```
 
@@ -99,7 +99,7 @@ module OrderFulfillment
         validation_results = validate_order_data(order_inputs)
 
         # Return success result
-        TaskerCore::Types::StepHandlerCallResult.success(
+        success(
           result: {
             customer_validated: true,
             customer_id: validation_results[:customer_id],
@@ -214,35 +214,65 @@ Define workflows in YAML:
 ```yaml path=null start=null
 name: order_fulfillment
 namespace_name: ecommerce
-version: 1.0.0
+version: "1.0.0"
 description: "E-commerce order processing workflow"
 
 steps:
   - name: validate_order
+    description: "Validate order data"
     handler:
       callable: OrderFulfillment::StepHandlers::ValidateOrderHandler
+      initialization: {}
     dependencies: []
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: reserve_inventory
+    description: "Reserve items in warehouse"
     handler:
       callable: OrderFulfillment::StepHandlers::ReserveInventoryHandler
+      initialization: {}
     dependencies:
       - validate_order
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: process_payment
+    description: "Charge customer"
     handler:
       callable: OrderFulfillment::StepHandlers::ProcessPaymentHandler
+      initialization: {}
     dependencies:
       - validate_order
       - reserve_inventory
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: ship_order
+    description: "Ship the order"
     handler:
       callable: OrderFulfillment::StepHandlers::ShipOrderHandler
+      initialization: {}
     dependencies:
-      - validate_order
-      - reserve_inventory
       - process_payment
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 ```
 
 ## Handler Registration
@@ -328,17 +358,17 @@ task_context = context.task.context
 ### Dependency Result Access
 
 ```ruby path=null start=null
-# Get result from upstream step
-previous_result = context.sequence.get('step_name')
+# Get result from upstream step (returns the value directly)
+previous_result = context.get_dependency_result('step_name')
 
-# Extract computed value
-value = previous_result['result']
+# Extract a nested field
+value = context.get_dependency_field('step_name', 'nested_key')
 ```
 
 ### Metadata for Observability
 
 ```ruby path=null start=null
-TaskerCore::Types::StepHandlerCallResult.success(
+success(
   result: data,
   metadata: {
     operation: 'my_operation',
@@ -354,17 +384,17 @@ TaskerCore::Types::StepHandlerCallResult.success(
 ```ruby path=null start=null
 class ProcessPaymentHandler < TaskerCore::StepHandler::Base
   def call(context)
-    # Get results from upstream steps
-    order_result = context.sequence.get('validate_order')
-    inventory_result = context.sequence.get('reserve_inventory')
+    # Get results from upstream steps (returns the result value directly)
+    order_result = context.get_dependency_result('validate_order')
+    inventory_result = context.get_dependency_result('reserve_inventory')
 
-    amount = order_result['result']['order_total']
-    reservation_id = inventory_result['result']['reservation_id']
+    amount = order_result['order_total']
+    reservation_id = inventory_result['reservation_id']
 
     # Process payment...
     payment_id = process_payment(amount)
 
-    TaskerCore::Types::StepHandlerCallResult.success(
+    success(
       result: {
         payment_id: payment_id,
         amount_charged: amount,

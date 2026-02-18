@@ -16,17 +16,18 @@ The [Engineering Stories](../stories/README.md) series teaches Tasker concepts t
 
 - [Architecture Overview](../architecture/README.md) — System design, lifecycle actors, and DAG execution
 - [Worker Architecture](../workers/README.md) — How workers process steps across languages
-- [Event System](../architecture/events.md) — Pub/sub and observability events
+- [Event System](../architecture/events-and-commands.md) — Pub/sub and observability events
 
 ### Operations
 
-- [Operations Guide](../operations/README.md) — Deployment and scaling
+- [Backpressure Monitoring](../operations/backpressure-monitoring.md) — Monitor and tune backpressure
+- [Connection Pool Tuning](../operations/connection-pool-tuning.md) — Database connection management
 - [Observability](../observability/README.md) — Metrics, tracing, and logging
-- [Security](../security/README.md) — Authentication and authorization
+- [Auth & Security](../auth/README.md) — Authentication and authorization
 
 ### Reference
 
-- [Configuration Reference](../generated/configuration.md) — All configuration options
+- [Configuration Reference](../generated/config-reference-complete.md) — All configuration options
 - [API Reference](../reference/README.md) — REST and gRPC API documentation
 - [Handler Types](../getting-started/handler-types.md) — API, Decision, and Batchable handler patterns
 

@@ -7,10 +7,11 @@ This guide covers using Tasker with native Rust step handlers.
 ```bash
 # Add dependencies to Cargo.toml
 [dependencies]
-tasker-worker = { git = "https://github.com/tasker-systems/tasker-core" }
+tasker-worker-rust = { git = "https://github.com/tasker-systems/tasker-core" }
 tasker-shared = { git = "https://github.com/tasker-systems/tasker-core" }
 async-trait = "0.1"
 serde_json = "1.0"
+anyhow = "1.0"
 ```
 
 ## Writing a Step Handler
@@ -18,50 +19,71 @@ serde_json = "1.0"
 Rust step handlers implement the `RustStepHandler` trait using `async_trait`:
 
 ```rust path=null start=null
-use async_trait::async_trait;
 use anyhow::Result;
-use serde_json::json;
-use tasker_shared::messaging::StepExecutionResult;
+use async_trait::async_trait;
 use tasker_shared::types::TaskSequenceStep;
+use tasker_shared::messaging::StepExecutionResult;
+use tasker_worker_rust::RustStepHandler;
+use tasker_worker_rust::step_handlers::StepHandlerConfig;
 
 #[async_trait]
 pub trait RustStepHandler: Send + Sync {
-    async fn call(&self, step_data: &TaskSequenceStep) -> Result<StepExecutionResult>;
-    fn name(&self) -> &'static str;
+    fn new(config: StepHandlerConfig) -> Self;
+    fn name(&self) -> &str;
+    async fn call(
+        &self,
+        step_data: &TaskSequenceStep,
+    ) -> Result<StepExecutionResult>;
 }
 ```
 
 ### Minimal Handler Example
 
 ```rust path=null start=null
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use serde_json::json;
+use std::time::Instant;
 use tasker_shared::messaging::StepExecutionResult;
 use tasker_shared::types::TaskSequenceStep;
+use tasker_worker_rust::success_result;
+use tasker_worker_rust::step_handlers::StepHandlerConfig;
+use tasker_worker_rust::RustStepHandler;
 
-pub struct MyHandler;
+pub struct MyHandler {
+    config: StepHandlerConfig,
+}
 
 #[async_trait]
 impl RustStepHandler for MyHandler {
-    async fn call(&self, step_data: &TaskSequenceStep) -> Result<StepExecutionResult> {
-        // Access task context data
-        let input_value: i64 = step_data.get_input("my_field")?;
-
-        // Perform your business logic
-        let result = input_value * 2;
-
-        // Return success result
-        Ok(StepExecutionResult::success(
-            step_data.workflow_step.workflow_step_uuid,
-            json!({ "result": result }),
-            0, // execution time in ms
-            None,
-        ))
+    fn new(config: StepHandlerConfig) -> Self {
+        Self { config }
     }
 
-    fn name(&self) -> &'static str {
+    fn name(&self) -> &str {
         "my_handler"
+    }
+
+    async fn call(
+        &self,
+        step_data: &TaskSequenceStep,
+    ) -> Result<StepExecutionResult> {
+        let start = Instant::now();
+
+        // Access task context data
+        let _input_data = &step_data.task.context;
+
+        // Perform your business logic
+        let result_data = json!({ "result": "processed" });
+
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        Ok(success_result(
+            step_data.workflow_step.workflow_step_uuid,
+            result_data,
+            duration_ms,
+            None,
+        ))
     }
 }
 ```
@@ -98,40 +120,55 @@ let total = order_data["order_total"].as_f64().unwrap_or(0.0);
 This example shows a real-world handler with validation and error handling:
 
 ```rust path=null start=null
-use async_trait::async_trait;
 use anyhow::Result;
-use chrono::Utc;
+use async_trait::async_trait;
 use serde_json::json;
-use std::collections::HashMap;
+use std::time::Instant;
 use tasker_shared::messaging::StepExecutionResult;
 use tasker_shared::types::TaskSequenceStep;
+use tasker_worker_rust::{error_result, success_result, RustStepHandler};
+use tasker_worker_rust::step_handlers::StepHandlerConfig;
 
-pub struct ValidateOrderHandler;
+pub struct ValidateOrderHandler {
+    config: StepHandlerConfig,
+}
 
 #[async_trait]
 impl RustStepHandler for ValidateOrderHandler {
-    async fn call(&self, step_data: &TaskSequenceStep) -> Result<StepExecutionResult> {
-        let start_time = std::time::Instant::now();
-        let step_uuid = step_data.workflow_step.workflow_step_uuid;
+    fn new(config: StepHandlerConfig) -> Self {
+        Self { config }
+    }
 
-        // Extract customer info from task context
-        let customer: serde_json::Value = step_data.get_context_field("customer")?;
+    fn name(&self) -> &str {
+        "validate_order"
+    }
+
+    async fn call(
+        &self,
+        step_data: &TaskSequenceStep,
+    ) -> Result<StepExecutionResult> {
+        let start = Instant::now();
+
+        // Access task context
+        let context = &step_data.task.context;
+        let customer = &context["customer"];
         let customer_id = customer["id"].as_i64()
             .ok_or_else(|| anyhow::anyhow!("Customer ID is required"))?;
 
         // Extract and validate order items
-        let items: Vec<serde_json::Value> = step_data
-            .get_context_field("items")?;
+        let items = context["items"].as_array()
+            .ok_or_else(|| anyhow::anyhow!("Items array is required"))?;
 
         if items.is_empty() {
-            return Ok(StepExecutionResult::failure(
-                step_uuid,
+            let duration_ms = start.elapsed().as_millis() as i64;
+            return Ok(error_result(
+                step_data.workflow_step.workflow_step_uuid,
                 "Order items cannot be empty".to_string(),
-                Some("EMPTY_ORDER_ITEMS".to_string()),
-                Some("ValidationError".to_string()),
-                false, // Not retryable
-                start_time.elapsed().as_millis() as i64,
-                None,
+                Some("EMPTY_ORDER".to_string()),       // error_code
+                Some("ValidationError".to_string()),    // error_type
+                false,                                   // retryable
+                duration_ms,
+                None,                                    // context metadata
             ));
         }
 
@@ -144,27 +181,19 @@ impl RustStepHandler for ValidateOrderHandler {
             })
             .sum();
 
-        // Build metadata for observability
-        let mut metadata = HashMap::new();
-        metadata.insert("operation".to_string(), json!("validate_order"));
-        metadata.insert("item_count".to_string(), json!(items.len()));
+        let duration_ms = start.elapsed().as_millis() as i64;
 
-        Ok(StepExecutionResult::success(
-            step_uuid,
+        Ok(success_result(
+            step_data.workflow_step.workflow_step_uuid,
             json!({
                 "customer_id": customer_id,
                 "validated_items": items,
                 "order_total": total,
                 "validation_status": "complete",
-                "validated_at": Utc::now().to_rfc3339()
             }),
-            start_time.elapsed().as_millis() as i64,
-            Some(metadata),
+            duration_ms,
+            None,
         ))
-    }
-
-    fn name(&self) -> &'static str {
-        "validate_order"
     }
 }
 ```
@@ -214,35 +243,64 @@ Define workflows in YAML:
 ```yaml path=null start=null
 name: order_fulfillment
 namespace_name: ecommerce
-version: 1.0.0
+version: "1.0.0"
 description: "E-commerce order processing workflow"
 
 steps:
   - name: validate_order
+    description: "Validate order data"
     handler:
-      callable: order_fulfillment::ValidateOrderHandler
+      callable: validate_order
+      initialization: {}
     dependencies: []
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: reserve_inventory
+    description: "Reserve items in warehouse"
     handler:
-      callable: order_fulfillment::ReserveInventoryHandler
+      callable: reserve_inventory
+      initialization: {}
     dependencies:
       - validate_order
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: process_payment
+    description: "Charge customer"
     handler:
-      callable: order_fulfillment::ProcessPaymentHandler
+      callable: process_payment
+      initialization: {}
     dependencies:
-      - validate_order
       - reserve_inventory
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: ship_order
+    description: "Ship the order"
     handler:
-      callable: order_fulfillment::ShipOrderHandler
+      callable: ship_order
+      initialization: {}
     dependencies:
-      - validate_order
-      - reserve_inventory
       - process_payment
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 ```
 
 ## Running the Worker
@@ -319,58 +377,55 @@ cargo test --test integration
 
 ## Error Handling
 
-Return structured errors with error codes and retryability:
+Return structured errors using the `error_result` helper:
 
 ```rust path=null start=null
+use tasker_worker_rust::error_result;
+
 // Non-retryable validation error
-Ok(StepExecutionResult::failure(
-    step_uuid,
+Ok(error_result(
+    step_data.workflow_step.workflow_step_uuid,
     "Invalid order data".to_string(),
     Some("VALIDATION_ERROR".to_string()),   // error_code
     Some("ValidationError".to_string()),     // error_type
     false,                                    // retryable
-    execution_time_ms,
-    None,
+    duration_ms,
+    None,                                     // context metadata
 ))
 
 // Retryable transient error
-Ok(StepExecutionResult::failure(
-    step_uuid,
+Ok(error_result(
+    step_data.workflow_step.workflow_step_uuid,
     "Payment gateway timeout".to_string(),
     Some("GATEWAY_TIMEOUT".to_string()),
     Some("NetworkError".to_string()),
     true,                                     // retryable
-    execution_time_ms,
-    Some(metadata),
+    duration_ms,
+    Some(metadata),                           // HashMap<String, Value>
 ))
+
+// Or use anyhow for unrecoverable errors
+Err(anyhow::anyhow!("Fatal system error"))
 ```
 
 ## Common Patterns
 
-### Type-Safe Context Access
+### Context Access
 
 ```rust path=null start=null
-// TAS-137: Cross-language standard API
-let value: String = step_data.get_input("field_name")?;
-let optional: i64 = step_data.get_input_or("timeout", 5000);
+// Access task context directly
+let context = &step_data.task.context;
+let value = context["field_name"].as_str().unwrap_or("default");
+
+// Access nested values
+let items = context["items"].as_array();
 ```
 
 ### Dependency Result Access
 
 ```rust path=null start=null
-// Get computed result from upstream step
-let result: serde_json::Value = step_data
-    .get_dependency_result_column_value("step_name")?;
-```
-
-### Metadata for Observability
-
-```rust path=null start=null
-let mut metadata = HashMap::new();
-metadata.insert("operation".to_string(), json!("my_operation"));
-metadata.insert("input_refs".to_string(), json!({
-    "field": "step_data.get_input(\"field\")"
-}));
+// Access dependency results from upstream steps
+let dep_results = &step_data.dependency_results;
 ```
 
 ## Submitting Tasks via Client SDK

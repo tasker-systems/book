@@ -22,7 +22,7 @@ If you prefer a guided walkthrough:
 
 Comprehensive setup and API reference for each supported language:
 
-- **[Ruby](ruby.md)** — Ruby workers with `tasker-core-rb`
+- **[Ruby](ruby.md)** — Ruby workers with `tasker-rb`
 - **[Python](python.md)** — Python workers with `tasker-py`
 - **[TypeScript](typescript.md)** — TypeScript workers with `@tasker-systems/tasker`
 - **[Rust](rust.md)** — Native Rust workers with `tasker-worker`

@@ -4,27 +4,45 @@ This guide walks you through writing your first step handler.
 
 ## What is a Handler?
 
-A **Step Handler** is a class that executes business logic for a workflow step. Handlers:
+A **Step Handler** is a class (or function, in Rust) that executes business logic for a single workflow step. Handlers:
 
-- Receive task context (input data)
+- Receive a **StepContext** with input data, dependency results, and configuration
 - Perform operations (API calls, database queries, calculations)
-- Return results for downstream steps
+- Return a **success** or **failure** result for downstream steps
 
-## Minimal Handler
+You can generate a handler from a template with `tasker-ctl`:
 
-Here's a minimal handler in each supported language:
+```bash
+tasker-ctl template generate step_handler --language python --param name=ProcessOrder
+```
+
+Or write one from scratch using the patterns below.
+
+## Handler Anatomy by Language
 
 ### Python
 
 ```python
-from tasker_core import StepHandler, StepContext, StepHandlerResult
+from tasker_core import StepContext, StepHandler, StepHandlerResult
 
-class GreetingHandler(StepHandler):
-    handler_name = "greeting"
+
+class ProcessOrderHandler(StepHandler):
+    handler_name = "process_order"
+    handler_version = "1.0.0"
 
     def call(self, context: StepContext) -> StepHandlerResult:
-        name = context.get_input("name") or "World"
-        return StepHandlerResult.success({"greeting": f"Hello, {name}!"})
+        # Access input data from the task context
+        input_data = context.input_data
+
+        # Access results from upstream dependency steps
+        # prev_result = context.get_dependency_result("previous_step_name")
+
+        result = {
+            "processed": True,
+            "handler": "process_order",
+        }
+
+        return StepHandlerResult.success(result=result)
 ```
 
 ### Ruby
@@ -32,12 +50,29 @@ class GreetingHandler(StepHandler):
 ```ruby
 require 'tasker_core'
 
-class GreetingHandler < TaskerCore::StepHandler::Base
-  def call(context)
-    name = context.get_input("name") || "World"
-    TaskerCore::Types::StepHandlerCallResult.success(
-      result: { greeting: "Hello, #{name}!" }
-    )
+module Handlers
+  class ProcessOrderHandler < TaskerCore::StepHandler::Base
+    def call(context)
+      # Access input data from the task context
+      input = context.input_data
+
+      # Access results from upstream dependency steps
+      # prev_result = context.get_dependency_result('previous_step_name')
+
+      result = {
+        processed: true,
+        handler: 'process_order'
+      }
+
+      success(result: result)
+    rescue StandardError => e
+      failure(
+        message: e.message,
+        error_type: 'RetryableError',
+        retryable: true,
+        metadata: { handler: 'process_order' }
+      )
+    end
   end
 end
 ```
@@ -45,15 +80,38 @@ end
 ### TypeScript
 
 ```typescript
-import { StepHandler, StepHandlerResult } from '@tasker-systems/tasker';
-import type { StepContext } from '@tasker-systems/tasker';
+import {
+  StepHandler,
+  type StepContext,
+  type StepHandlerResult,
+  ErrorType,
+} from '@tasker-systems/tasker';
 
-export class GreetingHandler extends StepHandler {
-  static handlerName = 'greeting';
+export class ProcessOrderHandler extends StepHandler {
+  static handlerName = 'process_order';
+  static handlerVersion = '1.0.0';
 
   async call(context: StepContext): Promise<StepHandlerResult> {
-    const name = context.getInput<string>('name') ?? 'World';
-    return this.success({ greeting: `Hello, ${name}!` });
+    try {
+      // Access input data from the task context
+      const inputData = context.inputData;
+
+      // Access results from upstream dependency steps
+      // const prevResult = context.getDependencyResult('previous_step_name');
+
+      const result = {
+        processed: true,
+        handler: 'process_order',
+      };
+
+      return this.success(result);
+    } catch (error) {
+      return this.failure(
+        error instanceof Error ? error.message : String(error),
+        ErrorType.RETRYABLE_ERROR,
+        true,
+      );
+    }
   }
 }
 ```
@@ -61,82 +119,83 @@ export class GreetingHandler extends StepHandler {
 ### Rust
 
 ```rust
-use async_trait::async_trait;
 use anyhow::Result;
+use async_trait::async_trait;
 use serde_json::json;
+use std::time::Instant;
 use tasker_shared::messaging::StepExecutionResult;
 use tasker_shared::types::TaskSequenceStep;
+use tasker_worker_rust::{success_result, RustStepHandler};
+use tasker_worker_rust::step_handlers::StepHandlerConfig;
 
-pub struct GreetingHandler;
+pub struct ProcessOrderHandler {
+    config: StepHandlerConfig,
+}
 
 #[async_trait]
-impl RustStepHandler for GreetingHandler {
-    async fn call(&self, step_data: &TaskSequenceStep) -> Result<StepExecutionResult> {
-        let name: String = step_data.get_input_or("name", "World".to_string());
-        Ok(StepExecutionResult::success(
-            step_data.workflow_step.workflow_step_uuid,
-            json!({ "greeting": format!("Hello, {}!", name) }),
-            0,
-            None,
-        ))
+impl RustStepHandler for ProcessOrderHandler {
+    fn new(config: StepHandlerConfig) -> Self {
+        Self { config }
     }
 
-    fn name(&self) -> &'static str {
-        "greeting"
+    fn name(&self) -> &str {
+        "process_order"
+    }
+
+    async fn call(
+        &self,
+        step_data: &TaskSequenceStep,
+    ) -> Result<StepExecutionResult> {
+        let start = Instant::now();
+
+        // Access input data from the task context
+        let _input_data = &step_data.task.context;
+
+        // Access dependency results from upstream steps
+        // let _dep_results = &step_data.dependency_results;
+
+        let result_data = json!({
+            "processed": true,
+            "handler": "process_order"
+        });
+
+        let duration_ms = start.elapsed().as_millis() as i64;
+
+        Ok(success_result(
+            step_data.workflow_step.workflow_step_uuid,
+            result_data,
+            duration_ms,
+            None,
+        ))
     }
 }
 ```
 
-## Key Handler Methods
+## Key Patterns
 
-| Method | Purpose |
-|--------|----------|
-| `call(context)` | Main entry point; implement your logic here |
-| `context.get_input(key)` | Get a value from task context |
-| `context.get_dependency_result(step)` | Get result from an upstream step |
+| Concept | Python | Ruby | TypeScript | Rust |
+|---------|--------|------|------------|------|
+| Input data | `context.input_data` | `context.input_data` | `context.inputData` | `step_data.task.context` |
+| Dependency result | `context.get_dependency_result("step")` | `context.get_dependency_result('step')` | `context.getDependencyResult('step')` | `step_data.dependency_results` |
+| Success | `StepHandlerResult.success(result=data)` | `success(result: data)` | `this.success(data)` | `Ok(success_result(...))` |
+| Failure | `StepHandlerResult.failure(...)` | `failure(message:, ...)` | `this.failure(msg, type, retryable)` | `Ok(error_result(...))` |
 
 ## Registering Handlers
 
-Handlers are resolved by matching the `handler.callable` field in task templates:
+Handlers are resolved by matching the `handler.callable` field in task template YAML. The callable format varies by language:
 
-```python
-# Python - handler_name attribute maps to task template
-class GreetingHandler(StepHandler):
-    handler_name = "greeting"  # matches handler.callable in YAML
-```
-
-The `handler.callable` in your task template YAML must match either the registered handler name or the class path (e.g., `"GreetingHandler"`).
-
-## Error Handling
-
-Use typed errors to control retry behavior:
-
-```python
-from tasker_core import StepHandler, StepContext, StepHandlerResult
-from tasker_core.errors import PermanentError, RetryableError
-
-class ValidatingHandler(StepHandler):
-    handler_name = "validating"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        data = context.get_input("data")
-        
-        if not data:
-            raise PermanentError(message="Missing required input 'data'", error_code="MISSING_DATA")
-        
-        try:
-            result = external_api_call(data)
-        except ConnectionError:
-            raise RetryableError(message="API temporarily unavailable", error_code="API_TIMEOUT")
-        
-        return StepHandlerResult.success({"processed": result})
-```
+| Language | Format | Example |
+|----------|--------|---------|
+| Ruby | `Module::ClassName` | `Handlers::ProcessOrderHandler` |
+| Python | `module.file.ClassName` | `handlers.process_order_handler.ProcessOrderHandler` |
+| TypeScript | `ClassName` | `ProcessOrderHandler` |
+| Rust | `function_name` | `process_order` |
 
 ## See It in Action
 
-The [example apps](../contrib/example-apps.md) implement step handlers for five real-world workflows in all four languages. Compare the same handler across Rails, FastAPI, Bun, and Axum to see how each framework's idioms map to the Tasker contract.
+The [example apps](../contrib/README.md) implement step handlers for four real-world workflows in all four languages. Compare the same handler across Rails, FastAPI, Bun, and Axum to see how each framework's idioms map to the Tasker contract.
 
 ## Next Steps
 
-- [Your First Workflow](first-workflow.md) — Connect handlers into a workflow
-- [Language Guides](../getting-started/choosing-your-package.md) — Deep dives for each language
+- [Your First Workflow](first-workflow.md) — Connect handlers into a multi-step DAG
+- Language guides: [Ruby](ruby.md) | [Python](python.md) | [TypeScript](typescript.md) | [Rust](rust.md)

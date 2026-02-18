@@ -137,8 +137,8 @@ class ValidateCartHandler(StepHandler):
 
         if not cart_items:
             raise PermanentError(
-                message="Cart items are required",
-                error_code="MISSING_CART_ITEMS",
+                "Cart items are required",
+                metadata={"error_code": "MISSING_CART_ITEMS"},
             )
 
         logger.info(
@@ -180,15 +180,15 @@ class ValidateCartHandler(StepHandler):
         for index, item in enumerate(cart_items):
             if not item.get("product_id"):
                 raise PermanentError(
-                    message=f"Product ID required for item {index + 1}",
-                    error_code="MISSING_PRODUCT_ID",
+                    f"Product ID required for item {index + 1}",
+                    metadata={"error_code": "MISSING_PRODUCT_ID"},
                 )
 
             quantity = item.get("quantity")
             if not quantity or quantity <= 0:
                 raise PermanentError(
-                    message=f"Valid quantity required for item {index + 1}",
-                    error_code="INVALID_QUANTITY",
+                    f"Valid quantity required for item {index + 1}",
+                    metadata={"error_code": "INVALID_QUANTITY"},
                 )
 
     def _validate_cart_items(self, cart_items: list[dict]) -> list[dict]:
@@ -201,22 +201,22 @@ class ValidateCartHandler(StepHandler):
 
             if not product:
                 raise PermanentError(
-                    message=f"Product {product_id} not found",
-                    error_code="PRODUCT_NOT_FOUND",
+                    f"Product {product_id} not found",
+                    metadata={"error_code": "PRODUCT_NOT_FOUND"},
                 )
 
             if not product["active"]:
                 raise PermanentError(
-                    message=f"Product {product['name']} is not available",
-                    error_code="PRODUCT_INACTIVE",
+                    f"Product {product['name']} is not available",
+                    metadata={"error_code": "PRODUCT_INACTIVE"},
                 )
 
             if product["stock"] < quantity:
                 # Temporary failure - retry when stock replenished
                 raise RetryableError(
-                    message=f"Insufficient stock for {product['name']}",
-                    retry_after=30,
-                    context={
+                    f"Insufficient stock for {product['name']}",
+                    metadata={
+                        "error_code": "INSUFFICIENT_STOCK",
                         "product_id": product_id,
                         "available": product["stock"],
                         "requested": quantity,
@@ -252,15 +252,14 @@ from tasker_core.errors import PermanentError, RetryableError
 
 # Permanent error - will NOT be retried
 raise PermanentError(
-    message="Invalid order data",
-    error_code="VALIDATION_ERROR",
+    "Invalid order data",
+    metadata={"error_code": "VALIDATION_ERROR"},
 )
 
-# Retryable error - will be retried after delay
+# Retryable error - will be retried based on step retry config
 raise RetryableError(
-    message="Payment gateway timeout",
-    retry_after=30,  # seconds
-    context={"gateway": "stripe"},
+    "Payment gateway timeout",
+    metadata={"gateway": "stripe", "timeout_ms": 30000},
 )
 ```
 
@@ -290,33 +289,65 @@ Define workflows in YAML:
 ```yaml path=null start=null
 name: checkout_workflow
 namespace_name: ecommerce
-version: 1.0.0
+version: "1.0.0"
 description: "E-commerce checkout workflow"
 
 steps:
   - name: validate_cart
+    description: "Validate cart items and calculate totals"
     handler:
       callable: ecommerce.step_handlers.ValidateCartHandler
+      initialization: {}
     dependencies: []
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: process_payment
+    description: "Charge payment method"
     handler:
       callable: ecommerce.step_handlers.ProcessPaymentHandler
+      initialization: {}
     dependencies:
       - validate_cart
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: update_inventory
+    description: "Reserve inventory"
     handler:
       callable: ecommerce.step_handlers.UpdateInventoryHandler
+      initialization: {}
     dependencies:
       - validate_cart
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: send_confirmation
+    description: "Send order confirmation"
     handler:
       callable: ecommerce.step_handlers.SendConfirmationHandler
+      initialization: {}
     dependencies:
       - process_payment
       - update_inventory
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 ```
 
 ## Handler Registration
@@ -327,8 +358,8 @@ Register handlers using the registry:
 from tasker_core import HandlerRegistry
 
 registry = HandlerRegistry()
-registry.register(ValidateCartHandler)
-registry.register(ProcessPaymentHandler)
+registry.register("validate_cart", ValidateCartHandler)
+registry.register("process_payment", ProcessPaymentHandler)
 ```
 
 ## Testing
@@ -368,7 +399,7 @@ class TestValidateCartHandler:
         with pytest.raises(PermanentError) as exc_info:
             handler.call(context)
 
-        assert exc_info.value.error_code == "MISSING_CART_ITEMS"
+        assert exc_info.value.metadata["error_code"] == "MISSING_CART_ITEMS"
 
     def test_handles_out_of_stock(self):
         handler = ValidateCartHandler()
@@ -455,12 +486,18 @@ class ProcessPaymentHandler(StepHandler):
 
 ### Batch Processing with Checkpoints
 
+Checkpoint state is accessed via `StepContext` properties. The `Batchable` mixin
+provides methods for creating batch outcomes:
+
 ```python path=null start=null
-class BatchProcessHandler(StepHandler):
+from tasker_core import StepHandler, StepContext, StepHandlerResult
+from tasker_core.batch_processing import Batchable
+
+class BatchProcessHandler(StepHandler, Batchable):
     handler_name = "batch_process"
 
     def call(self, context: StepContext) -> StepHandlerResult:
-        # Check for existing checkpoint
+        # Check for existing checkpoint via context properties
         if context.has_checkpoint():
             cursor = context.checkpoint_cursor
             accumulated = context.accumulated_results or {}
@@ -480,11 +517,11 @@ class BatchProcessHandler(StepHandler):
             # All done
             return self.success(accumulated)
         else:
-            # More to process - yield checkpoint
-            return StepHandlerResult.checkpoint(
-                cursor=cursor + batch_size,
-                items_processed=accumulated["processed"],
-                accumulated_results=accumulated
+            # More to process - use batchable mixin methods
+            return self.batch_worker_success(
+                context,
+                result=accumulated,
+                cursor=cursor + batch_size
             )
 ```
 

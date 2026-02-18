@@ -108,12 +108,21 @@ tasker-ctl remote update
 tasker-ctl template generate step_handler --language python --param name=ValidateOrder
 
 # 4. Generate a task template
-tasker-ctl template generate task_template --language python --param name=OrderProcessing
+tasker-ctl template generate task_template --language python \
+  --param name=OrderProcessing \
+  --param namespace=default \
+  --param handler_callable=handlers.validate_order_handler.ValidateOrderHandler
 
-# 5. Generate environment-specific config
+# 5. Generate infrastructure (uses --plugin for ops templates)
+tasker-ctl template generate docker_compose --plugin tasker-contrib-ops --param name=myproject
+tasker-ctl template generate config --plugin tasker-contrib-ops
+
+# 6. Generate environment-specific config (merges base + environment overrides)
 tasker-ctl config generate --remote tasker-contrib \
   --context worker --environment development --output config/worker.toml
 ```
+
+> **Note**: Language templates use `--language` to select the plugin (e.g., `--language ruby` selects `tasker-contrib-rails`). Ops templates use `--plugin tasker-contrib-ops` directly since they are language-independent.
 
 ## Next Steps
 

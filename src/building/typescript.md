@@ -199,7 +199,7 @@ class ValidateCartHandler extends StepHandler {
         // Retryable - stock might be replenished
         return this.failure(
           `Insufficient stock for ${product.name}`,
-          ErrorType.RESOURCE_UNAVAILABLE,
+          ErrorType.RETRYABLE_ERROR,
           true,  // retryable
           {
             product_id: item.product_id,
@@ -275,7 +275,7 @@ return this.failure(
 // Retryable transient error
 return this.failure(
   'Payment gateway timeout',
-  ErrorType.NETWORK_ERROR,
+  ErrorType.RETRYABLE_ERROR,
   true,  // retryable
   { gateway: 'stripe', timeout_ms: 30000 },
   'GATEWAY_TIMEOUT'
@@ -286,12 +286,11 @@ return this.failure(
 
 ```typescript path=null start=null
 enum ErrorType {
-  HANDLER_ERROR = 'handler_error',
-  VALIDATION_ERROR = 'validation_error',
-  NETWORK_ERROR = 'network_error',
-  RESOURCE_UNAVAILABLE = 'resource_unavailable',
-  TIMEOUT = 'timeout',
   PERMANENT_ERROR = 'permanent_error',
+  RETRYABLE_ERROR = 'retryable_error',
+  VALIDATION_ERROR = 'validation_error',
+  TIMEOUT = 'timeout',
+  HANDLER_ERROR = 'handler_error',
 }
 ```
 
@@ -302,33 +301,65 @@ Define workflows in YAML:
 ```yaml path=null start=null
 name: checkout_workflow
 namespace_name: ecommerce
-version: 1.0.0
+version: "1.0.0"
 description: "E-commerce checkout workflow"
 
 steps:
   - name: validate_cart
+    description: "Validate cart items and calculate totals"
     handler:
-      callable: ecommerce.step_handlers.ValidateCartHandler
+      callable: ValidateCartHandler
+      initialization: {}
     dependencies: []
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: process_payment
+    description: "Charge payment method"
     handler:
-      callable: ecommerce.step_handlers.ProcessPaymentHandler
+      callable: ProcessPaymentHandler
+      initialization: {}
     dependencies:
       - validate_cart
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: update_inventory
+    description: "Reserve inventory"
     handler:
-      callable: ecommerce.step_handlers.UpdateInventoryHandler
+      callable: UpdateInventoryHandler
+      initialization: {}
     dependencies:
       - validate_cart
+    retry:
+      retryable: true
+      max_attempts: 3
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 
   - name: send_confirmation
+    description: "Send order confirmation"
     handler:
-      callable: ecommerce.step_handlers.SendConfirmationHandler
+      callable: SendConfirmationHandler
+      initialization: {}
     dependencies:
       - process_payment
       - update_inventory
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 ```
 
 ## Handler Registration
@@ -349,18 +380,30 @@ Write tests using your preferred test framework (Bun, Jest, Vitest):
 
 ```typescript path=null start=null
 import { describe, test, expect } from 'bun:test';
+import { StepContext } from '@tasker-systems/tasker';
 import ValidateCartHandler from './validate-cart-handler';
-import { buildTestContext } from '@tasker-systems/tasker/testing';
+
+// Helper to build test contexts (not exported by the package)
+function buildTestContext(inputData: Record<string, unknown>): StepContext {
+  return new StepContext({
+    taskUuid: 'test-task-uuid',
+    stepUuid: 'test-step-uuid',
+    correlationId: 'test-correlation',
+    handlerName: 'test_handler',
+    inputData,
+    dependencyResults: {},
+    retryCount: 0,
+    maxRetries: 3,
+  });
+}
 
 describe('ValidateCartHandler', () => {
   test('validates cart successfully', async () => {
     const handler = new ValidateCartHandler();
     const context = buildTestContext({
-      inputData: {
-        cart_items: [
-          { product_id: 1, quantity: 2 }
-        ]
-      }
+      cart_items: [
+        { product_id: 1, quantity: 2 }
+      ]
     });
 
     const result = await handler.call(context);
@@ -371,9 +414,7 @@ describe('ValidateCartHandler', () => {
 
   test('rejects empty cart', async () => {
     const handler = new ValidateCartHandler();
-    const context = buildTestContext({
-      inputData: { cart_items: [] }
-    });
+    const context = buildTestContext({ cart_items: [] });
 
     const result = await handler.call(context);
 
@@ -384,11 +425,9 @@ describe('ValidateCartHandler', () => {
   test('handles out of stock as retryable', async () => {
     const handler = new ValidateCartHandler();
     const context = buildTestContext({
-      inputData: {
-        cart_items: [
-          { product_id: 1, quantity: 1000 }
-        ]
-      }
+      cart_items: [
+        { product_id: 1, quantity: 1000 }
+      ]
     });
 
     const result = await handler.call(context);
@@ -502,12 +541,18 @@ class ProcessPaymentHandler extends StepHandler {
 
 ### Batch Processing with Checkpoints
 
+Checkpoint state is accessed via `StepContext` properties. The `BatchableStepHandler`
+base class provides `checkpointYield()` for yielding back to the orchestrator:
+
 ```typescript path=null start=null
-class BatchProcessHandler extends StepHandler {
+import { BatchableStepHandler } from '@tasker-systems/tasker';
+import type { StepContext, StepHandlerResult } from '@tasker-systems/tasker';
+
+class BatchProcessHandler extends BatchableStepHandler {
   static handlerName = 'batch_process';
 
   async call(context: StepContext): Promise<StepHandlerResult> {
-    // Check for existing checkpoint
+    // Check for existing checkpoint via context properties
     let cursor: number;
     let accumulated: { total: number; processed: number };
 
@@ -532,8 +577,8 @@ class BatchProcessHandler extends StepHandler {
       // All done
       return this.success(accumulated);
     } else {
-      // More to process - yield checkpoint
-      return StepHandlerResult.checkpoint(
+      // More to process - yield checkpoint via batchable handler method
+      return this.checkpointYield(
         cursor + batchSize,
         accumulated.processed,
         accumulated
@@ -558,14 +603,14 @@ The `@tasker-systems/tasker` package works with:
 
 ```typescript path=null start=null
 // server.ts - Worker entry point
-import { WorkerBootstrap } from '@tasker-systems/tasker';
+import { bootstrapWorker } from '@tasker-systems/tasker';
 
 const config = {
   namespace: 'ecommerce',
   handlers: [ValidateCartHandler, ProcessPaymentHandler],
 };
 
-await WorkerBootstrap.start(config);
+await bootstrapWorker(config);
 ```
 
 ## Submitting Tasks via Client SDK
