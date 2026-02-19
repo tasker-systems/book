@@ -95,8 +95,7 @@ Each language guide covers installation, handler patterns, testing, and producti
 
 ### Framework Integrations
 
-- **[Contrib Packages](contrib/README.md)** — Rails, FastAPI, Axum, and Bun integrations
-- **[Example Workflows](contrib/examples/README.md)** — E-commerce, ETL, and approval system patterns
+- **[Example Apps & Integrations](getting-started/example-apps.md)** — Rails, FastAPI, Axum, and Bun integrations with working example projects
 
 ---
 

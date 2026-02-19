@@ -89,7 +89,7 @@ tasker-ctl template generate docker_compose \
   --param name=myproject
 ```
 
-Or use the pre-configured stack from the [example apps](../contrib/README.md):
+Or use the pre-configured stack from the [example apps](../getting-started/example-apps.md):
 
 ```bash
 git clone https://github.com/tasker-systems/tasker-contrib.git

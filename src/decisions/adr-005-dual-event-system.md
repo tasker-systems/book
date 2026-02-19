@@ -98,4 +98,4 @@ Increase buffer size to mask sequential execution.
 
 - [Worker Event Systems](../architecture/worker-event-systems.md) - Architecture documentation
 - [RCA: Parallel Execution Timing Bugs](./rca-parallel-execution-timing-bugs.md) - Bug discovered during implementation
-- [FFI Callback Safety](../development/ffi-callback-safety.md) - FFI patterns established
+- [FFI Callback Safety](../workers/ffi-safety.md) - FFI patterns established

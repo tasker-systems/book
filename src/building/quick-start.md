@@ -4,7 +4,7 @@ Two paths to a running Tasker workflow. Pick the one that fits your style.
 
 ## Path A: Clone an Example App (5 minutes)
 
-The fastest way to see Tasker in action. The [example apps](../contrib/README.md) provide fully working projects in all four languages, running against published packages via Docker Compose.
+The fastest way to see Tasker in action. The [example apps](../getting-started/example-apps.md) provide fully working projects in all four languages, running against published packages via Docker Compose.
 
 ### Prerequisites
 
@@ -94,7 +94,7 @@ Each example app implements four real-world workflow patterns:
 | Diamond convergence | Microservices User Registration | [Post 03](../stories/post-03-microservices-coordination.md) |
 | Namespace isolation | Team Scaling (Customer Success + Payments) | [Post 04](../stories/post-04-team-scaling.md) |
 
-See the [Example Apps](../contrib/README.md) page for full details, or read the [Engineering Stories](../stories/README.md) for narrative walkthroughs.
+See the [Example Apps](../getting-started/example-apps.md) page for full details, or read the [Engineering Stories](../stories/README.md) for narrative walkthroughs.
 
 ## Path B: Bootstrap with tasker-ctl (10 minutes)
 
@@ -179,8 +179,6 @@ tasker-ctl config generate --remote tasker-contrib \
   --context worker --environment development --output config/worker.toml
 ```
 
-> **Known limitation**: The generated `docker-compose.yml` uses `:latest` image tags and does not include `platform: linux/amd64` (needed for Apple Silicon) or config volume mounts. For a production-ready reference, see the [example apps](../contrib/README.md) `docker-compose.yml`.
-
 ### 6. Start infrastructure and submit
 
 ```bash
@@ -205,7 +203,7 @@ curl -X POST http://localhost:8080/api/v1/tasks \
 
 ### What you just built
 
-Path B gives you project scaffolding — handler code, task template YAML, and infrastructure config. To wire a handler into a running worker, you'll need to integrate it with a framework (Rails, FastAPI, Bun, or Axum) that starts a Tasker worker at boot. See the [language guides](README.md#language-guides) for that next step, or study the [example apps](../contrib/README.md) for complete working implementations.
+Path B gives you project scaffolding — handler code, task template YAML, and infrastructure config. To wire a handler into a running worker, you'll need to integrate it with a framework (Rails, FastAPI, Bun, or Axum) that starts a Tasker worker at boot. See the [language guides](README.md#language-guides) for that next step, or study the [example apps](../getting-started/example-apps.md) for complete working implementations.
 
 ## Next Steps
 

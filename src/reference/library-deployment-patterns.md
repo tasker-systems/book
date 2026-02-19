@@ -393,7 +393,7 @@ health = TaskerCore::Observability.health_basic
 
 ## Related Documentation
 
-- [Configuration Management](./configuration-management.md) - Full configuration reference
-- [Deployment Patterns](./deployment-patterns.md) - General deployment options
-- [Observability](./observability/README.md) - Metrics and monitoring
+- [Configuration Management](../guides/configuration-management.md) - Full configuration reference
+- [Deployment Patterns](../architecture/deployment-patterns.md) - General deployment options
+- [Observability](../observability/README.md) - Metrics and monitoring
 - [FFI Telemetry Pattern](./ffi-telemetry-pattern.md) - FFI logging integration

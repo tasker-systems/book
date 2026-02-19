@@ -4,7 +4,7 @@
 **Audience**: Ruby Developers
 **Status**: Active
 **Package**: `tasker_core` (gem)
-**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
+**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../architecture/worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
 <- Back to [Worker Crates Overview](README.md)
 
 ---
@@ -726,4 +726,4 @@ end
 - [Worker Crates Overview](README.md) - High-level introduction
 - [Patterns and Practices](patterns-and-practices.md) - Common patterns
 - [Python Worker](python.md) - Python implementation
-- [Worker Event Systems](../worker-event-systems.md) - Architecture details
+- [Worker Event Systems](../architecture/worker-event-systems.md) - Architecture details

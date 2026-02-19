@@ -3,7 +3,7 @@
 **Last Updated**: 2025-12-27
 **Audience**: Developers, Architects, Operators
 **Status**: Active
-**Related Docs**: [Worker Event Systems](../worker-event-systems.md) | [Worker Actors](../worker-actors.md)
+**Related Docs**: [Worker Event Systems](../architecture/worker-event-systems.md) | [Worker Actors](../architecture/worker-actors.md)
 
 <- Back to [Documentation Hub](../README.md)
 
@@ -470,9 +470,9 @@ All workers use structured logging:
 
 For detailed architectural documentation:
 
-- **[Worker Event Systems](../worker-event-systems.md)** - Dual-channel architecture, event-driven processing
-- **[Worker Actors](../worker-actors.md)** - Actor-based coordination, message handling
-- **[Events and Commands](../events-and-commands.md)** - Event definitions, command routing
+- **[Worker Event Systems](../architecture/worker-event-systems.md)** - Dual-channel architecture, event-driven processing
+- **[Worker Actors](../architecture/worker-actors.md)** - Actor-based coordination, message handling
+- **[Events and Commands](../architecture/events-and-commands.md)** - Event definitions, command routing
 
 ---
 

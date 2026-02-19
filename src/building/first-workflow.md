@@ -1,6 +1,6 @@
 # Your First Workflow
 
-This guide walks you through creating a complete workflow with multiple steps. We'll use the e-commerce order processing pattern from the [example apps](../contrib/README.md), adapting it to demonstrate parallel execution.
+This guide walks you through creating a complete workflow with multiple steps. We'll use the e-commerce order processing pattern from the [example apps](../getting-started/example-apps.md), adapting it to demonstrate parallel execution.
 
 ## What is a Workflow?
 
@@ -458,7 +458,7 @@ The total execution time is determined by the longest path through the DAG, not 
 
 ## See It in Action
 
-The [example apps](../contrib/README.md) implement this e-commerce workflow (and three others) in all four languages — Rails, FastAPI, Bun, and Axum. Each app is a fully working project you can clone and run with Docker Compose.
+The [example apps](../getting-started/example-apps.md) implement this e-commerce workflow (and three others) in all four languages — Rails, FastAPI, Bun, and Axum. Each app is a fully working project you can clone and run with Docker Compose.
 
 The example apps also include more complex DAG patterns:
 

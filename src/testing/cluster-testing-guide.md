@@ -3,7 +3,7 @@
 **Last Updated**: 2026-01-19
 **Audience**: Developers, QA
 **Status**: Active
-**Related**: [Tooling](../development/tooling.md) | [Idempotency and Atomicity](../architecture/idempotency-and-atomicity.md)
+**Related**: [Tooling](../CONTRIBUTING.md) | [Idempotency and Atomicity](../architecture/idempotency-and-atomicity.md)
 
 ---
 
@@ -446,5 +446,5 @@ cargo make setup-env-cluster
 
 ## Related Documentation
 
-- [Tooling](../development/tooling.md) - Cluster deployment tasks
+- [Tooling](../CONTRIBUTING.md) - Cluster deployment tasks
 - [Idempotency and Atomicity](../architecture/idempotency-and-atomicity.md) - Protection mechanisms

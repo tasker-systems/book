@@ -3,7 +3,7 @@
 **Last Updated**: 2026-01-06
 **Audience**: Developers, Architects
 **Status**: Active
-**Related Docs**: [Worker Event Systems](../worker-event-systems.md) | [Worker Actors](../worker-actors.md)
+**Related Docs**: [Worker Event Systems](../architecture/worker-event-systems.md) | [Worker Actors](../architecture/worker-actors.md)
 
 <- Back to [Worker Crates Overview](README.md)
 
@@ -756,5 +756,5 @@ def setup_method(self):
 - [Rust Worker](rust.md) - Native Rust implementation
 - [Ruby Worker](ruby.md) - Ruby gem documentation
 - [Python Worker](python.md) - Python package documentation
-- [Worker Event Systems](../worker-event-systems.md) - Detailed architecture
-- [Worker Actors](../worker-actors.md) - Actor pattern documentation
+- [Worker Event Systems](../architecture/worker-event-systems.md) - Detailed architecture
+- [Worker Actors](../architecture/worker-actors.md) - Actor pattern documentation

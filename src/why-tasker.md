@@ -174,7 +174,7 @@ If that resonates with you, welcome. Let's build something good together.
 - **[Tasker Core Tenets](principles/tasker-core-tenets.md)** - The 10 foundational design principles
 - **[Use Cases & Patterns](guides/use-cases-and-patterns.md)** - When and how to use Tasker
 - **[Quick Start Guide](guides/quick-start.md)** - Get running in 5 minutes
-- **[CHRONOLOGY](CHRONOLOGY.md)** - Development timeline and lessons learned
+- **[CHRONOLOGY](why-tasker.md)** - Development timeline and lessons learned
 
 ---
 

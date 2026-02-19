@@ -4,7 +4,7 @@
 **Audience**: Rust Developers
 **Status**: Active
 **Package**: `workers-rust`
-**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
+**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../architecture/worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
 <- Back to [Worker Crates Overview](README.md)
 
 ---
@@ -689,5 +689,5 @@ DATABASE_URL=postgresql://... cargo nextest run --package workers-rust
 
 - [Worker Crates Overview](README.md) - High-level introduction
 - [Patterns and Practices](patterns-and-practices.md) - Common patterns
-- [Worker Event Systems](../worker-event-systems.md) - Architecture details
-- [Worker Actors](../worker-actors.md) - Actor pattern documentation
+- [Worker Event Systems](../architecture/worker-event-systems.md) - Architecture details
+- [Worker Actors](../architecture/worker-actors.md) - Actor pattern documentation

@@ -696,9 +696,9 @@ end
 - [Worker Actor-Based Architecture](worker-actors.md) - Actor pattern implementation
 - [Events and Commands](events-and-commands.md) - Command pattern details
 - [Dual-Channel Event System ADR](../decisions/adr-005-dual-event-system.md) - Dual-channel event system decision
-- [FFI Callback Safety](development/ffi-callback-safety.md) - FFI guidelines
+- [FFI Callback Safety](../workers/ffi-safety.md) - FFI guidelines
 - [RCA: Parallel Execution Timing Bugs](../decisions/rca-parallel-execution-timing-bugs.md) - Lessons learned
-- [Backpressure Monitoring Runbook](operations/backpressure-monitoring.md) - Metrics and alerting
+- [Backpressure Monitoring Runbook](../operations/backpressure-monitoring.md) - Metrics and alerting
 
 ---
 

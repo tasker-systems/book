@@ -3,7 +3,7 @@
 **Last Updated**: 2026-01-15
 **Audience**: Architects, Operators
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Quick Start](quick-start.md) | [Observability](observability/README.md) | [Messaging Abstraction](messaging-abstraction.md)
+**Related Docs**: [Documentation Hub](README.md) | [Quick Start](../guides/quick-start.md) | [Observability](../observability/README.md) | [Messaging Abstraction](messaging-abstraction.md)
 
 ← Back to [Documentation Hub](README.md)
 
@@ -1696,4 +1696,4 @@ The key insight: deployment modes exist not just for configuration tuning, but t
 
 ← Back to [Documentation Hub](README.md)
 
-**Next**: [Observability](observability/README.md) | [Benchmarks](benchmarks/README.md) | [Quick Start](quick-start.md)
+**Next**: [Observability](../observability/README.md) | [Benchmarks](../benchmarks/README.md) | [Quick Start](../guides/quick-start.md)

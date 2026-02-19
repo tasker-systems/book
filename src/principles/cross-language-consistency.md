@@ -287,6 +287,6 @@ end
 ## Related Documentation
 
 - [Tasker Core Tenets](./tasker-core-tenets.md) - Tenet #4: Cross-Language Consistency
-- [API Convergence Matrix](../worker-crates/api-convergence-matrix.md) - Detailed API reference
-- [Patterns and Practices](../worker-crates/patterns-and-practices.md) - Common patterns
-- [Example Handlers](../worker-crates/example-handlers.md) - Side-by-side code examples
+- [API Convergence Matrix](../workers/api-convergence-matrix.md) - Detailed API reference
+- [Patterns and Practices](../workers/patterns-and-practices.md) - Common patterns
+- [Example Handlers](../workers/example-handlers.md) - Side-by-side code examples

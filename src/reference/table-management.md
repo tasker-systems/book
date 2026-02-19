@@ -484,6 +484,6 @@ WHERE created_at > NOW() - INTERVAL '7 days';
 
 ## See Also
 
-- [States and Lifecycles](./states-and-lifecycles.md) - Task and step state management
+- [States and Lifecycles](../architecture/states-and-lifecycles.md) - Task and step state management
 - [Task and Step Readiness](./task-and-step-readiness-and-execution.md) - SQL function optimizations
-- [Observability README](./observability/README.md) - Monitoring table growth and query performance
+- [Observability README](../observability/README.md) - Monitoring table growth and query performance

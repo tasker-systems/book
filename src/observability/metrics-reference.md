@@ -753,7 +753,7 @@ histogram_quantile(0.95, sum by (le) (rate(tasker_step_result_submission_duratio
 
 **Module**: `tasker-shared/src/metrics/worker.rs`, `tasker-orchestration/src/web/circuit_breaker.rs`
 **Instrumentation**: Circuit breakers, MPSC channels
-**Related Docs**: [Circuit Breakers](../circuit-breakers.md) | [Backpressure Architecture](../backpressure-architecture.md)
+**Related Docs**: [Circuit Breakers](../architecture/circuit-breakers.md) | [Backpressure Architecture](../architecture/backpressure-architecture.md)
 
 ### Circuit Breaker Metrics
 

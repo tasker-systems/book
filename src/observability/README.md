@@ -3,7 +3,7 @@
 **Last Updated**: 2025-12-01
 **Audience**: Operators, Developers
 **Status**: Active
-**Related Docs**: [Documentation Hub](../README.md) | [Benchmarks](../benchmarks/README.md) | [Deployment Patterns](../deployment-patterns.md) | [Domain Events](../domain-events.md)
+**Related Docs**: [Documentation Hub](../README.md) | [Benchmarks](../benchmarks/README.md) | [Deployment Patterns](../architecture/deployment-patterns.md) | [Domain Events](../architecture/domain-events.md)
 
 ← Back to [Documentation Hub](../README.md)
 
@@ -33,7 +33,7 @@ All benchmark documentation has been consolidated in the `docs/benchmarks/` dire
 - `benchmark-implementation-decision.md` - Decision rationale (archived)
 - `benchmark-quick-reference.md` - Superseded by [../benchmarks/README.md](../benchmarks/README.md)
 - `benchmark-strategy-summary.md` - Consolidated into benchmark-specific docs
-- `benchmarking-guide.md` - SQL benchmarks moved to [../benchmarks/sql-benchmarks.md](../benchmarks/sql-benchmarks.md)
+- `benchmarking-guide.md` - SQL benchmarks moved to [../benchmarks/sql-benchmarks.md](../benchmarks/README.md)
 - `phase-5.4-distributed-benchmarks-plan.md` - Implementation complete
 
 ---
@@ -48,7 +48,7 @@ All benchmark documentation has been consolidated in the `docs/benchmarks/` dire
 
 - **[metrics-reference.md](./metrics-reference.md)** - Complete metrics catalog
 - **[metrics-verification.md](./metrics-verification.md)** - Verification procedures
-- **[VERIFICATION_RESULTS.md](./VERIFICATION_RESULTS.md)** - Test results and validation
+- **[VERIFICATION_RESULTS.md](metrics-verification.md)** - Test results and validation
 
 **Key Metrics Tracked**:
 
@@ -469,7 +469,7 @@ docker-compose logs orchestration | jq 'select(.level == "ERROR")'
 ## Related Documentation
 
 - **Benchmarks**: [../benchmarks/README.md](../benchmarks/README.md)
-- **SQL Functions**: [../task-and-step-readiness-and-execution.md](../task-and-step-readiness-and-execution.md)
+- **SQL Functions**: [../task-and-step-readiness-and-execution.md](../reference/task-and-step-readiness-and-execution.md)
 
 ---
 

@@ -193,7 +193,7 @@ Handlers are resolved by matching the `handler.callable` field in task template 
 
 ## See It in Action
 
-The [example apps](../contrib/README.md) implement step handlers for four real-world workflows in all four languages. Compare the same handler across Rails, FastAPI, Bun, and Axum to see how each framework's idioms map to the Tasker contract.
+The [example apps](../getting-started/example-apps.md) implement step handlers for four real-world workflows in all four languages. Compare the same handler across Rails, FastAPI, Bun, and Axum to see how each framework's idioms map to the Tasker contract.
 
 ## Next Steps
 

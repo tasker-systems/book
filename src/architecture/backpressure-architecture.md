@@ -3,7 +3,7 @@
 **Last Updated**: 2026-02-05
 **Audience**: Architects, Developers, Operations
 **Status**: Active
-**Related Docs**: [Worker Event Systems](worker-event-systems.md) | [MPSC Channel Guidelines](development/mpsc-channel-guidelines.md)
+**Related Docs**: [Worker Event Systems](worker-event-systems.md) | [MPSC Channel Guidelines](backpressure-architecture.md)
 
 <- Back to [Documentation Hub](README.md)
 
@@ -561,7 +561,7 @@ starvation_warning_threshold_ms = 10000  # Warn if event waits this long
 
 ## Monitoring and Alerting
 
-See [Backpressure Monitoring Runbook](operations/backpressure-monitoring.md) for:
+See [Backpressure Monitoring Runbook](../operations/backpressure-monitoring.md) for:
 
 - Key metrics to monitor
 - Alerting thresholds
@@ -583,8 +583,8 @@ See [Backpressure Monitoring Runbook](operations/backpressure-monitoring.md) for
 ## Related Documentation
 
 - [Worker Event Systems](worker-event-systems.md) - Dual-channel architecture
-- [MPSC Channel Guidelines](development/mpsc-channel-guidelines.md) - Channel creation guide
-- [MPSC Channel Tuning](operations/mpsc-channel-tuning.md) - Operational tuning
+- [MPSC Channel Guidelines](backpressure-architecture.md) - Channel creation guide
+- [MPSC Channel Tuning](../operations/mpsc-channel-tuning.md) - Operational tuning
 - [Bounded MPSC Channels ADR](../decisions/adr-002-bounded-mpsc-channels.md)
 
 ---

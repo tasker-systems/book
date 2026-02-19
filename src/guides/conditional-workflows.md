@@ -3,7 +3,7 @@
 **Last Updated**: 2025-10-27
 **Audience**: Developers, Architects
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Use Cases & Patterns](use-cases-and-patterns.md) | [States and Lifecycles](states-and-lifecycles.md)
+**Related Docs**: [Documentation Hub](README.md) | [Use Cases & Patterns](use-cases-and-patterns.md) | [States and Lifecycles](../architecture/states-and-lifecycles.md)
 
 ← Back to [Documentation Hub](README.md)
 
@@ -1215,11 +1215,11 @@ When implementing decision point workflows, ensure:
 ## Related Documentation
 
 - **[Use Cases & Patterns](use-cases-and-patterns.md)** - More workflow examples
-- **[States and Lifecycles](states-and-lifecycles.md)** - State machine details
-- **[Task and Step Readiness](task-and-step-readiness-and-execution.md)** - Dependency resolution logic
+- **[States and Lifecycles](../architecture/states-and-lifecycles.md)** - State machine details
+- **[Task and Step Readiness](../reference/task-and-step-readiness-and-execution.md)** - Dependency resolution logic
 - **[Quick Start](quick-start.md)** - Getting started guide
-- **[Crate Architecture](crate-architecture.md)** - System architecture overview
-- **[Decision Point E2E Tests](testing/decision-point-e2e-tests.md)** - Detailed test documentation
+- **[Crate Architecture](../architecture/crate-architecture.md)** - System architecture overview
+- **[Decision Point E2E Tests](../testing/decision-point-e2e-tests.md)** - Detailed test documentation
 
 ---
 

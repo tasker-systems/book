@@ -462,7 +462,7 @@ watch -n 5 'curl -s localhost:9090/api/v1/query?query=mpsc_channel_usage_percent
 3. Temporarily increase all buffer sizes
 4. Check circuit breaker states (`/health/detailed` endpoint) - if circuit breakers are open, address underlying database/service issues first
 
-> **Note**: MPSC channels and circuit breakers are complementary resilience mechanisms. Channel saturation indicates internal backpressure, while circuit breaker state indicates external service health. See [Circuit Breakers](../circuit-breakers.md) for operational guidance.
+> **Note**: MPSC channels and circuit breakers are complementary resilience mechanisms. Channel saturation indicates internal backpressure, while circuit breaker state indicates external service health. See [Circuit Breakers](../architecture/circuit-breakers.md) for operational guidance.
 
 ## Best Practices
 
@@ -483,7 +483,7 @@ watch -n 5 'curl -s localhost:9090/api/v1/query?query=mpsc_channel_usage_percent
 
 **Development**:
 
-- [Developer Guidelines](../development/mpsc-channel-guidelines.md) - Creating and using MPSC channels
+- [Developer Guidelines](../architecture/backpressure-architecture.md) - Creating and using MPSC channels
 
 **Operations**:
 

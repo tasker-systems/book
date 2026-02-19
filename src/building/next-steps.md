@@ -4,7 +4,7 @@ You've built your first handler and workflow. Here's where to go from here.
 
 ## See Complete Applications
 
-The [Example Apps](../contrib/README.md) demonstrate five real-world workflow patterns implemented in all four languages. Each app is a fully working project you can clone, run, and study.
+The [Example Apps](../getting-started/example-apps.md) demonstrate five real-world workflow patterns implemented in all four languages. Each app is a fully working project you can clone, run, and study.
 
 ## Learn Through Stories
 
@@ -38,5 +38,5 @@ The [Engineering Stories](../stories/README.md) series teaches Tasker concepts t
 
 ## Contributing
 
-- [Contributing to Tasker](../guides/contributing-to-tasker.md) — Development setup, workflow, and PR process for tasker-core and tasker-contrib
+- [Contributing to Tasker](../CONTRIBUTING.md) — Development setup, workflow, and PR process for tasker-core and tasker-contrib
 - [GitHub Issues](https://github.com/tasker-systems/tasker-core/issues) — Report bugs or request features

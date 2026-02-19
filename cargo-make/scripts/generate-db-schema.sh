@@ -151,7 +151,10 @@ parse_foreign_keys() {
             current_src=$(echo "${line}" | sed -E 's/.*tasker\.([a-z_]+).*/\1/')
         fi
 
-        # Look for FOREIGN KEY lines
+        # Look for FOREIGN KEY lines (skip SQL comments)
+        if echo "${line}" | grep -q '^[[:space:]]*--'; then
+            continue
+        fi
         if echo "${line}" | grep -q 'FOREIGN[[:space:]]*KEY'; then
             src_col=$(echo "${line}" | sed -E 's/.*FOREIGN KEY \(([^)]+)\).*/\1/')
             tgt_table=$(echo "${line}" | sed -E 's/.*REFERENCES tasker\.([a-z_]+)\(.*/\1/')
