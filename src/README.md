@@ -14,7 +14,7 @@ Your existing business logic — API calls, database operations, service integra
 
 <div style="border: 1px solid #ccc; border-radius: 8px; padding: 16px;">
 
-**[Getting Started Guide](getting-started/README.md)**
+**[Getting Started Guide](getting-started/index.md)**
 
 From zero to your first workflow. Install, write a handler, define a template, submit a task, and watch it run.
 
@@ -30,7 +30,7 @@ An honest look at where Tasker fits in the workflow orchestration landscape — 
 
 <div style="border: 1px solid #ccc; border-radius: 8px; padding: 16px;">
 
-**[Architecture](architecture/README.md)**
+**[Architecture](architecture/index.md)**
 
 How Tasker works under the hood: actors, state machines, event systems, circuit breakers, and the PostgreSQL-native execution model.
 
@@ -75,9 +75,9 @@ Each language guide covers installation, handler patterns, testing, and producti
 
 ### Architecture & Design
 
-- **[Architecture Overview](architecture/README.md)** — System design and component interaction
-- **[Design Principles](principles/README.md)** — The tenets behind Tasker's design decisions
-- **[Architectural Decisions](decisions/README.md)** — ADRs documenting key technical choices
+- **[Architecture Overview](architecture/index.md)** — System design and component interaction
+- **[Design Principles](principles/index.md)** — The tenets behind Tasker's design decisions
+- **[Architectural Decisions](decisions/index.md)** — ADRs documenting key technical choices
 
 ### Operational Guides
 
@@ -85,7 +85,7 @@ Each language guide covers installation, handler patterns, testing, and producti
 - **[Retry Semantics](guides/retry-semantics.md)** — Retry strategies, backoff, and circuit breaking
 - **[Batch Processing](guides/batch-processing.md)** — Processing work in batches
 - **[DLQ System](guides/dlq-system.md)** — Dead letter queue for failed tasks
-- **[Observability](observability/README.md)** — Metrics, tracing, and logging
+- **[Observability](observability/index.md)** — Metrics, tracing, and logging
 
 ### Reference
 
@@ -114,7 +114,7 @@ A progressive-disclosure blog series teaching Tasker concepts through real-world
 | **07: Conditional Workflows** | Decision handlers, approval flows |
 | **08: Production Debugging** | DLQ investigation, diagnostics tooling |
 
-*Stories are being rewritten for the current Tasker architecture. [View archive →](stories/README.md)*
+*Stories are being rewritten for the current Tasker architecture. [View archive →](stories/index.md)*
 
 ---
 

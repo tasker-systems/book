@@ -3,9 +3,9 @@
 **Last Updated**: 2025-10-27
 **Audience**: Developers, Architects
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Use Cases & Patterns](use-cases-and-patterns.md) | [States and Lifecycles](../architecture/states-and-lifecycles.md)
+**Related Docs**: [Documentation Hub](index.md) | [Use Cases & Patterns](use-cases-and-patterns.md) | [States and Lifecycles](../architecture/states-and-lifecycles.md)
 
-← Back to [Documentation Hub](README.md)
+← Back to [Documentation Hub](index.md)
 
 ---
 
@@ -1223,4 +1223,4 @@ When implementing decision point workflows, ensure:
 
 ---
 
-← Back to [Documentation Hub](README.md)
+← Back to [Documentation Hub](index.md)

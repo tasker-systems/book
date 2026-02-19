@@ -469,5 +469,5 @@ The example apps also include more complex DAG patterns:
 ## Next Steps
 
 - Language guides: [Ruby](ruby.md) | [Python](python.md) | [TypeScript](typescript.md) | [Rust](rust.md)
-- [Architecture Overview](../architecture/README.md) — Understand lifecycle actors and DAG execution
+- [Architecture Overview](../architecture/index.md) — Understand lifecycle actors and DAG execution
 - [Handler Types](../getting-started/handler-types.md) — API, Decision, and Batchable handler patterns

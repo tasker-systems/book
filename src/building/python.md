@@ -384,5 +384,5 @@ def test_creates_order_from_upstream_data(self):
 ## Next Steps
 
 - See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
-- See [Architecture](../architecture/README.md) for system design details
+- See [Architecture](../architecture/index.md) for system design details
 - Browse the [FastAPI example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app) for complete handler implementations

@@ -39,6 +39,6 @@ You define **task templates** (YAML DAGs) that describe what steps to run and th
 
 ## Ready to Build?
 
-Once you understand the concepts, head to **[Build Your First Project](../building/README.md)** to set up your environment and write your first workflow.
+Once you understand the concepts, head to **[Build Your First Project](../building/index.md)** to set up your environment and write your first workflow.
 
 If you prefer learning by example, the [Quick Start](../building/quick-start.md) gets you running a working app in 5 minutes.

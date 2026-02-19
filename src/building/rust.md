@@ -434,5 +434,5 @@ mod tests {
 ## Next Steps
 
 - See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
-- See [Architecture](../architecture/README.md) for system design details
+- See [Architecture](../architecture/index.md) for system design details
 - Browse the [Axum example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/axum-app) for complete handler implementations

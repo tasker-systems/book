@@ -48,7 +48,7 @@ All four apps implement the same five workflow patterns, progressing from simple
 | Namespace isolation | Customer Success + Payments Refund | Step | [Post 04](../stories/post-04-team-scaling.md) |
 | Cross-team coordination | Payments Compliance | Step | [Post 04](../stories/post-04-team-scaling.md) |
 
-Each workflow demonstrates a specific DAG pattern. The [Engineering Stories](../stories/README.md) series teaches these patterns through progressive narrative — start with Post 01 and work forward.
+Each workflow demonstrates a specific DAG pattern. The [Engineering Stories](../stories/index.md) series teaches these patterns through progressive narrative — start with Post 01 and work forward.
 
 ## Shared Infrastructure
 

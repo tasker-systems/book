@@ -3,9 +3,9 @@
 **Last Updated**: 2025-10-10
 **Audience**: Developers, Architects, Product Managers
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Quick Start](quick-start.md) | [Crate Architecture](../architecture/crate-architecture.md)
+**Related Docs**: [Documentation Hub](index.md) | [Quick Start](quick-start.md) | [Crate Architecture](../architecture/crate-architecture.md)
 
-← Back to [Documentation Hub](README.md)
+← Back to [Documentation Hub](index.md)
 
 ---
 
@@ -988,4 +988,4 @@ Task: fetch_user_data
 
 ---
 
-← Back to [Documentation Hub](README.md)
+← Back to [Documentation Hub](index.md)
