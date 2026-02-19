@@ -1,228 +1,184 @@
-# Ruby Guide
+# Building with Ruby
 
-This guide covers using Tasker with Ruby step handlers via the `tasker-rb` gem.
+This guide covers building Tasker step handlers with Ruby using the `tasker_core` gem
+in a Rails application.
 
 ## Quick Start
 
-```bash
-# Add to Gemfile
-gem 'tasker-rb'
+Add the gem to your Gemfile:
 
-# Install
-bundle install
+```ruby
+gem 'tasker-rb'
 ```
+
+Generate a step handler with `tasker-ctl`:
+
+```bash
+tasker-ctl template generate step_handler \
+  --language ruby \
+  --param name=ValidateCart \
+  --param module_name=Ecommerce
+```
+
+This creates a handler class that extends `TaskerCore::StepHandler::Base` with the
+standard `call(context)` method.
 
 ## Writing a Step Handler
 
-Ruby step handlers inherit from `TaskerCore::StepHandler::Base`:
+Every Ruby handler inherits from `TaskerCore::StepHandler::Base` and implements `call`:
 
-```ruby path=null start=null
-class MyHandler < TaskerCore::StepHandler::Base
-  def call(context)
-    # Your handler logic here
-    success(
-      result: { processed: true }
-    )
-  end
-end
-```
-
-### Minimal Handler Example
-
-```ruby path=null start=null
-class LinearStep1Handler < TaskerCore::StepHandler::Base
-  def call(context)
-    # Access task context data using get_input()
-    even_number = context.get_input('even_number')
-    raise 'Task context must contain an even number' unless even_number&.even?
-
-    # Perform business logic
-    result = even_number * even_number
-
-    logger.info "Linear Step 1: #{even_number}² = #{result}"
-
-    # Return standardized result
-    success(
-      result: result,
-      metadata: {
-        operation: 'square',
-        step_type: 'initial'
-      }
-    )
-  end
-end
-```
-
-### Accessing Task Context
-
-Use `get_input()` for task context access (cross-language standard API):
-
-```ruby path=null start=null
-# Get value from task context
-customer_id = context.get_input('customer_id')
-
-# Access nested task context
-task_context = context.task.context
-items = task_context['items']
-```
-
-### Accessing Dependency Results
-
-Access results from upstream steps using `get_dependency_result()`:
-
-```ruby path=null start=null
-# Get result from a specific upstream step (returns the result value directly)
-previous_result = context.get_dependency_result('previous_step_name')
-
-# Extract a nested field from a dependency result
-value = context.get_dependency_field('previous_step_name', 'nested_key')
-
-# Or use the dependency_results object directly
-all_results = context.dependency_results
-```
-
-## Complete Example: Order Validation Handler
-
-This example shows a real-world e-commerce handler:
-
-```ruby path=null start=null
-module OrderFulfillment
+```ruby
+module Ecommerce
   module StepHandlers
-    class ValidateOrderHandler < TaskerCore::StepHandler::Base
+    class ValidateCartHandler < TaskerCore::StepHandler::Base
       def call(context)
-        logger.info "Starting order validation - task_uuid=#{context.task_uuid}"
+        cart_items = context.get_input('cart_items')
 
-        # Extract and validate inputs
-        order_inputs = extract_and_validate_inputs(context)
+        raise TaskerCore::Errors::PermanentError.new(
+          'Cart is empty',
+          error_code: 'EMPTY_CART'
+        ) if cart_items.nil? || cart_items.empty?
 
-        # Validate order data
-        validation_results = validate_order_data(order_inputs)
+        # Validate items, calculate totals...
+        subtotal = 0.0
+        validated_items = cart_items.map do |item|
+          line_total = (item['quantity'].to_i * item['unit_price'].to_f).round(2)
+          subtotal += line_total
+          { sku: item['sku'], name: item['name'], quantity: item['quantity'].to_i,
+            unit_price: item['unit_price'].to_f, line_total: line_total }
+        end
 
-        # Return success result
-        success(
+        tax = (subtotal * 0.08).round(2)
+        total = (subtotal + tax).round(2)
+
+        TaskerCore::Types::StepHandlerCallResult.success(
           result: {
-            customer_validated: true,
-            customer_id: validation_results[:customer_id],
-            validated_items: validation_results[:items],
-            order_total: validation_results[:total],
-            validation_status: 'complete',
-            validated_at: Time.now.iso8601
+            validated_items: validated_items,
+            subtotal: subtotal,
+            tax: tax,
+            total: total
           },
           metadata: {
-            operation: 'validate_order',
-            item_count: validation_results[:items]&.length || 0
+            handler: self.class.name,
+            items_validated: validated_items.size
           }
         )
-      end
-
-      private
-
-      def extract_and_validate_inputs(context)
-        task_context = deep_symbolize_keys(context.task.context)
-
-        customer_info = task_context[:customer_info]
-        order_items = task_context[:order_items]
-
-        unless customer_info&.dig(:id)
-          raise TaskerCore::Errors::PermanentError.new(
-            'Customer ID is required',
-            error_code: 'MISSING_CUSTOMER_ID'
-          )
-        end
-
-        unless order_items&.any?
-          raise TaskerCore::Errors::PermanentError.new(
-            'Order items are required',
-            error_code: 'MISSING_ORDER_ITEMS'
-          )
-        end
-
-        {
-          customer_id: customer_info[:id],
-          customer_email: customer_info[:email],
-          order_items: order_items
-        }
-      end
-
-      def validate_order_data(inputs)
-        validated_items = inputs[:order_items].map.with_index do |item, index|
-          unless item[:product_id] && item[:quantity] && item[:price]
-            raise TaskerCore::Errors::PermanentError.new(
-              "Invalid order item at position #{index + 1}",
-              error_code: 'INVALID_ORDER_ITEM'
-            )
-          end
-
-          {
-            product_id: item[:product_id],
-            quantity: item[:quantity],
-            unit_price: item[:price],
-            line_total: item[:price] * item[:quantity]
-          }
-        end
-
-        total_amount = validated_items.sum { |item| item[:line_total] }
-
-        {
-          items: validated_items,
-          total: total_amount,
-          customer_id: inputs[:customer_id]
-        }
-      end
-
-      def deep_symbolize_keys(obj)
-        case obj
-        when Hash
-          obj.each_with_object({}) do |(key, value), result|
-            result[key.to_sym] = deep_symbolize_keys(value)
-          end
-        when Array
-          obj.map { |item| deep_symbolize_keys(item) }
-        else
-          obj
-        end
       end
     end
   end
 end
 ```
 
+The handler receives a `StepContext` and returns a `StepHandlerCallResult` — either
+`success` with a result hash and optional metadata, or an error via exceptions.
+
+## Accessing Task Context
+
+Use `get_input()` to read values from the task context (TAS-137 cross-language standard):
+
+```ruby
+# Read a top-level field from the task context
+cart_items = context.get_input('cart_items')
+customer_email = context.get_input('customer_email')
+
+# Read nested data (returns the full object)
+payment_info = context.get_input('payment_info')
+token = payment_info&.dig(:token)
+```
+
+## Accessing Dependency Results
+
+Use `get_dependency_result()` to read results from upstream steps. The return value
+is auto-unwrapped — you get the result hash directly:
+
+```ruby
+# Get the full result from an upstream step
+cart_validation = context.get_dependency_result('validate_cart')
+total = cart_validation[:total]
+
+# Extract a single nested field from a dependency result
+total = context.get_dependency_field('validate_cart', 'total')
+
+# Combine data from multiple upstream steps
+payment_result = context.get_dependency_result('process_payment')
+inventory_result = context.get_dependency_result('update_inventory')
+```
+
 ## Error Handling
 
-Use typed errors to control retry behavior:
+Use typed exceptions to control retry behavior:
 
-```ruby path=null start=null
-# Permanent error - will NOT be retried
+```ruby
+# Permanent error — will NOT be retried (validation failures, bad data)
 raise TaskerCore::Errors::PermanentError.new(
-  'Invalid order data',
-  error_code: 'VALIDATION_ERROR',
-  context: { field: 'customer_id' }
+  'Payment declined: insufficient funds',
+  error_code: 'PAYMENT_DECLINED'
 )
 
-# Retryable error - will be retried up to max_attempts
+# Retryable error — will be retried per the step's retry config
 raise TaskerCore::Errors::RetryableError.new(
-  'Payment gateway timeout',
-  retry_after: 30,  # seconds
-  context: { gateway: 'stripe' }
+  'Payment gateway temporarily unavailable'
 )
 ```
 
+Error codes (like `PAYMENT_DECLINED`, `EMPTY_CART`, `MISSING_TOKEN`) are included in
+the step result for observability and debugging.
+
 ## Task Template Configuration
 
-Define workflows in YAML:
+Generate a task template with `tasker-ctl`:
 
-```yaml path=null start=null
-name: order_fulfillment
-namespace_name: ecommerce
-version: "1.0.0"
-description: "E-commerce order processing workflow"
+```bash
+tasker-ctl template generate task_template \
+  --language ruby \
+  --param name=EcommerceOrderProcessing \
+  --param namespace=ecommerce \
+  --param handler_callable=Ecommerce::OrderProcessingHandler
+```
 
+This generates a YAML file defining the workflow. Here is a multi-step example from
+the ecommerce example app:
+
+```yaml
+name: ecommerce_order_processing
+namespace_name: ecommerce_rb
+version: 1.0.0
+description: "Complete e-commerce order processing workflow"
+metadata:
+  author: Rails Example App
+  tags:
+    - namespace:ecommerce
+    - pattern:order_processing
+    - language:ruby
+task_handler:
+  callable: Ecommerce::OrderProcessingHandler
+  initialization:
+    input_validation:
+      required_fields:
+        - cart_items
+        - customer_email
+system_dependencies:
+  primary: default
+  secondary: []
+input_schema:
+  type: object
+  required:
+    - cart_items
+    - customer_email
+  properties:
+    cart_items:
+      type: array
+      items:
+        type: object
+        required: [sku, name, quantity, unit_price]
+    customer_email:
+      type: string
+      format: email
 steps:
-  - name: validate_order
-    description: "Validate order data"
+  - name: validate_cart
+    description: "Validate cart items, calculate totals"
     handler:
-      callable: OrderFulfillment::StepHandlers::ValidateOrderHandler
-      initialization: {}
+      callable: Ecommerce::StepHandlers::ValidateCartHandler
     dependencies: []
     retry:
       retryable: true
@@ -231,40 +187,23 @@ steps:
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
-  - name: reserve_inventory
-    description: "Reserve items in warehouse"
-    handler:
-      callable: OrderFulfillment::StepHandlers::ReserveInventoryHandler
-      initialization: {}
-    dependencies:
-      - validate_order
-    retry:
-      retryable: true
-      max_attempts: 3
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
   - name: process_payment
-    description: "Charge customer"
+    description: "Process customer payment"
     handler:
-      callable: OrderFulfillment::StepHandlers::ProcessPaymentHandler
-      initialization: {}
+      callable: Ecommerce::StepHandlers::ProcessPaymentHandler
     dependencies:
-      - validate_order
-      - reserve_inventory
+      - validate_cart
     retry:
       retryable: true
-      max_attempts: 3
+      max_attempts: 2
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
-  - name: ship_order
-    description: "Ship the order"
+  - name: update_inventory
+    description: "Reserve inventory for order items"
     handler:
-      callable: OrderFulfillment::StepHandlers::ShipOrderHandler
-      initialization: {}
+      callable: Ecommerce::StepHandlers::UpdateInventoryHandler
     dependencies:
       - process_payment
     retry:
@@ -273,204 +212,135 @@ steps:
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
+
+  - name: create_order
+    description: "Create order record"
+    handler:
+      callable: Ecommerce::StepHandlers::CreateOrderHandler
+    dependencies:
+      - update_inventory
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
+
+  - name: send_confirmation
+    description: "Send order confirmation email"
+    handler:
+      callable: Ecommerce::StepHandlers::SendConfirmationHandler
+    dependencies:
+      - create_order
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 ```
 
-## Handler Registration
+Key fields:
 
-Handlers are discovered automatically via the resolver chain from template `callable` fields. For explicit registration:
+- **`metadata`** — Tags, authorship, and documentation links
+- **`task_handler`** — The top-level handler class and initialization config
+- **`system_dependencies`** — External service connections the workflow requires
+- **`input_schema`** — JSON Schema validating task input before execution
+- **`steps[].handler.callable`** — Fully qualified Ruby class name (e.g., `Ecommerce::StepHandlers::ValidateCartHandler`)
+- **`steps[].dependencies`** — DAG edges defining execution order
+- **`steps[].retry`** — Per-step retry policy with backoff
 
-```ruby path=null start=null
-# Register handlers by their callable name
-registry = TaskerCore::Registry::HandlerRegistry.instance
-registry.register_handler(
-  'OrderFulfillment::StepHandlers::ValidateOrderHandler',
-  OrderFulfillment::StepHandlers::ValidateOrderHandler
-)
+## Handler Variants
+
+### API Handler (`step_handler_api`)
+
+```bash
+tasker-ctl template generate step_handler_api \
+  --language ruby \
+  --param name=FetchUser \
+  --param module_name=MyApp \
+  --param base_url=https://api.example.com
 ```
+
+Generates a handler that includes `TaskerCore::StepHandler::Mixins::API`, providing
+`get`, `post`, `put`, `delete` HTTP methods with automatic error classification.
+
+### Decision Handler (`step_handler_decision`)
+
+```bash
+tasker-ctl template generate step_handler_decision \
+  --language ruby \
+  --param name=RouteOrder \
+  --param module_name=MyApp
+```
+
+Generates a handler that includes `TaskerCore::StepHandler::Mixins::Decision`, providing
+`decision_success()` for routing workflows to different downstream step sets based on
+runtime conditions.
+
+### Batchable Handler (`step_handler_batchable`)
+
+```bash
+tasker-ctl template generate step_handler_batchable \
+  --language ruby \
+  --param name=ProcessRecords \
+  --param module_name=MyApp
+```
+
+Generates an Analyzer/Worker pattern handler using `TaskerCore::StepHandler::Mixins::Batchable`.
+The analyzer step divides work into cursor ranges, and worker steps process batches in parallel.
 
 ## Testing
 
-Write RSpec tests for your handlers:
+The template generates an RSpec test file alongside the handler:
 
-```ruby path=null start=null
-require 'spec_helper'
-
-RSpec.describe OrderFulfillment::StepHandlers::ValidateOrderHandler do
-  let(:handler) { described_class.new }
-  let(:context) do
-    build_test_context(
-      task_context: {
-        customer_info: { id: 123, email: 'test@example.com' },
-        order_items: [
-          { product_id: 1, quantity: 2, price: 29.99 }
-        ]
-      }
-    )
-  end
+```ruby
+RSpec.describe Ecommerce::StepHandlers::ValidateCartHandler do
+  subject(:handler) { described_class.new }
 
   describe '#call' do
-    it 'validates order and returns success' do
+    let(:context) do
+      ctx = instance_double(TaskerCore::Types::StepContext,
+        task_uuid: SecureRandom.uuid,
+        step_uuid: SecureRandom.uuid,
+        step_config: {}
+      )
+      allow(ctx).to receive(:get_input).and_return(nil)
+      allow(ctx).to receive(:get_input).with('cart_items').and_return([
+        { 'sku' => 'SKU-001', 'name' => 'Widget', 'quantity' => 2, 'unit_price' => 29.99 }
+      ])
+      allow(ctx).to receive(:get_input).with('customer_email').and_return('test@example.com')
+      ctx
+    end
+
+    it 'validates cart and returns totals' do
       result = handler.call(context)
 
-      expect(result).to be_success
-      expect(result.result[:order_total]).to eq(59.98)
-      expect(result.result[:validated_items].length).to eq(1)
-    end
-
-    context 'with missing customer ID' do
-      let(:context) do
-        build_test_context(
-          task_context: {
-            customer_info: { email: 'test@example.com' },
-            order_items: []
-          }
-        )
-      end
-
-      it 'raises permanent error' do
-        expect {
-          handler.call(context)
-        }.to raise_error(TaskerCore::Errors::PermanentError)
-      end
+      expect(result).to be_a(TaskerCore::Types::StepHandlerCallResult::Success)
+      expect(result.result[:total]).to be > 0
     end
   end
 end
 ```
 
-Run tests:
+Test handlers that use dependency results by stubbing `get_dependency_result`:
 
-```bash
-bundle exec rspec spec/handlers/
-```
-
-## Common Patterns
-
-### Type-Safe Context Access
-
-```ruby path=null start=null
-# TAS-137: Cross-language standard API
-value = context.get_input('field_name')
-
-# Access task context directly
-task_context = context.task.context
-```
-
-### Dependency Result Access
-
-```ruby path=null start=null
-# Get result from upstream step (returns the value directly)
-previous_result = context.get_dependency_result('step_name')
-
-# Extract a nested field
-value = context.get_dependency_field('step_name', 'nested_key')
-```
-
-### Metadata for Observability
-
-```ruby path=null start=null
-success(
-  result: data,
-  metadata: {
-    operation: 'my_operation',
-    input_refs: {
-      field: 'context.get_input("field")'
-    }
-  }
-)
-```
-
-### Handler with Dependencies
-
-```ruby path=null start=null
-class ProcessPaymentHandler < TaskerCore::StepHandler::Base
-  def call(context)
-    # Get results from upstream steps (returns the result value directly)
-    order_result = context.get_dependency_result('validate_order')
-    inventory_result = context.get_dependency_result('reserve_inventory')
-
-    amount = order_result['order_total']
-    reservation_id = inventory_result['reservation_id']
-
-    # Process payment...
-    payment_id = process_payment(amount)
-
-    success(
-      result: {
-        payment_id: payment_id,
-        amount_charged: amount,
-        reservation_id: reservation_id
-      }
-    )
-  end
+```ruby
+let(:context_with_deps) do
+  ctx = instance_double(TaskerCore::Types::StepContext)
+  allow(ctx).to receive(:get_input).with('customer_email').and_return('test@example.com')
+  allow(ctx).to receive(:get_dependency_result).with('validate_cart').and_return({
+    total: 64.79, validated_items: [{ sku: 'SKU-001', quantity: 2 }]
+  })
+  allow(ctx).to receive(:get_dependency_result).with('process_payment').and_return({
+    payment_id: 'pay_abc123', transaction_id: 'txn_xyz'
+  })
+  ctx
 end
 ```
-
-## Submitting Tasks via Client SDK
-
-The `tasker-rb` gem includes a `TaskerCore::Client` module that provides keyword-argument methods with sensible defaults and wraps responses into typed `Dry::Struct` objects:
-
-```ruby path=null start=null
-require 'tasker_core'
-
-# Create a task (defaults: initiator="tasker-core-ruby", source_system="tasker-core")
-response = TaskerCore::Client.create_task(
-  name: 'order_fulfillment',
-  namespace: 'ecommerce',
-  context: {
-    customer: { id: 123, email: 'customer@example.com' },
-    items: [
-      { product_id: 1, quantity: 2, price: 29.99 }
-    ]
-  },
-  initiator: 'my-service',
-  source_system: 'my-api',
-  reason: 'New order received'
-)
-puts "Task created: #{response.task_uuid}"
-puts "Status: #{response.status}"
-
-# Get task status
-task = TaskerCore::Client.get_task(response.task_uuid)
-puts "Task status: #{task.status}"
-
-# List tasks with filters
-task_list = TaskerCore::Client.list_tasks(namespace: 'ecommerce', limit: 10)
-task_list.tasks.each do |t|
-  puts "  #{t.task_uuid}: #{t.status}"
-end
-puts "Total: #{task_list.pagination.total_count}"
-
-# List task steps
-steps = TaskerCore::Client.list_task_steps(response.task_uuid)
-steps.each do |step|
-  puts "Step #{step.name}: #{step.current_state}"
-end
-
-# Check health
-health = TaskerCore::Client.health_check
-puts "Status: #{health.status}"
-
-# Cancel a task
-TaskerCore::Client.cancel_task(response.task_uuid)
-```
-
-### Available Client Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `create_task(name:, namespace:, context:, version:, **opts)` | `ClientTypes::TaskResponse` | Create a new task |
-| `get_task(task_uuid)` | `ClientTypes::TaskResponse` | Get task by UUID |
-| `list_tasks(limit:, offset:, namespace:, status:)` | `ClientTypes::TaskListResponse` | List tasks with filters |
-| `cancel_task(task_uuid)` | `Hash` | Cancel a task |
-| `list_task_steps(task_uuid)` | `Array<ClientTypes::StepResponse>` | List workflow steps |
-| `get_step(task_uuid, step_uuid)` | `ClientTypes::StepResponse` | Get specific step |
-| `get_step_audit_history(task_uuid, step_uuid)` | `Array<ClientTypes::StepAuditResponse>` | Get step audit trail |
-| `health_check` | `ClientTypes::HealthResponse` | Check API health |
-
-Response types are `Dry::Struct` objects with typed attributes (e.g., `response.task_uuid`, `response.status`, `task_list.pagination.total_count`).
 
 ## Next Steps
 
-- See [Architecture](../architecture/README.md) for system design
-- See [Workers Reference](../workers/README.md) for advanced patterns
-- See the [tasker-core workers/ruby](https://github.com/tasker-systems/tasker-core/tree/main/workers/ruby) for complete examples
+- See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
+- See [Architecture](../architecture/README.md) for system design details
+- Browse the [Rails example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app) for complete handler implementations

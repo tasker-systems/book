@@ -115,7 +115,6 @@ tasker-ctl template generate task_template --language python \
 
 # 5. Generate infrastructure (uses --plugin for ops templates)
 tasker-ctl template generate docker_compose --plugin tasker-contrib-ops --param name=myproject
-tasker-ctl template generate config --plugin tasker-contrib-ops
 
 # 6. Generate environment-specific config (merges base + environment overrides)
 tasker-ctl config generate --remote tasker-contrib \

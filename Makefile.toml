@@ -76,6 +76,9 @@ echo "  cargo make lint        (l)   Check markdown formatting"
 echo "  cargo make fix               Auto-fix markdown formatting"
 echo "  cargo make setup-hooks       Install git pre-commit hook"
 echo ""
+echo "Validation:"
+echo "  cargo make validate-quickstart (vq)  Validate quick-start docs end-to-end"
+echo ""
 echo "CI:"
 echo "  cargo make ci-build          Build for CI (no sync, content committed)"
 echo "  cargo make linkcheck         Validate all links"
@@ -103,6 +106,9 @@ alias = "refresh"
 
 [tasks.l]
 alias = "lint"
+
+[tasks.vq]
+alias = "validate-quickstart"
 
 # =============================================================================
 # Content Sync Tasks
@@ -272,6 +278,16 @@ fi
 ln -sf "${HOOK_SRC}" "${HOOK_DST}"
 chmod +x "${HOOK_DST}"
 echo "Installed pre-commit hook: ${HOOK_DST} -> ${HOOK_SRC}"
+'''
+
+# =============================================================================
+# Validation (Quick-Start Flow)
+# =============================================================================
+
+[tasks.validate-quickstart]
+description = "Validate quick-start documentation against real tasker-ctl commands"
+script = '''
+bash ${SCRIPTS_DIR}/validate-quickstart.sh --non-interactive
 '''
 
 # =============================================================================

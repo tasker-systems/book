@@ -1,315 +1,213 @@
-# TypeScript Guide
+# Building with TypeScript
 
-This guide covers using Tasker with TypeScript step handlers via the `@tasker-systems/tasker` package.
+This guide covers building Tasker step handlers with TypeScript using the
+`@tasker-systems/tasker` package in a Bun application.
 
 ## Quick Start
 
-```bash
-# Install with npm
-npm install @tasker-systems/tasker
+Install the package:
 
-# Or with Bun (recommended)
+```bash
 bun add @tasker-systems/tasker
+# Or with npm
+npm install @tasker-systems/tasker
 ```
+
+Generate a step handler with `tasker-ctl`:
+
+```bash
+tasker-ctl template generate step_handler \
+  --language typescript \
+  --param name=ValidateCart
+```
+
+This creates a handler class that extends `StepHandler` with the standard async
+`call(context)` method.
 
 ## Writing a Step Handler
 
-TypeScript step handlers extend the `StepHandler` base class:
+Every TypeScript handler extends `StepHandler` and implements `call`:
 
-```typescript path=null start=null
-import { StepHandler } from '@tasker-systems/tasker';
-import type { StepContext } from '@tasker-systems/tasker';
-import type { StepHandlerResult } from '@tasker-systems/tasker';
+```typescript
+import {
+  StepHandler,
+  type StepContext,
+  type StepHandlerResult,
+  ErrorType,
+} from '@tasker-systems/tasker';
 
-class MyHandler extends StepHandler {
-  static handlerName = 'my_handler';
+export class ValidateCartHandler extends StepHandler {
+  static handlerName = 'Ecommerce.StepHandlers.ValidateCartHandler';
   static handlerVersion = '1.0.0';
 
   async call(context: StepContext): Promise<StepHandlerResult> {
-    return this.success({ processed: true });
-  }
-}
-```
+    try {
+      const cartItems = context.getInput<CartItem[]>('cart_items');
 
-### Minimal Handler Example
+      if (!cartItems || cartItems.length === 0) {
+        return this.failure(
+          'Cart is empty or missing',
+          ErrorType.VALIDATION_ERROR,
+          false,
+        );
+      }
 
-```typescript path=null start=null
-import { StepHandler, StepHandlerResult, ErrorType } from '@tasker-systems/tasker';
-import type { StepContext } from '@tasker-systems/tasker';
+      // Validate items, calculate totals...
+      const validatedItems: CartItem[] = [];
+      for (const item of cartItems) {
+        if (item.price <= 0 || item.quantity <= 0) {
+          return this.failure(
+            `Invalid item: ${item.sku}`,
+            ErrorType.VALIDATION_ERROR,
+            false,
+          );
+        }
+        validatedItems.push(item);
+      }
 
-class LinearStep1Handler extends StepHandler {
-  static handlerName = 'linear_step_1';
-  static handlerVersion = '1.0.0';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    // Access task context using getInput()
-    const evenNumber = context.getInput<number>('even_number');
-
-    if (!evenNumber || evenNumber % 2 !== 0) {
-      return this.failure(
-        'Task context must contain an even number',
-        ErrorType.VALIDATION_ERROR,
-        false  // not retryable
+      const subtotal = validatedItems.reduce(
+        (sum, item) => sum + item.price * item.quantity, 0,
       );
-    }
+      const tax = Math.round(subtotal * 0.0875 * 100) / 100;
+      const total = Math.round((subtotal + tax) * 100) / 100;
 
-    // Perform business logic
-    const result = evenNumber * evenNumber;
-
-    // Return success result
-    return this.success(
-      { result },
-      {
-        operation: 'square',
-        step_type: 'initial'
-      }
-    );
-  }
-}
-```
-
-### Accessing Task Context
-
-Use `getInput()` for task context access (cross-language standard API):
-
-```typescript path=null start=null
-// Get typed value from task context
-const customerId = context.getInput<string>('customer_id');
-
-// Get with default value
-const batchSize = context.getInputOr('batch_size', 100);
-
-// Access raw input data
-const items = context.inputData['items'] as CartItem[];
-```
-
-### Accessing Dependency Results
-
-Access results from upstream steps using `getDependencyResult()`:
-
-```typescript path=null start=null
-// Get unwrapped result from upstream step
-const previousResult = context.getDependencyResult('previous_step_name');
-
-// Extract nested field from dependency result
-const orderTotal = context.getDependencyField('validate_order', 'order_total');
-
-// Get all results matching a prefix (for batch workers)
-const batchResults = context.getAllDependencyResults('process_batch_');
-```
-
-## Complete Example: Process Order Handler
-
-This example shows a real-world e-commerce handler:
-
-```typescript path=null start=null
-import { StepHandler, StepHandlerResult, ErrorType } from '@tasker-systems/tasker';
-import type { StepContext } from '@tasker-systems/tasker';
-
-interface ValidatedItem {
-  product_id: number;
-  name: string;
-  price: number;
-  quantity: number;
-  line_total: number;
-}
-
-interface ValidationResult {
-  validated_items: ValidatedItem[];
-  subtotal: number;
-  tax: number;
-  shipping: number;
-  total: number;
-}
-
-// Mock product database
-const PRODUCTS: Record<number, { name: string; price: number; stock: number; active: boolean }> = {
-  1: { name: 'Widget A', price: 29.99, stock: 100, active: true },
-  2: { name: 'Widget B', price: 49.99, stock: 50, active: true },
-  3: { name: 'Widget C', price: 19.99, stock: 25, active: true },
-};
-
-class ValidateCartHandler extends StepHandler {
-  static handlerName = 'ecommerce.step_handlers.ValidateCartHandler';
-  static handlerVersion = '1.0.0';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    // TAS-137: Use getInput() for task context access
-    const cartItems = context.getInput<Array<{ product_id: number; quantity: number }>>('cart_items');
-
-    if (!cartItems || cartItems.length === 0) {
-      return this.failure(
-        'Cart items are required',
-        ErrorType.VALIDATION_ERROR,
-        false,
-        undefined,
-        'MISSING_CART_ITEMS'
-      );
-    }
-
-    console.log(`ValidateCartHandler: Validating ${cartItems.length} items`);
-
-    // Validate and calculate totals
-    const validatedItems: ValidatedItem[] = [];
-
-    for (const [index, item] of cartItems.entries()) {
-      if (!item.product_id) {
-        return this.failure(
-          `Product ID required for item ${index + 1}`,
-          ErrorType.VALIDATION_ERROR,
-          false,
-          undefined,
-          'MISSING_PRODUCT_ID'
-        );
-      }
-
-      if (!item.quantity || item.quantity <= 0) {
-        return this.failure(
-          `Valid quantity required for item ${index + 1}`,
-          ErrorType.VALIDATION_ERROR,
-          false,
-          undefined,
-          'INVALID_QUANTITY'
-        );
-      }
-
-      const product = PRODUCTS[item.product_id];
-
-      if (!product) {
-        return this.failure(
-          `Product ${item.product_id} not found`,
-          ErrorType.VALIDATION_ERROR,
-          false,
-          undefined,
-          'PRODUCT_NOT_FOUND'
-        );
-      }
-
-      if (!product.active) {
-        return this.failure(
-          `Product ${product.name} is not available`,
-          ErrorType.VALIDATION_ERROR,
-          false,
-          undefined,
-          'PRODUCT_INACTIVE'
-        );
-      }
-
-      if (product.stock < item.quantity) {
-        // Retryable - stock might be replenished
-        return this.failure(
-          `Insufficient stock for ${product.name}`,
-          ErrorType.RETRYABLE_ERROR,
-          true,  // retryable
-          {
-            product_id: item.product_id,
-            available: product.stock,
-            requested: item.quantity,
-          },
-          'INSUFFICIENT_STOCK'
-        );
-      }
-
-      validatedItems.push({
-        product_id: item.product_id,
-        name: product.name,
-        price: product.price,
-        quantity: item.quantity,
-        line_total: Math.round(product.price * item.quantity * 100) / 100,
-      });
-    }
-
-    // Calculate totals
-    const subtotal = validatedItems.reduce((sum, item) => sum + item.line_total, 0);
-    const tax = Math.round(subtotal * 0.08 * 100) / 100;  // 8% tax
-    const shipping = this.calculateShipping(validatedItems);
-    const total = subtotal + tax + shipping;
-
-    return this.success(
-      {
-        validated_items: validatedItems,
-        subtotal,
-        tax,
-        shipping,
-        total,
-        item_count: validatedItems.length,
-        validated_at: new Date().toISOString(),
-      },
-      {
-        operation: 'validate_cart',
-        execution_hints: {
-          items_validated: validatedItems.length,
-          total_amount: total,
+      return this.success(
+        {
+          validated_items: validatedItems,
+          item_count: validatedItems.length,
+          subtotal,
+          tax,
+          total,
         },
-      }
-    );
-  }
-
-  private calculateShipping(items: ValidatedItem[]): number {
-    const totalWeight = items.reduce((sum, item) => sum + item.quantity * 0.5, 0);
-    if (totalWeight <= 2) return 5.99;
-    if (totalWeight <= 10) return 9.99;
-    return 14.99;
+        { processing_time_ms: Math.random() * 50 + 10 },
+      );
+    } catch (error) {
+      return this.failure(
+        error instanceof Error ? error.message : String(error),
+        ErrorType.HANDLER_ERROR,
+        true,
+      );
+    }
   }
 }
+```
 
-export default ValidateCartHandler;
+The handler receives a `StepContext` and returns a `StepHandlerResult` via
+`this.success()` or `this.failure()`.
+
+## Accessing Task Context
+
+Use `getInput()` to read values from the task context (TAS-137 cross-language standard):
+
+```typescript
+// Get a typed value from the task context
+const cartItems = context.getInput<CartItem[]>('cart_items');
+const customerEmail = context.getInput<string>('customer_email');
+
+// Get a nested object
+const paymentInfo = context.getInput<PaymentInfo>('payment_info');
+```
+
+## Accessing Dependency Results
+
+Use `getDependencyResult()` to read results from upstream steps. The return value
+is auto-unwrapped — you get the result object directly:
+
+```typescript
+// Get the full result from an upstream step
+const cartResult = context.getDependencyResult('validate_cart') as Record<string, unknown>;
+const total = cartResult.total as number;
+
+// Combine data from multiple upstream steps
+const paymentResult = context.getDependencyResult('process_payment') as Record<string, unknown>;
+const inventoryResult = context.getDependencyResult('update_inventory') as Record<string, unknown>;
 ```
 
 ## Error Handling
 
-Use the `ErrorType` enum and return structured failures:
+Return structured failures with error type and retryable flag:
 
-```typescript path=null start=null
-import { ErrorType } from '@tasker-systems/tasker';
-
-// Non-retryable validation error
+```typescript
+// Non-retryable validation failure
 return this.failure(
-  'Invalid order data',
+  'Transaction exceeds single-transaction limit',
   ErrorType.VALIDATION_ERROR,
-  false,  // not retryable
-  { field: 'customer_id' },
-  'VALIDATION_ERROR'
+  false,
 );
 
-// Retryable transient error
+// Retryable transient failure
 return this.failure(
-  'Payment gateway timeout',
+  'Payment gateway temporarily unavailable',
   ErrorType.RETRYABLE_ERROR,
-  true,  // retryable
-  { gateway: 'stripe', timeout_ms: 30000 },
-  'GATEWAY_TIMEOUT'
+  true,
+);
+
+// Permanent business logic failure
+return this.failure(
+  'Customer email is required but was not provided',
+  ErrorType.PERMANENT_ERROR,
+  false,
 );
 ```
 
-### Error Types
+Error types available via the `ErrorType` enum:
 
-```typescript path=null start=null
-enum ErrorType {
-  PERMANENT_ERROR = 'permanent_error',
-  RETRYABLE_ERROR = 'retryable_error',
-  VALIDATION_ERROR = 'validation_error',
-  TIMEOUT = 'timeout',
-  HANDLER_ERROR = 'handler_error',
-}
-```
+- `ErrorType.VALIDATION_ERROR` — Bad input data (non-retryable)
+- `ErrorType.PERMANENT_ERROR` — Business logic rejection (non-retryable)
+- `ErrorType.RETRYABLE_ERROR` — Transient failure (retryable)
+- `ErrorType.HANDLER_ERROR` — Internal handler error
 
 ## Task Template Configuration
 
-Define workflows in YAML:
+Generate a task template with `tasker-ctl`:
 
-```yaml path=null start=null
-name: checkout_workflow
-namespace_name: ecommerce
-version: "1.0.0"
-description: "E-commerce checkout workflow"
+```bash
+tasker-ctl template generate task_template \
+  --language typescript \
+  --param name=EcommerceOrderProcessing \
+  --param namespace=ecommerce \
+  --param handler_callable=Ecommerce.OrderProcessingHandler
+```
 
+This generates a YAML file defining the workflow. Here is a multi-step example from
+the ecommerce example app:
+
+```yaml
+name: ecommerce_order_processing
+namespace_name: ecommerce_ts
+version: 1.0.0
+description: "Complete e-commerce order processing workflow"
+metadata:
+  author: Bun Example Application
+  tags:
+    - namespace:ecommerce
+    - pattern:order_processing
+    - language:typescript
+task_handler:
+  callable: Ecommerce.OrderProcessingHandler
+  initialization: {}
+system_dependencies:
+  primary: default
+  secondary: []
+input_schema:
+  type: object
+  required:
+    - cart_items
+    - customer_email
+  properties:
+    cart_items:
+      type: array
+      items:
+        type: object
+        required: [sku, name, price, quantity]
+    customer_email:
+      type: string
+      format: email
 steps:
   - name: validate_cart
-    description: "Validate cart items and calculate totals"
+    description: "Validate cart items, calculate totals"
     handler:
-      callable: ValidateCartHandler
-      initialization: {}
+      callable: Ecommerce.StepHandlers.ValidateCartHandler
     dependencies: []
     retry:
       retryable: true
@@ -319,41 +217,50 @@ steps:
       max_backoff_ms: 5000
 
   - name: process_payment
-    description: "Charge payment method"
+    description: "Process customer payment"
     handler:
-      callable: ProcessPaymentHandler
-      initialization: {}
+      callable: Ecommerce.StepHandlers.ProcessPaymentHandler
     dependencies:
       - validate_cart
     retry:
       retryable: true
-      max_attempts: 3
+      max_attempts: 2
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
   - name: update_inventory
-    description: "Reserve inventory"
+    description: "Reserve inventory for order items"
     handler:
-      callable: UpdateInventoryHandler
-      initialization: {}
+      callable: Ecommerce.StepHandlers.UpdateInventoryHandler
     dependencies:
-      - validate_cart
+      - process_payment
     retry:
       retryable: true
-      max_attempts: 3
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
+
+  - name: create_order
+    description: "Create order record"
+    handler:
+      callable: Ecommerce.StepHandlers.CreateOrderHandler
+    dependencies:
+      - update_inventory
+    retry:
+      retryable: true
+      max_attempts: 2
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
   - name: send_confirmation
-    description: "Send order confirmation"
+    description: "Send order confirmation email"
     handler:
-      callable: SendConfirmationHandler
-      initialization: {}
+      callable: Ecommerce.StepHandlers.SendConfirmationHandler
     dependencies:
-      - process_payment
-      - update_inventory
+      - create_order
     retry:
       retryable: true
       max_attempts: 2
@@ -362,330 +269,112 @@ steps:
       max_backoff_ms: 5000
 ```
 
-## Handler Registration
+Key fields:
 
-Register handlers using the registry:
+- **`metadata`** — Tags, authorship, and documentation links
+- **`task_handler`** — The top-level handler and initialization config
+- **`system_dependencies`** — External service connections the workflow requires
+- **`input_schema`** — JSON Schema validating task input before execution
+- **`steps[].handler.callable`** — Dot-separated handler name (e.g., `Ecommerce.StepHandlers.ValidateCartHandler`)
+- **`steps[].dependencies`** — DAG edges defining execution order
+- **`steps[].retry`** — Per-step retry policy with backoff
 
-```typescript path=null start=null
-import { HandlerRegistry } from '@tasker-systems/tasker';
+## Handler Variants
 
-const registry = new HandlerRegistry();
-registry.register('ecommerce.step_handlers.ValidateCartHandler', ValidateCartHandler);
-registry.register('ecommerce.step_handlers.ProcessPaymentHandler', ProcessPaymentHandler);
+### API Handler (`step_handler_api`)
+
+```bash
+tasker-ctl template generate step_handler_api \
+  --language typescript \
+  --param name=FetchUser \
+  --param base_url=https://api.example.com
 ```
+
+Generates a handler that extends `ApiHandler`, providing `get`, `post`, `put`, `delete`
+HTTP methods with automatic error classification using the native `fetch` API.
+
+### Decision Handler (`step_handler_decision`)
+
+```bash
+tasker-ctl template generate step_handler_decision \
+  --language typescript \
+  --param name=RouteOrder
+```
+
+Generates a handler that extends `DecisionHandler`, providing `decisionSuccess()` for
+routing workflows to different downstream step sets based on runtime conditions.
+
+### Batchable Handler (`step_handler_batchable`)
+
+```bash
+tasker-ctl template generate step_handler_batchable \
+  --language typescript \
+  --param name=ProcessRecords
+```
+
+Generates a handler that extends `BatchableStepHandler` with an Analyzer/Worker pattern.
+In analyzer mode it divides work into cursor ranges; in worker mode it processes
+individual batches in parallel.
 
 ## Testing
 
-Write tests using your preferred test framework (Bun, Jest, Vitest):
+The template generates a Vitest test file alongside the handler:
 
-```typescript path=null start=null
-import { describe, test, expect } from 'bun:test';
-import { StepContext } from '@tasker-systems/tasker';
-import ValidateCartHandler from './validate-cart-handler';
-
-// Helper to build test contexts (not exported by the package)
-function buildTestContext(inputData: Record<string, unknown>): StepContext {
-  return new StepContext({
-    taskUuid: 'test-task-uuid',
-    stepUuid: 'test-step-uuid',
-    correlationId: 'test-correlation',
-    handlerName: 'test_handler',
-    inputData,
-    dependencyResults: {},
-    retryCount: 0,
-    maxRetries: 3,
-  });
-}
+```typescript
+import { describe, it, expect, vi } from 'vitest';
+import { ValidateCartHandler } from '../validate-cart-handler';
 
 describe('ValidateCartHandler', () => {
-  test('validates cart successfully', async () => {
-    const handler = new ValidateCartHandler();
-    const context = buildTestContext({
-      cart_items: [
-        { product_id: 1, quantity: 2 }
-      ]
-    });
+  const handler = new ValidateCartHandler();
+
+  it('validates cart and returns totals', async () => {
+    const context = {
+      taskUuid: crypto.randomUUID(),
+      stepUuid: crypto.randomUUID(),
+      inputData: {
+        cart_items: [
+          { sku: 'SKU-001', name: 'Widget', price: 29.99, quantity: 2 },
+        ],
+      },
+      dependencyResults: {},
+      stepConfig: {},
+      stepInputs: {},
+      retryCount: 0,
+      maxRetries: 3,
+      getInput: vi.fn((key: string) =>
+        key === 'cart_items'
+          ? [{ sku: 'SKU-001', name: 'Widget', price: 29.99, quantity: 2 }]
+          : undefined
+      ),
+      getDependencyResult: vi.fn(),
+    } as any;
 
     const result = await handler.call(context);
 
     expect(result.success).toBe(true);
-    expect(result.result?.total).toBeCloseTo(70.77, 2);
-  });
-
-  test('rejects empty cart', async () => {
-    const handler = new ValidateCartHandler();
-    const context = buildTestContext({ cart_items: [] });
-
-    const result = await handler.call(context);
-
-    expect(result.success).toBe(false);
-    expect(result.error_code).toBe('MISSING_CART_ITEMS');
-  });
-
-  test('handles out of stock as retryable', async () => {
-    const handler = new ValidateCartHandler();
-    const context = buildTestContext({
-      cart_items: [
-        { product_id: 1, quantity: 1000 }
-      ]
-    });
-
-    const result = await handler.call(context);
-
-    expect(result.success).toBe(false);
-    expect(result.retryable).toBe(true);
-    expect(result.error_code).toBe('INSUFFICIENT_STOCK');
+    expect(result.result?.total).toBeGreaterThan(0);
   });
 });
 ```
 
-Run tests:
+Test handlers that use dependency results by configuring `getDependencyResult`:
 
-```bash
-# Bun
-bun test
-
-# npm
-npm test
+```typescript
+const contextWithDeps = {
+  // ...base context fields
+  getInput: vi.fn((key: string) =>
+    key === 'customer_email' ? 'test@example.com' : undefined
+  ),
+  getDependencyResult: vi.fn((step: string) => ({
+    validate_cart: { total: 64.79, validated_items: [] },
+    process_payment: { payment_id: 'pay_abc', transaction_id: 'txn_xyz' },
+    update_inventory: { updated_products: [], inventory_log_id: 'log_123' },
+  }[step])),
+} as any;
 ```
-
-## Common Patterns
-
-### Type-Safe Context Access
-
-```typescript path=null start=null
-// TAS-137: Cross-language standard API
-const value = context.getInput<string>('field_name');
-
-// Get with default value
-const batchSize = context.getInputOr('batch_size', 100);
-
-// Type-safe generic access
-interface OrderData {
-  customer_id: string;
-  items: Array<{ product_id: number; quantity: number }>;
-}
-const order = context.getInput<OrderData>('order');
-```
-
-### Dependency Result Access
-
-```typescript path=null start=null
-// Get unwrapped result from upstream step
-const result = context.getDependencyResult('step_name');
-
-// Extract nested field
-const value = context.getDependencyField('step_name', 'nested', 'field');
-
-// Get all keys
-const keys = context.getDependencyResultKeys();
-```
-
-### Metadata for Observability
-
-```typescript path=null start=null
-return this.success(
-  { data: processedData },
-  {
-    operation: 'my_operation',
-    input_refs: {
-      field: 'context.getInput("field")'
-    },
-    execution_hints: {
-      items_processed: 100,
-      duration_ms: 250
-    }
-  }
-);
-```
-
-### Handler with Dependencies
-
-```typescript path=null start=null
-class ProcessPaymentHandler extends StepHandler {
-  static handlerName = 'process_payment';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    // Get results from upstream steps
-    const cartResult = context.getDependencyResult('validate_cart') as {
-      total: number;
-      validated_items: ValidatedItem[];
-    };
-
-    const total = cartResult.total;
-
-    // Get payment info from task context
-    const paymentMethod = context.getInput<string>('payment_method');
-    const paymentToken = context.getInput<string>('payment_token');
-
-    // Process payment
-    const paymentId = await this.chargePayment(total, paymentMethod, paymentToken);
-
-    return this.success({
-      payment_id: paymentId,
-      amount_charged: total,
-      status: 'completed'
-    });
-  }
-
-  private async chargePayment(
-    amount: number,
-    method: string,
-    token: string
-  ): Promise<string> {
-    // Implementation...
-    return `pay_${Date.now()}`;
-  }
-}
-```
-
-### Batch Processing with Checkpoints
-
-Checkpoint state is accessed via `StepContext` properties. The `BatchableStepHandler`
-base class provides `checkpointYield()` for yielding back to the orchestrator:
-
-```typescript path=null start=null
-import { BatchableStepHandler } from '@tasker-systems/tasker';
-import type { StepContext, StepHandlerResult } from '@tasker-systems/tasker';
-
-class BatchProcessHandler extends BatchableStepHandler {
-  static handlerName = 'batch_process';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    // Check for existing checkpoint via context properties
-    let cursor: number;
-    let accumulated: { total: number; processed: number };
-
-    if (context.hasCheckpoint()) {
-      cursor = context.checkpointCursor as number;
-      accumulated = context.accumulatedResults as typeof accumulated || { total: 0, processed: 0 };
-    } else {
-      cursor = 0;
-      accumulated = { total: 0, processed: 0 };
-    }
-
-    // Process batch
-    const batchSize = context.getInputOr('batch_size', 100);
-    const items = await this.fetchItems(cursor, batchSize);
-
-    for (const item of items) {
-      accumulated.total += item.value;
-      accumulated.processed += 1;
-    }
-
-    if (items.length < batchSize) {
-      // All done
-      return this.success(accumulated);
-    } else {
-      // More to process - yield checkpoint via batchable handler method
-      return this.checkpointYield(
-        cursor + batchSize,
-        accumulated.processed,
-        accumulated
-      );
-    }
-  }
-
-  private async fetchItems(cursor: number, limit: number): Promise<Array<{ value: number }>> {
-    // Implementation...
-    return [];
-  }
-}
-```
-
-## Runtime Support
-
-The `@tasker-systems/tasker` package works with:
-
-- **Bun** (recommended) - Native TypeScript execution
-- **Node.js** (18+) - Requires transpilation
-- **Deno** - Native TypeScript support
-
-```typescript path=null start=null
-// server.ts - Worker entry point
-import { bootstrapWorker } from '@tasker-systems/tasker';
-
-const config = {
-  namespace: 'ecommerce',
-  handlers: [ValidateCartHandler, ProcessPaymentHandler],
-};
-
-await bootstrapWorker(config);
-```
-
-## Submitting Tasks via Client SDK
-
-The `@tasker-systems/tasker` package includes a `TaskerClient` class that provides typed methods with sensible defaults. It wraps the raw FFI `ClientResult` envelope and returns typed response objects directly, throwing `TaskerClientError` on failures:
-
-```typescript path=null start=null
-import { FfiLayer, TaskerClient } from '@tasker-systems/tasker';
-
-async function submitTask() {
-  // Initialize the FFI layer and client
-  const ffiLayer = new FfiLayer();
-  await ffiLayer.load();
-  const client = new TaskerClient(ffiLayer);
-
-  // Create a task (defaults: initiator="tasker-core-typescript", sourceSystem="tasker-core")
-  const response = client.createTask({
-    name: 'order_fulfillment',
-    namespace: 'ecommerce',
-    context: {
-      customer: { id: 123, email: 'customer@example.com' },
-      items: [
-        { product_id: 1, quantity: 2, price: 29.99 }
-      ],
-    },
-    initiator: 'my-service',
-    sourceSystem: 'my-api',
-    reason: 'New order received',
-  });
-  console.log(`Task created: ${response.task_uuid}`);
-  console.log(`Status: ${response.status}`);
-
-  // Get task status
-  const task = client.getTask(response.task_uuid);
-  console.log(`Task status: ${task.status}`);
-
-  // List tasks with filters
-  const taskList = client.listTasks({ namespace: 'ecommerce', limit: 10 });
-  for (const t of taskList.tasks) {
-    console.log(`  ${t.task_uuid}: ${t.status}`);
-  }
-  console.log(`Total: ${taskList.pagination.total_count}`);
-
-  // List task steps
-  const steps = client.listTaskSteps(response.task_uuid);
-  for (const step of steps) {
-    console.log(`Step ${step.name}: ${step.current_state}`);
-  }
-
-  // Check health
-  const health = client.healthCheck();
-  console.log(`Status: ${health.status}`);
-
-  // Cancel a task
-  client.cancelTask(response.task_uuid);
-}
-```
-
-### Available Client Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `createTask(options)` | `ClientTaskResponse` | Create a new task |
-| `getTask(taskUuid)` | `ClientTaskResponse` | Get task by UUID |
-| `listTasks(options?)` | `ClientTaskListResponse` | List tasks with filters |
-| `cancelTask(taskUuid)` | `void` | Cancel a task |
-| `listTaskSteps(taskUuid)` | `ClientStepResponse[]` | List workflow steps |
-| `getStep(taskUuid, stepUuid)` | `ClientStepResponse` | Get specific step |
-| `getStepAuditHistory(taskUuid, stepUuid)` | `ClientStepAuditResponse[]` | Get step audit trail |
-| `healthCheck()` | `ClientHealthResponse` | Check API health |
-
-Methods throw `TaskerClientError` on failure, with a `recoverable` flag indicating whether a retry is appropriate.
 
 ## Next Steps
 
-- See [Architecture](../architecture/README.md) for system design
-- See [Workers Reference](../workers/README.md) for advanced patterns
-- See the [tasker-core workers/typescript](https://github.com/tasker-systems/tasker-core/tree/main/workers/typescript) for complete examples
+- See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
+- See [Architecture](../architecture/README.md) for system design details
+- Browse the [Bun example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app) for complete handler implementations

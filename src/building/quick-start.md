@@ -172,9 +172,11 @@ tasker-ctl template generate docker_compose \
   --plugin tasker-contrib-ops \
   --param name=myproject
 
-# TOML configuration files
-tasker-ctl template generate config \
-  --plugin tasker-contrib-ops
+# TOML configuration files (from tasker-contrib/config/tasker base configs)
+tasker-ctl config generate --remote tasker-contrib \
+  --context orchestration --environment development --output config/orchestration.toml
+tasker-ctl config generate --remote tasker-contrib \
+  --context worker --environment development --output config/worker.toml
 ```
 
 > **Known limitation**: The generated `docker-compose.yml` uses `:latest` image tags and does not include `platform: linux/amd64` (needed for Apple Silicon) or config volume mounts. For a production-ready reference, see the [example apps](../contrib/README.md) `docker-compose.yml`.

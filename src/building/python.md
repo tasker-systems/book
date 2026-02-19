@@ -1,303 +1,216 @@
-# Python Guide
+# Building with Python
 
-This guide covers using Tasker with Python step handlers via the `tasker-py` package.
+This guide covers building Tasker step handlers with Python using the `tasker_core`
+package in a FastAPI application.
 
 ## Quick Start
 
-```bash
-# Install with pip
-pip install tasker-py
+Install the package:
 
+```bash
+pip install tasker-py
 # Or with uv (recommended)
 uv add tasker-py
 ```
 
+Generate a step handler with `tasker-ctl`:
+
+```bash
+tasker-ctl template generate step_handler \
+  --language python \
+  --param name=ValidateCart \
+  --param module_name=handlers.ecommerce
+```
+
+This creates a handler class that extends `StepHandler` with the standard `call(context)` method.
+
 ## Writing a Step Handler
 
-Python step handlers inherit from `StepHandler`:
+Every Python handler extends `StepHandler` and implements `call`:
 
-```python path=null start=null
-from tasker_core import StepHandler, StepContext, StepHandlerResult
-
-class MyHandler(StepHandler):
-    handler_name = "my_handler"
-    handler_version = "1.0.0"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        return StepHandlerResult.success({"processed": True})
-```
-
-### Minimal Handler Example
-
-```python path=null start=null
-from tasker_core import StepHandler, StepContext, StepHandlerResult
-
-class LinearStep1Handler(StepHandler):
-    handler_name = "linear_step_1"
-    handler_version = "1.0.0"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # Access task context using get_input()
-        even_number = context.get_input("even_number")
-
-        if not even_number or even_number % 2 != 0:
-            return self.failure(
-                "Task context must contain an even number",
-                error_type="validation_error",
-                retryable=False
-            )
-
-        # Perform business logic
-        result = even_number * even_number
-
-        # Return success result
-        return self.success(
-            {"result": result},
-            metadata={
-                "operation": "square",
-                "step_type": "initial"
-            }
-        )
-```
-
-### Async Handlers
-
-Python handlers can be asynchronous:
-
-```python path=null start=null
-import asyncio
-from tasker_core import StepHandler, StepContext, StepHandlerResult
-
-class MyAsyncHandler(StepHandler):
-    handler_name = "my_async_handler"
-
-    async def call(self, context: StepContext) -> StepHandlerResult:
-        # Use async operations like aiohttp, asyncpg, etc.
-        await asyncio.sleep(0.1)
-        return self.success({"processed": True})
-```
-
-### Accessing Task Context
-
-Use `get_input()` for task context access (cross-language standard API):
-
-```python path=null start=null
-# Get value from task context
-customer_id = context.get_input("customer_id")
-
-# Access nested values
-cart_items = context.get_input("cart_items")
-```
-
-### Accessing Dependency Results
-
-Access results from upstream steps using `get_dependency_result()`:
-
-```python path=null start=null
-# Get result from a specific upstream step
-previous_result = context.get_dependency_result("previous_step_name")
-
-# Extract nested values
-order_total = context.get_dependency_field("validate_order", "order_total")
-```
-
-## Complete Example: Validate Cart Handler
-
-This example shows a real-world e-commerce handler:
-
-```python path=null start=null
+```python
 from __future__ import annotations
 
-import logging
 from datetime import datetime, timezone
 from typing import Any
 
-from tasker_core import StepHandler, StepContext, StepHandlerResult
-from tasker_core.errors import PermanentError, RetryableError
-
-logger = logging.getLogger(__name__)
-
-# Mock product database
-PRODUCTS = {
-    1: {"id": 1, "name": "Widget A", "price": 29.99, "stock": 100, "active": True},
-    2: {"id": 2, "name": "Widget B", "price": 49.99, "stock": 50, "active": True},
-    3: {"id": 3, "name": "Widget C", "price": 19.99, "stock": 25, "active": True},
-}
+from tasker_core import ErrorType, StepContext, StepHandler, StepHandlerResult
 
 
 class ValidateCartHandler(StepHandler):
-    """Validates cart items, checks availability, and calculates totals."""
-
-    handler_name = "ecommerce.step_handlers.ValidateCartHandler"
+    handler_name = "validate_cart"
     handler_version = "1.0.0"
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # TAS-137: Use get_input() for task context access
-        cart_items = context.get_input("cart_items")
+    TAX_RATE = 0.08
 
-        if not cart_items:
-            raise PermanentError(
-                "Cart items are required",
-                metadata={"error_code": "MISSING_CART_ITEMS"},
+    def call(self, context: StepContext) -> StepHandlerResult:
+        cart_items = context.get_input("items") or context.get_input("cart_items")
+        if not cart_items or not isinstance(cart_items, list):
+            return StepHandlerResult.failure(
+                message="Cart is empty or items field is missing",
+                error_type=ErrorType.VALIDATION_ERROR,
+                retryable=False,
+                error_code="EMPTY_CART",
             )
 
-        logger.info(
-            "ValidateCartHandler: Validating cart - task_uuid=%s, items=%d",
-            context.task_uuid,
-            len(cart_items),
-        )
-
-        # Validate each cart item
-        self._validate_cart_item_structure(cart_items)
-        validated_items = self._validate_cart_items(cart_items)
-
-        # Calculate totals
-        subtotal = sum(item["line_total"] for item in validated_items)
-        tax = round(subtotal * 0.08, 2)  # 8% tax
-        shipping = self._calculate_shipping(validated_items)
-        total = subtotal + tax + shipping
-
-        return StepHandlerResult.success(
-            {
-                "validated_items": validated_items,
-                "subtotal": subtotal,
-                "tax": tax,
-                "shipping": shipping,
-                "total": total,
-                "item_count": len(validated_items),
-                "validated_at": datetime.now(timezone.utc).isoformat(),
-            },
-            metadata={
-                "operation": "validate_cart",
-                "execution_hints": {
-                    "items_validated": len(validated_items),
-                    "total_amount": total,
-                },
-            },
-        )
-
-    def _validate_cart_item_structure(self, cart_items: list[dict]) -> None:
-        for index, item in enumerate(cart_items):
-            if not item.get("product_id"):
-                raise PermanentError(
-                    f"Product ID required for item {index + 1}",
-                    metadata={"error_code": "MISSING_PRODUCT_ID"},
-                )
-
-            quantity = item.get("quantity")
-            if not quantity or quantity <= 0:
-                raise PermanentError(
-                    f"Valid quantity required for item {index + 1}",
-                    metadata={"error_code": "INVALID_QUANTITY"},
-                )
-
-    def _validate_cart_items(self, cart_items: list[dict]) -> list[dict]:
-        validated = []
+        validated_items: list[dict[str, Any]] = []
+        subtotal = 0.0
 
         for item in cart_items:
-            product_id = item["product_id"]
-            quantity = item["quantity"]
-            product = PRODUCTS.get(product_id)
+            sku = item.get("sku")
+            quantity = item.get("quantity", 0)
+            unit_price = item.get("unit_price", 0.0)
 
-            if not product:
-                raise PermanentError(
-                    f"Product {product_id} not found",
-                    metadata={"error_code": "PRODUCT_NOT_FOUND"},
+            if quantity < 1:
+                return StepHandlerResult.failure(
+                    message=f"Item '{sku}' has invalid quantity: {quantity}",
+                    error_type=ErrorType.VALIDATION_ERROR,
+                    retryable=False,
+                    error_code="INVALID_QUANTITY",
                 )
 
-            if not product["active"]:
-                raise PermanentError(
-                    f"Product {product['name']} is not available",
-                    metadata={"error_code": "PRODUCT_INACTIVE"},
-                )
-
-            if product["stock"] < quantity:
-                # Temporary failure - retry when stock replenished
-                raise RetryableError(
-                    f"Insufficient stock for {product['name']}",
-                    metadata={
-                        "error_code": "INSUFFICIENT_STOCK",
-                        "product_id": product_id,
-                        "available": product["stock"],
-                        "requested": quantity,
-                    },
-                )
-
-            validated.append({
-                "product_id": product["id"],
-                "name": product["name"],
-                "price": product["price"],
+            line_total = round(quantity * unit_price, 2)
+            subtotal += line_total
+            validated_items.append({
+                "sku": sku,
+                "name": item.get("name"),
                 "quantity": quantity,
-                "line_total": round(product["price"] * quantity, 2),
+                "unit_price": unit_price,
+                "line_total": line_total,
             })
 
-        return validated
+        tax = round(subtotal * self.TAX_RATE, 2)
+        total = round(subtotal + tax, 2)
 
-    def _calculate_shipping(self, items: list[dict]) -> float:
-        total_weight = sum(item["quantity"] * 0.5 for item in items)
-        if total_weight <= 2:
-            return 5.99
-        elif total_weight <= 10:
-            return 9.99
-        else:
-            return 14.99
+        return StepHandlerResult.success(
+            result={
+                "validated_items": validated_items,
+                "item_count": len(validated_items),
+                "subtotal": subtotal,
+                "tax": tax,
+                "total": total,
+                "validated_at": datetime.now(timezone.utc).isoformat(),
+            },
+            metadata={"items_validated": len(validated_items)},
+        )
+```
+
+The handler receives a `StepContext` and returns a `StepHandlerResult` — either
+`StepHandlerResult.success()` or `StepHandlerResult.failure()`.
+
+## Accessing Task Context
+
+Use `get_input()` to read values from the task context (TAS-137 cross-language standard):
+
+```python
+# Read a top-level field from the task context
+cart_items = context.get_input("cart_items")
+customer_email = context.get_input("customer_email")
+
+# Read a nested object
+payment_info = context.get_input("payment_info")
+token = payment_info.get("token") if payment_info else None
+```
+
+## Accessing Dependency Results
+
+Use `get_dependency_result()` to read results from upstream steps. The return value
+is auto-unwrapped — you get the result dict directly:
+
+```python
+# Get the full result from an upstream step
+cart_result = context.get_dependency_result("validate_cart")
+total = cart_result.get("total", 0.0)
+
+# Combine data from multiple upstream steps
+payment_result = context.get_dependency_result("process_payment")
+inventory_result = context.get_dependency_result("update_inventory")
 ```
 
 ## Error Handling
 
-Use typed errors to control retry behavior:
+Return `StepHandlerResult.failure()` with an error type and retryable flag:
 
-```python path=null start=null
-from tasker_core.errors import PermanentError, RetryableError
-
-# Permanent error - will NOT be retried
-raise PermanentError(
-    "Invalid order data",
-    metadata={"error_code": "VALIDATION_ERROR"},
-)
-
-# Retryable error - will be retried based on step retry config
-raise RetryableError(
-    "Payment gateway timeout",
-    metadata={"gateway": "stripe", "timeout_ms": 30000},
-)
-```
-
-Or return failure results directly:
-
-```python path=null start=null
-# Non-retryable failure
-return self.failure(
-    message="Validation failed",
-    error_type="validation_error",
+```python
+# Non-retryable validation failure
+return StepHandlerResult.failure(
+    message="Payment declined: insufficient funds",
+    error_type=ErrorType.PERMANENT_ERROR,
     retryable=False,
-    error_code="INVALID_DATA"
+    error_code="PAYMENT_DECLINED",
 )
 
-# Retryable failure
-return self.failure(
-    message="External service unavailable",
-    error_type="network_error",
-    retryable=True
+# Retryable transient failure
+return StepHandlerResult.failure(
+    message="Payment gateway returned an error, will retry",
+    error_type=ErrorType.RETRYABLE_ERROR,
+    retryable=True,
+    error_code="GATEWAY_ERROR",
 )
 ```
+
+Error types available via the `ErrorType` enum:
+
+- `ErrorType.VALIDATION_ERROR` — Bad input data (non-retryable)
+- `ErrorType.PERMANENT_ERROR` — Business logic rejection (non-retryable)
+- `ErrorType.RETRYABLE_ERROR` — Transient failure (retryable)
+- `ErrorType.HANDLER_ERROR` — Internal handler error
 
 ## Task Template Configuration
 
-Define workflows in YAML:
+Generate a task template with `tasker-ctl`:
 
-```yaml path=null start=null
-name: checkout_workflow
-namespace_name: ecommerce
-version: "1.0.0"
-description: "E-commerce checkout workflow"
+```bash
+tasker-ctl template generate task_template \
+  --language python \
+  --param name=EcommerceOrderProcessing \
+  --param namespace=ecommerce \
+  --param handler_callable=ecommerce.task_handlers.OrderProcessingHandler
+```
 
+This generates a YAML file defining the workflow. Here is a multi-step example from
+the ecommerce example app:
+
+```yaml
+name: ecommerce_order_processing
+namespace_name: ecommerce_py
+version: 1.0.0
+description: "Complete e-commerce order processing workflow"
+metadata:
+  author: FastAPI Example Application
+  tags:
+    - namespace:ecommerce
+    - pattern:order_processing
+    - language:python
+task_handler:
+  callable: ecommerce.task_handlers.OrderProcessingHandler
+  initialization:
+    input_validation:
+      required_fields:
+        - items
+        - customer_email
+system_dependencies:
+  primary: default
+  secondary: []
+input_schema:
+  type: object
+  required:
+    - items
+    - customer_email
+  properties:
+    items:
+      type: array
+      items:
+        type: object
+        required: [sku, name, quantity, unit_price]
+    customer_email:
+      type: string
+      format: email
 steps:
   - name: validate_cart
-    description: "Validate cart items and calculate totals"
+    description: "Validate cart items, calculate totals"
     handler:
-      callable: ecommerce.step_handlers.ValidateCartHandler
-      initialization: {}
+      callable: validate_cart
     dependencies: []
     retry:
       retryable: true
@@ -307,41 +220,50 @@ steps:
       max_backoff_ms: 5000
 
   - name: process_payment
-    description: "Charge payment method"
+    description: "Process customer payment"
     handler:
-      callable: ecommerce.step_handlers.ProcessPaymentHandler
-      initialization: {}
+      callable: process_payment
     dependencies:
       - validate_cart
     retry:
       retryable: true
-      max_attempts: 3
+      max_attempts: 2
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
   - name: update_inventory
-    description: "Reserve inventory"
+    description: "Reserve inventory for order items"
     handler:
-      callable: ecommerce.step_handlers.UpdateInventoryHandler
-      initialization: {}
+      callable: update_inventory
     dependencies:
-      - validate_cart
+      - process_payment
     retry:
       retryable: true
-      max_attempts: 3
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
+
+  - name: create_order
+    description: "Create order record"
+    handler:
+      callable: create_order
+    dependencies:
+      - update_inventory
+    retry:
+      retryable: true
+      max_attempts: 2
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
   - name: send_confirmation
-    description: "Send order confirmation"
+    description: "Send order confirmation email"
     handler:
-      callable: ecommerce.step_handlers.SendConfirmationHandler
-      initialization: {}
+      callable: send_confirmation
     dependencies:
-      - process_payment
-      - update_inventory
+      - create_order
     retry:
       retryable: true
       max_attempts: 2
@@ -350,246 +272,117 @@ steps:
       max_backoff_ms: 5000
 ```
 
-## Handler Registration
+Key fields:
 
-Register handlers using the registry:
+- **`metadata`** — Tags, authorship, and documentation links
+- **`task_handler`** — The top-level handler and initialization config
+- **`system_dependencies`** — External service connections the workflow requires
+- **`input_schema`** — JSON Schema validating task input before execution
+- **`steps[].handler.callable`** — Python callable name (e.g., `validate_cart` or `handlers.ecommerce.ValidateCartHandler`)
+- **`steps[].dependencies`** — DAG edges defining execution order
+- **`steps[].retry`** — Per-step retry policy with backoff
 
-```python path=null start=null
-from tasker_core import HandlerRegistry
+## Handler Variants
 
-registry = HandlerRegistry()
-registry.register("validate_cart", ValidateCartHandler)
-registry.register("process_payment", ProcessPaymentHandler)
+### API Handler (`step_handler_api`)
+
+```bash
+tasker-ctl template generate step_handler_api \
+  --language python \
+  --param name=FetchUser \
+  --param module_name=handlers \
+  --param base_url=https://api.example.com
 ```
+
+Generates a handler that extends `APIMixin` with `StepHandler`, providing HTTP methods
+(`get`, `post`, `put`, `delete`) with automatic error classification and retry support
+via `httpx`.
+
+### Decision Handler (`step_handler_decision`)
+
+```bash
+tasker-ctl template generate step_handler_decision \
+  --language python \
+  --param name=RouteOrder \
+  --param module_name=handlers
+```
+
+Generates a handler that extends `DecisionHandler`, providing `decision_success()` for
+routing workflows to different downstream step sets based on runtime conditions.
+
+### Batchable Handler (`step_handler_batchable`)
+
+```bash
+tasker-ctl template generate step_handler_batchable \
+  --language python \
+  --param name=ProcessRecords \
+  --param module_name=handlers
+```
+
+Generates an Analyzer/Worker pattern with two handler classes:
+`ProcessRecordsAnalyzerHandler` divides work into cursor ranges, and
+`ProcessRecordsWorkerHandler` processes batches in parallel.
 
 ## Testing
 
-Write pytest tests for your handlers:
+The template generates a pytest test file alongside the handler:
 
-```python path=null start=null
-import pytest
-from tasker_core import StepHandlerResult
-from your_app.handlers import ValidateCartHandler
+```python
+import uuid
+from unittest.mock import MagicMock
 
-
-def build_test_context(task_context: dict):
-    """Helper to create test contexts."""
-    # Implementation depends on your test setup
-    pass
+from handlers.ecommerce import ValidateCartHandler
 
 
 class TestValidateCartHandler:
     def test_validates_cart_successfully(self):
         handler = ValidateCartHandler()
-        context = build_test_context({
-            "cart_items": [
-                {"product_id": 1, "quantity": 2}
-            ]
-        })
+        context = MagicMock()
+        context.get_input = MagicMock(
+            side_effect=lambda key: [
+                {"sku": "SKU-001", "name": "Widget", "quantity": 2, "unit_price": 29.99}
+            ] if key in ("items", "cart_items") else None
+        )
 
         result = handler.call(context)
 
-        assert result.is_success
-        assert result.result["total"] == 59.98 + 4.80 + 5.99
+        assert result.success is True
+        assert result.result["total"] > 0
+        assert result.result["item_count"] == 1
 
     def test_rejects_empty_cart(self):
         handler = ValidateCartHandler()
-        context = build_test_context({"cart_items": []})
+        context = MagicMock()
+        context.get_input = MagicMock(return_value=None)
 
-        with pytest.raises(PermanentError) as exc_info:
-            handler.call(context)
+        result = handler.call(context)
 
-        assert exc_info.value.metadata["error_code"] == "MISSING_CART_ITEMS"
-
-    def test_handles_out_of_stock(self):
-        handler = ValidateCartHandler()
-        context = build_test_context({
-            "cart_items": [
-                {"product_id": 1, "quantity": 1000}  # More than stock
-            ]
-        })
-
-        with pytest.raises(RetryableError):
-            handler.call(context)
+        assert result.success is False
 ```
 
-Run tests:
+Test handlers that use dependency results by configuring `get_dependency_result`:
 
-```bash
-pytest tests/
+```python
+def test_creates_order_from_upstream_data(self):
+    handler = CreateOrderHandler()
+    context = MagicMock()
+    context.get_input = MagicMock(
+        side_effect=lambda key: "test@example.com" if key == "customer_email" else None
+    )
+    context.get_dependency_result = MagicMock(side_effect=lambda step: {
+        "validate_cart": {"total": 64.79, "validated_items": []},
+        "process_payment": {"payment_id": "pay_abc", "transaction_id": "txn_xyz"},
+        "update_inventory": {"inventory_log_id": "log_123"},
+    }.get(step))
+
+    result = handler.call(context)
+
+    assert result.success is True
+    assert result.result["order_id"].startswith("ORD-")
 ```
-
-## Common Patterns
-
-### Type-Safe Context Access
-
-```python path=null start=null
-# TAS-137: Cross-language standard API
-value = context.get_input("field_name")
-
-# Get with default value
-batch_size = context.get_input_or("batch_size", 100)
-```
-
-### Dependency Result Access
-
-```python path=null start=null
-# Get computed result from upstream step
-result = context.get_dependency_result("step_name")
-
-# Extract nested field
-value = context.get_dependency_field("step_name", "nested", "field")
-```
-
-### Metadata for Observability
-
-```python path=null start=null
-return StepHandlerResult.success(
-    {"data": processed_data},
-    metadata={
-        "operation": "my_operation",
-        "input_refs": {
-            "field": 'context.get_input("field")'
-        },
-        "execution_hints": {
-            "items_processed": 100,
-            "duration_ms": 250
-        }
-    }
-)
-```
-
-### Handler with Dependencies
-
-```python path=null start=null
-class ProcessPaymentHandler(StepHandler):
-    handler_name = "process_payment"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # Get results from upstream steps
-        cart_result = context.get_dependency_result("validate_cart")
-        total = cart_result["total"]
-
-        # Get payment info from task context
-        payment_method = context.get_input("payment_method")
-        payment_token = context.get_input("payment_token")
-
-        # Process payment
-        payment_id = self._charge_payment(total, payment_method, payment_token)
-
-        return self.success({
-            "payment_id": payment_id,
-            "amount_charged": total,
-            "status": "completed"
-        })
-```
-
-### Batch Processing with Checkpoints
-
-Checkpoint state is accessed via `StepContext` properties. The `Batchable` mixin
-provides methods for creating batch outcomes:
-
-```python path=null start=null
-from tasker_core import StepHandler, StepContext, StepHandlerResult
-from tasker_core.batch_processing import Batchable
-
-class BatchProcessHandler(StepHandler, Batchable):
-    handler_name = "batch_process"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # Check for existing checkpoint via context properties
-        if context.has_checkpoint():
-            cursor = context.checkpoint_cursor
-            accumulated = context.accumulated_results or {}
-        else:
-            cursor = 0
-            accumulated = {"total": 0, "processed": 0}
-
-        # Process batch
-        batch_size = context.get_input_or("batch_size", 100)
-        items = self._fetch_items(cursor, batch_size)
-
-        for item in items:
-            accumulated["total"] += item["value"]
-            accumulated["processed"] += 1
-
-        if len(items) < batch_size:
-            # All done
-            return self.success(accumulated)
-        else:
-            # More to process - use batchable mixin methods
-            return self.batch_worker_success(
-                context,
-                result=accumulated,
-                cursor=cursor + batch_size
-            )
-```
-
-## Submitting Tasks via Client SDK
-
-The `tasker-py` package includes a `TaskerClient` wrapper that provides keyword-argument methods with sensible defaults and returns typed dataclass responses:
-
-```python path=null start=null
-from tasker_core import TaskerClient
-
-# Create a client (defaults: initiator="tasker-core-python", source_system="tasker-core")
-client = TaskerClient(initiator="my-service", source_system="my-api")
-
-# Create a task
-response = client.create_task(
-    "order_fulfillment",
-    namespace="ecommerce",
-    context={
-        "customer": {"id": 123, "email": "customer@example.com"},
-        "items": [
-            {"product_id": 1, "quantity": 2, "price": 29.99}
-        ],
-    },
-    reason="New order received",
-)
-print(f"Task created: {response.task_uuid}")
-print(f"Status: {response.status}")
-
-# Get task status
-task = client.get_task(response.task_uuid)
-print(f"Task status: {task.status}")
-
-# List tasks with filters
-task_list = client.list_tasks(namespace="ecommerce", limit=10)
-for t in task_list.tasks:
-    print(f"  {t.task_uuid}: {t.status}")
-print(f"Total: {task_list.pagination.total_count}")
-
-# List task steps
-steps = client.list_task_steps(response.task_uuid)
-for step in steps:
-    print(f"Step {step.name}: {step.current_state}")
-
-# Check health
-health = client.health_check()
-print(f"API healthy: {health.healthy}")
-
-# Cancel a task
-client.cancel_task(response.task_uuid)
-```
-
-### Available Client Methods
-
-| Method | Returns | Description |
-|--------|---------|-------------|
-| `create_task(name, *, namespace, context, version, reason, **kwargs)` | `TaskResponse` | Create a new task |
-| `get_task(task_uuid)` | `TaskResponse` | Get task by UUID |
-| `list_tasks(*, limit, offset, namespace, status)` | `TaskListResponse` | List tasks with filters |
-| `cancel_task(task_uuid)` | `dict` | Cancel a task |
-| `list_task_steps(task_uuid)` | `list[StepResponse]` | List workflow steps |
-| `get_step(task_uuid, step_uuid)` | `StepResponse` | Get specific step |
-| `get_step_audit_history(task_uuid, step_uuid)` | `list[StepAuditResponse]` | Get step audit trail |
-| `health_check()` | `HealthResponse` | Check API health |
-
-Response types are frozen dataclasses with typed fields (e.g., `TaskResponse.task_uuid`, `TaskResponse.status`, `TaskListResponse.pagination.total_count`).
 
 ## Next Steps
 
-- See [Architecture](../architecture/README.md) for system design
-- See [Workers Reference](../workers/README.md) for advanced patterns
-- See the [tasker-core workers/python](https://github.com/tasker-systems/tasker-core/tree/main/workers/python) for complete examples
+- See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
+- See [Architecture](../architecture/README.md) for system design details
+- Browse the [FastAPI example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app) for complete handler implementations

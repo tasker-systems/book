@@ -1,81 +1,128 @@
-# Rust Guide
+# Building with Rust
 
-This guide covers using Tasker with native Rust step handlers.
+This guide covers building Tasker step handlers with native Rust using the
+`tasker-worker-rust` and `tasker-shared` crates in an Axum application.
 
 ## Quick Start
 
-```bash
-# Add dependencies to Cargo.toml
+Add dependencies to your `Cargo.toml`:
+
+```toml
 [dependencies]
 tasker-worker-rust = { git = "https://github.com/tasker-systems/tasker-core" }
 tasker-shared = { git = "https://github.com/tasker-systems/tasker-core" }
-async-trait = "0.1"
 serde_json = "1.0"
-anyhow = "1.0"
+serde = { version = "1.0", features = ["derive"] }
 ```
+
+Generate a step handler with `tasker-ctl`:
+
+```bash
+tasker-ctl template generate step_handler \
+  --language rust \
+  --param name=ValidateCart
+```
+
+This creates a handler struct implementing the `RustStepHandler` trait.
 
 ## Writing a Step Handler
 
-Rust step handlers implement the `RustStepHandler` trait using `async_trait`:
+Rust supports two handler patterns: standalone functions (used in the example apps) and
+the `RustStepHandler` trait (used in the generated templates).
 
-```rust path=null start=null
-use anyhow::Result;
-use async_trait::async_trait;
-use tasker_shared::types::TaskSequenceStep;
-use tasker_shared::messaging::StepExecutionResult;
-use tasker_worker_rust::RustStepHandler;
-use tasker_worker_rust::step_handlers::StepHandlerConfig;
+### Standalone Function Pattern
 
-#[async_trait]
-pub trait RustStepHandler: Send + Sync {
-    fn new(config: StepHandlerConfig) -> Self;
-    fn name(&self) -> &str;
-    async fn call(
-        &self,
-        step_data: &TaskSequenceStep,
-    ) -> Result<StepExecutionResult>;
+The example apps use plain functions that take context as `&Value` and return
+`Result<Value, String>`:
+
+```rust
+use serde_json::{json, Value};
+
+pub fn validate_cart(context: &Value) -> Result<Value, String> {
+    let cart_items: Vec<CartItem> =
+        serde_json::from_value(context.get("cart_items").cloned().unwrap_or(json!([])))
+            .map_err(|e| format!("Invalid cart_items format: {}", e))?;
+
+    if cart_items.is_empty() {
+        return Err("Cart cannot be empty".to_string());
+    }
+
+    let mut validated_items = Vec::new();
+    let mut subtotal = 0.0_f64;
+
+    for item in &cart_items {
+        if item.quantity <= 0 {
+            return Err(format!(
+                "Invalid quantity {} for product {}",
+                item.quantity, item.product_id
+            ));
+        }
+
+        let line_total = item.price * item.quantity as f64;
+        subtotal += line_total;
+
+        validated_items.push(json!({
+            "product_id": item.product_id,
+            "quantity": item.quantity,
+            "unit_price": item.price,
+            "line_total": (line_total * 100.0).round() / 100.0
+        }));
+    }
+
+    let tax = (subtotal * 0.08 * 100.0).round() / 100.0;
+    let total = ((subtotal + tax) * 100.0).round() / 100.0;
+
+    Ok(json!({
+        "validated_items": validated_items,
+        "subtotal": subtotal,
+        "tax": tax,
+        "total": total,
+        "item_count": validated_items.len()
+    }))
 }
 ```
 
-### Minimal Handler Example
+### RustStepHandler Trait Pattern
 
-```rust path=null start=null
+The generated template uses the `RustStepHandler` trait with async support:
+
+```rust
 use anyhow::Result;
 use async_trait::async_trait;
 use serde_json::json;
 use std::time::Instant;
-use tasker_shared::messaging::StepExecutionResult;
 use tasker_shared::types::TaskSequenceStep;
-use tasker_worker_rust::success_result;
+use tasker_worker_rust::{success_result, RustStepHandler};
 use tasker_worker_rust::step_handlers::StepHandlerConfig;
-use tasker_worker_rust::RustStepHandler;
 
-pub struct MyHandler {
+pub struct ValidateCartHandler {
     config: StepHandlerConfig,
 }
 
 #[async_trait]
-impl RustStepHandler for MyHandler {
+impl RustStepHandler for ValidateCartHandler {
     fn new(config: StepHandlerConfig) -> Self {
         Self { config }
     }
 
     fn name(&self) -> &str {
-        "my_handler"
+        "ecommerce_validate_cart"
     }
 
     async fn call(
         &self,
         step_data: &TaskSequenceStep,
-    ) -> Result<StepExecutionResult> {
+    ) -> Result<tasker_shared::messaging::StepExecutionResult> {
         let start = Instant::now();
+        let context = &step_data.task.context;
 
-        // Access task context data
-        let _input_data = &step_data.task.context;
+        // Deserialize and validate cart items
+        let cart_items = context.get("cart_items")
+            .and_then(|v| v.as_array())
+            .ok_or_else(|| anyhow::anyhow!("cart_items is required"))?;
 
-        // Perform your business logic
-        let result_data = json!({ "result": "processed" });
-
+        // Business logic...
+        let result_data = json!({ "validated": true });
         let duration_ms = start.elapsed().as_millis() as i64;
 
         Ok(success_result(
@@ -88,170 +135,157 @@ impl RustStepHandler for MyHandler {
 }
 ```
 
-### Accessing Task Context
+## Accessing Task Context
 
-Use `get_input()` for type-safe task context access:
+In standalone functions, context is a `&Value` — use serde_json accessors:
 
-```rust path=null start=null
-// Get required value (returns Error if missing)
-let customer_id: i64 = step_data.get_input("customer_id")?;
+```rust
+// Read from the task context (standalone function pattern)
+let customer_email = context
+    .get("customer_email")
+    .and_then(|v| v.as_str())
+    .unwrap_or("unknown@example.com");
 
-// Get optional value with default
-let timeout: i64 = step_data.get_input_or("timeout_ms", 5000);
+let payment_token = context
+    .get("payment_token")
+    .and_then(|v| v.as_str())
+    .unwrap_or("tok_test_success");
+
+// Deserialize a typed struct from context
+let cart_items: Vec<CartItem> =
+    serde_json::from_value(context.get("cart_items").cloned().unwrap_or(json!([])))
+        .map_err(|e| format!("Invalid cart_items: {}", e))?;
 ```
 
-### Accessing Dependency Results
+In the `RustStepHandler` trait pattern, context lives on `step_data.task.context`:
 
-Access results from upstream steps using `get_dependency_result_column_value()`:
-
-```rust path=null start=null
-// Get result from a specific upstream step
-let previous_result: i64 = step_data
-    .get_dependency_result_column_value("previous_step_name")?;
-
-// Handle complex JSON results
-let order_data: serde_json::Value = step_data
-    .get_dependency_result_column_value("validate_order")?;
-let total = order_data["order_total"].as_f64().unwrap_or(0.0);
+```rust
+let context = &step_data.task.context;
+let value = context["field_name"].as_str().unwrap_or("default");
 ```
 
-## Complete Example: Order Validation Handler
+## Accessing Dependency Results
 
-This example shows a real-world handler with validation and error handling:
+Dependency results are passed as a `HashMap<String, Value>` in standalone functions:
 
-```rust path=null start=null
-use anyhow::Result;
-use async_trait::async_trait;
-use serde_json::json;
-use std::time::Instant;
-use tasker_shared::messaging::StepExecutionResult;
-use tasker_shared::types::TaskSequenceStep;
-use tasker_worker_rust::{error_result, success_result, RustStepHandler};
-use tasker_worker_rust::step_handlers::StepHandlerConfig;
-
-pub struct ValidateOrderHandler {
-    config: StepHandlerConfig,
-}
-
-#[async_trait]
-impl RustStepHandler for ValidateOrderHandler {
-    fn new(config: StepHandlerConfig) -> Self {
-        Self { config }
-    }
-
-    fn name(&self) -> &str {
-        "validate_order"
-    }
-
-    async fn call(
-        &self,
-        step_data: &TaskSequenceStep,
-    ) -> Result<StepExecutionResult> {
-        let start = Instant::now();
-
-        // Access task context
-        let context = &step_data.task.context;
-        let customer = &context["customer"];
-        let customer_id = customer["id"].as_i64()
-            .ok_or_else(|| anyhow::anyhow!("Customer ID is required"))?;
-
-        // Extract and validate order items
-        let items = context["items"].as_array()
-            .ok_or_else(|| anyhow::anyhow!("Items array is required"))?;
-
-        if items.is_empty() {
-            let duration_ms = start.elapsed().as_millis() as i64;
-            return Ok(error_result(
-                step_data.workflow_step.workflow_step_uuid,
-                "Order items cannot be empty".to_string(),
-                Some("EMPTY_ORDER".to_string()),       // error_code
-                Some("ValidationError".to_string()),    // error_type
-                false,                                   // retryable
-                duration_ms,
-                None,                                    // context metadata
-            ));
-        }
-
-        // Calculate order total
-        let total: f64 = items.iter()
-            .map(|item| {
-                let price = item["price"].as_f64().unwrap_or(0.0);
-                let qty = item["quantity"].as_i64().unwrap_or(0) as f64;
-                price * qty
-            })
-            .sum();
-
-        let duration_ms = start.elapsed().as_millis() as i64;
-
-        Ok(success_result(
-            step_data.workflow_step.workflow_step_uuid,
-            json!({
-                "customer_id": customer_id,
-                "validated_items": items,
-                "order_total": total,
-                "validation_status": "complete",
-            }),
-            duration_ms,
-            None,
-        ))
-    }
-}
-```
-
-## Handler Registry
-
-Register handlers so the worker can discover them:
-
-```rust path=null start=null
+```rust
 use std::collections::HashMap;
-use std::sync::Arc;
 
-pub struct RustStepHandlerRegistry {
-    handlers: HashMap<String, Box<dyn Fn() -> Box<dyn RustStepHandler>>>,
+pub fn process_payment(
+    context: &Value,
+    dependency_results: &HashMap<String, Value>,
+) -> Result<Value, String> {
+    // Get result from upstream step
+    let cart_result = dependency_results
+        .get("validate_cart")
+        .ok_or("Missing validate_cart dependency result")?;
+
+    let total = cart_result
+        .get("total")
+        .and_then(|v| v.as_f64())
+        .unwrap_or(0.0);
+
+    // Use the upstream data...
+    Ok(json!({ "amount_charged": total }))
+}
+```
+
+## Error Handling
+
+In standalone functions, return `Err(String)` for errors:
+
+```rust
+// Validation error (non-retryable)
+if cart_items.is_empty() {
+    return Err("Cart cannot be empty".to_string());
 }
 
-impl RustStepHandlerRegistry {
-    pub fn new() -> Self {
-        let mut registry = Self {
-            handlers: HashMap::new(),
-        };
+// Business logic error
+return Err(format!(
+    "Insufficient stock for {}: requested {}, available {}",
+    product.name, requested, available
+));
+```
 
-        // Register handlers
-        registry.register("validate_order", || Box::new(ValidateOrderHandler));
-        registry.register("process_payment", || Box::new(ProcessPaymentHandler));
+In the `RustStepHandler` trait pattern, use `error_result` for structured errors:
 
-        registry
-    }
+```rust
+use tasker_worker_rust::error_result;
 
-    pub fn register<F>(&mut self, name: &str, factory: F)
-    where
-        F: Fn() -> Box<dyn RustStepHandler> + 'static,
-    {
-        self.handlers.insert(name.to_string(), Box::new(factory));
-    }
+// Non-retryable validation error
+Ok(error_result(
+    step_data.workflow_step.workflow_step_uuid,
+    "Invalid order data".to_string(),
+    Some("VALIDATION_ERROR".to_string()),
+    Some("ValidationError".to_string()),
+    false,  // not retryable
+    duration_ms,
+    None,
+))
 
-    pub fn get_handler(&self, name: &str) -> Option<Box<dyn RustStepHandler>> {
-        self.handlers.get(name).map(|f| f())
-    }
-}
+// Retryable transient error
+Ok(error_result(
+    step_data.workflow_step.workflow_step_uuid,
+    "Payment gateway unreachable".to_string(),
+    Some("GATEWAY_ERROR".to_string()),
+    Some("NetworkError".to_string()),
+    true,  // retryable
+    duration_ms,
+    None,
+))
 ```
 
 ## Task Template Configuration
 
-Define workflows in YAML:
+Generate a task template with `tasker-ctl`:
 
-```yaml path=null start=null
-name: order_fulfillment
-namespace_name: ecommerce
-version: "1.0.0"
-description: "E-commerce order processing workflow"
+```bash
+tasker-ctl template generate task_template \
+  --language rust \
+  --param name=EcommerceOrderProcessing \
+  --param namespace=ecommerce \
+  --param handler_callable=ecommerce_order_processing
+```
 
+This generates a YAML file defining the workflow. Here is a multi-step example from
+the ecommerce example app:
+
+```yaml
+name: ecommerce_order_processing
+namespace_name: ecommerce_rs
+version: 1.0.0
+description: "Complete e-commerce order processing workflow"
+metadata:
+  author: Axum Example Application
+  tags:
+    - namespace:ecommerce
+    - pattern:order_processing
+    - language:rust
+task_handler:
+  callable: ecommerce_order_processing
+  initialization: {}
+system_dependencies:
+  primary: default
+  secondary: []
+input_schema:
+  type: object
+  required:
+    - cart_items
+    - customer_email
+  properties:
+    cart_items:
+      type: array
+      items:
+        type: object
+        required: [product_id, quantity]
+    customer_email:
+      type: string
+      format: email
 steps:
-  - name: validate_order
-    description: "Validate order data"
+  - name: validate_cart
+    description: "Validate cart items, calculate totals"
     handler:
-      callable: validate_order
-      initialization: {}
+      callable: ecommerce_validate_cart
     dependencies: []
     retry:
       retryable: true
@@ -260,39 +294,23 @@ steps:
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
-  - name: reserve_inventory
-    description: "Reserve items in warehouse"
-    handler:
-      callable: reserve_inventory
-      initialization: {}
-    dependencies:
-      - validate_order
-    retry:
-      retryable: true
-      max_attempts: 3
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
   - name: process_payment
-    description: "Charge customer"
+    description: "Process customer payment"
     handler:
-      callable: process_payment
-      initialization: {}
+      callable: ecommerce_process_payment
     dependencies:
-      - reserve_inventory
+      - validate_cart
     retry:
       retryable: true
-      max_attempts: 3
+      max_attempts: 2
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
 
-  - name: ship_order
-    description: "Ship the order"
+  - name: update_inventory
+    description: "Reserve inventory for order items"
     handler:
-      callable: ship_order
-      initialization: {}
+      callable: ecommerce_update_inventory
     dependencies:
       - process_payment
     retry:
@@ -301,205 +319,120 @@ steps:
       backoff: exponential
       backoff_base_ms: 100
       max_backoff_ms: 5000
+
+  - name: create_order
+    description: "Create order record"
+    handler:
+      callable: ecommerce_create_order
+    dependencies:
+      - update_inventory
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
+
+  - name: send_confirmation
+    description: "Send order confirmation email"
+    handler:
+      callable: ecommerce_send_confirmation
+    dependencies:
+      - create_order
+    retry:
+      retryable: true
+      max_attempts: 2
+      backoff: exponential
+      backoff_base_ms: 100
+      max_backoff_ms: 5000
 ```
 
-## Running the Worker
+Key fields:
 
-Bootstrap and run a native Rust worker:
-
-```rust path=null start=null
-use tasker_worker::WorkerBootstrap;
-use std::sync::Arc;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Initialize handler registry
-    let registry = Arc::new(RustStepHandlerRegistry::new());
-
-    // Create event handler
-    let event_system = get_global_event_system();
-    let event_handler = RustEventHandler::new(
-        registry,
-        event_system.clone(),
-        "rust-worker-1".to_string(),
-    );
-
-    // Start event handler
-    event_handler.start().await?;
-
-    // Bootstrap worker
-    let config = WorkerBootstrapConfig {
-        namespace: "order_fulfillment".to_string(),
-        ..Default::default()
-    };
-
-    let worker_handle = WorkerBootstrap::bootstrap_with_event_system(
-        config,
-        Some(event_system),
-    ).await?;
-
-    // Wait for shutdown signal
-    worker_handle.wait_for_shutdown().await?;
-
-    Ok(())
-}
-```
+- **`metadata`** — Tags, authorship, and documentation links
+- **`task_handler`** — The top-level handler and initialization config
+- **`system_dependencies`** — External service connections the workflow requires
+- **`input_schema`** — JSON Schema validating task input before execution
+- **`steps[].handler.callable`** — Snake-case function name (e.g., `ecommerce_validate_cart`)
+- **`steps[].dependencies`** — DAG edges defining execution order
+- **`steps[].retry`** — Per-step retry policy with backoff
 
 ## Testing
 
-Write integration tests with real database interactions:
+Test standalone handler functions directly:
 
-```rust path=null start=null
-#[tokio::test]
-async fn test_validate_order_handler() {
-    let handler = ValidateOrderHandler;
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+    use std::collections::HashMap;
 
-    // Create mock step data
-    let step_data = create_test_step_data(json!({
-        "customer": {"id": 123, "email": "test@example.com"},
-        "items": [
-            {"product_id": 1, "quantity": 2, "price": 29.99}
-        ]
-    }));
-
-    let result = handler.call(&step_data).await.unwrap();
-
-    assert!(result.success);
-    assert_eq!(result.result["order_total"], 59.98);
-}
-```
-
-Run tests:
-
-```bash
-cargo test --test integration
-```
-
-## Error Handling
-
-Return structured errors using the `error_result` helper:
-
-```rust path=null start=null
-use tasker_worker_rust::error_result;
-
-// Non-retryable validation error
-Ok(error_result(
-    step_data.workflow_step.workflow_step_uuid,
-    "Invalid order data".to_string(),
-    Some("VALIDATION_ERROR".to_string()),   // error_code
-    Some("ValidationError".to_string()),     // error_type
-    false,                                    // retryable
-    duration_ms,
-    None,                                     // context metadata
-))
-
-// Retryable transient error
-Ok(error_result(
-    step_data.workflow_step.workflow_step_uuid,
-    "Payment gateway timeout".to_string(),
-    Some("GATEWAY_TIMEOUT".to_string()),
-    Some("NetworkError".to_string()),
-    true,                                     // retryable
-    duration_ms,
-    Some(metadata),                           // HashMap<String, Value>
-))
-
-// Or use anyhow for unrecoverable errors
-Err(anyhow::anyhow!("Fatal system error"))
-```
-
-## Common Patterns
-
-### Context Access
-
-```rust path=null start=null
-// Access task context directly
-let context = &step_data.task.context;
-let value = context["field_name"].as_str().unwrap_or("default");
-
-// Access nested values
-let items = context["items"].as_array();
-```
-
-### Dependency Result Access
-
-```rust path=null start=null
-// Access dependency results from upstream steps
-let dep_results = &step_data.dependency_results;
-```
-
-## Submitting Tasks via Client SDK
-
-Rust applications can submit tasks directly using `tasker-client`:
-
-```rust path=null start=null
-use tasker_client::{OrchestrationApiClient, OrchestrationApiConfig};
-use tasker_shared::models::core::task_request::TaskRequest;
-
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    // Create client
-    let config = OrchestrationApiConfig::default();
-    let client = OrchestrationApiClient::new(config)?;
-
-    // Create a task
-    let task_request = TaskRequest {
-        name: "order_fulfillment".to_string(),
-        namespace: "ecommerce".to_string(),
-        version: "1.0.0".to_string(),
-        context: serde_json::json!({
-            "customer": {"id": 123, "email": "customer@example.com"},
-            "items": [
-                {"product_id": 1, "quantity": 2, "price": 29.99}
+    #[test]
+    fn test_validate_cart_success() {
+        let context = json!({
+            "cart_items": [
+                {"product_id": 1, "quantity": 2},
+                {"product_id": 2, "quantity": 1}
             ]
-        }),
-        initiator: "my-service".to_string(),
-        source_system: "api".to_string(),
-        reason: "New order received".to_string(),
-        ..Default::default()
-    };
+        });
 
-    let response = client.create_task(task_request).await?;
-    println!("Task created: {}", response.task_uuid);
+        let result = validate_cart(&context).unwrap();
 
-    // Get task status
-    let task = client.get_task(response.task_uuid).await?;
-    println!("Task status: {}", task.status);
-
-    // List task steps
-    let steps = client.list_task_steps(response.task_uuid).await?;
-    for step in steps {
-        println!("Step {}: {}", step.name, step.current_state);
+        assert!(result.get("total").unwrap().as_f64().unwrap() > 0.0);
+        assert_eq!(result.get("item_count").unwrap().as_i64().unwrap(), 3);
     }
 
-    Ok(())
+    #[test]
+    fn test_validate_cart_empty() {
+        let context = json!({"cart_items": []});
+
+        let result = validate_cart(&context);
+
+        assert!(result.is_err());
+        assert!(result.unwrap_err().contains("empty"));
+    }
+
+    #[test]
+    fn test_process_payment_with_dependency() {
+        let context = json!({
+            "payment_token": "tok_test_success",
+            "payment_method": "credit_card"
+        });
+
+        let mut deps = HashMap::new();
+        deps.insert("validate_cart".to_string(), json!({
+            "total": 64.79,
+            "validated_items": []
+        }));
+
+        let result = process_payment(&context, &deps).unwrap();
+
+        assert_eq!(result["status"], "completed");
+        assert_eq!(result["amount_charged"], 64.79);
+    }
 }
 ```
 
-### Configuration
+Test `RustStepHandler` implementations:
 
-Configure via environment variables or TOML config:
+```rust
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use tasker_worker_rust::StepHandlerConfig;
 
-```bash
-export ORCHESTRATION_URL=http://localhost:8080
-export ORCHESTRATION_API_KEY=your-api-key
-```
-
-Or create `.config/tasker-client.toml`:
-
-```toml path=null start=null
-[profiles.local]
-transport = "rest"
-orchestration_url = "http://localhost:8080"
-
-[profiles.production]
-transport = "grpc"
-orchestration_url = "https://tasker.example.com:9190"
-api_key = "your-production-key"
+    #[test]
+    fn test_handler_name() {
+        let config = StepHandlerConfig::new(json!({}));
+        let handler = ValidateCartHandler::new(config);
+        assert_eq!(handler.name(), "ecommerce_validate_cart");
+    }
+}
 ```
 
 ## Next Steps
 
-- See [Architecture](../architecture/README.md) for system design
-- See [Workers Reference](../workers/README.md) for advanced patterns
-- See the [tasker-core workers/rust](https://github.com/tasker-systems/tasker-core/tree/main/workers/rust) for complete examples
+- See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
+- See [Architecture](../architecture/README.md) for system design details
+- Browse the [Axum example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/axum-app) for complete handler implementations
