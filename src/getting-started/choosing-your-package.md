@@ -6,10 +6,10 @@ Tasker supports multiple languages through FFI bindings. Each language package p
 
 | Language | Package | Guide |
 |----------|---------|-------|
-| **Rust** | `tasker-worker` + `tasker-client` | [Rust Guide](rust.md) |
-| **Ruby** | `tasker-rb` | [Ruby Guide](ruby.md) |
-| **Python** | `tasker-py` | [Python Guide](python.md) |
-| **TypeScript** | `@tasker-systems/tasker` | [TypeScript Guide](typescript.md) |
+| **Rust** | `tasker-worker` + `tasker-client` | [Rust Guide](../building/rust.md) |
+| **Ruby** | `tasker-core-rb` | [Ruby Guide](../building/ruby.md) |
+| **Python** | `tasker-py` | [Python Guide](../building/python.md) |
+| **TypeScript** | `@tasker-systems/tasker` | [TypeScript Guide](../building/typescript.md) |
 
 ## How to Choose
 
@@ -81,4 +81,4 @@ pip install tasker-py
 npm install @tasker-systems/tasker
 ```
 
-See the individual language guides for detailed setup and examples.
+See the [individual language guides](../building/README.md) for detailed setup and examples.

@@ -40,15 +40,10 @@ DEST="${SRC_DIR}/contrib"
 mkdir -p "${DEST}"
 
 # ---------------------------------------------------------------------------
-# Sync contrib README
+# contrib/README.md is book-owned (consumer-facing landing page)
+# Skip syncing to avoid overwriting with internal planning doc
 # ---------------------------------------------------------------------------
-if [[ -f "${CONTRIB_DIR}/docs/README.md" ]]; then
-    cp "${CONTRIB_DIR}/docs/README.md" "${DEST}/README.md"
-    echo "  docs/README.md -> copied"
-elif [[ -f "${CONTRIB_DIR}/README.md" ]]; then
-    cp "${CONTRIB_DIR}/README.md" "${DEST}/README.md"
-    echo "  README.md -> copied"
-fi
+echo "  README.md -> skipped (book-owned)"
 
 # ---------------------------------------------------------------------------
 # Sync contrib-specific docs (skip ticket-specs)

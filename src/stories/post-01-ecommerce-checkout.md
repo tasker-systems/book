@@ -365,3 +365,7 @@ The complete e-commerce checkout workflow is implemented in all four supported l
 ## What's Next
 
 A linear pipeline works well for checkout, but real systems have steps that can run in parallel. In [Post 02: Data Pipeline Resilience](post-02-data-pipeline.md), we'll build an analytics ETL workflow where three data sources are extracted concurrently, transformed independently, and then aggregated — demonstrating Tasker's DAG execution engine and how parallel steps dramatically reduce pipeline runtime.
+
+---
+
+*See this pattern implemented in all four frameworks on the [Example Apps](../contrib/example-apps.md) page.*

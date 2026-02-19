@@ -1,63 +1,42 @@
-# Tasker Contrib Documentation
+# Framework Integrations
 
-> Consumer-facing documentation is published in [The Tasker Book](https://github.com/tasker-systems/tasker-book).
-> See the [Documentation Architecture](https://github.com/tasker-systems/tasker-book/blob/main/DOCUMENTATION-ARCHITECTURE.md) for the cross-repo ownership model.
+Tasker Contrib provides two things for each supported language:
 
-## Quick Links
+1. **CLI plugin templates** — code generators for `tasker-ctl` that scaffold handlers, task definitions, and infrastructure configuration
+2. **Example applications** — fully working apps that demonstrate real-world workflow patterns against published Tasker packages
 
-| Document | Description |
-|----------|-------------|
-| [README.md](../README.md) | Repository overview, vision, and structure |
-| [DEVELOPMENT.md](../DEVELOPMENT.md) | Local development and cross-repo setup |
+## The Integration Pattern
 
-## Implementation Specifications
+All four framework integrations follow the same pattern:
 
-| Ticket | Status | Description |
-|--------|--------|-------------|
-| [TAS-126](ticket-specs/TAS-126/) | 🚧 In Progress | Foundations: repo structure, vision, CLI plugin design |
+1. **Bootstrap** — `tasker-ctl init` creates project structure with infrastructure config
+2. **Create** — `tasker-ctl template generate` scaffolds handlers and task templates
+3. **Process** — Your handlers receive `StepContext`, execute business logic, return `StepHandlerResult`
+4. **Query** — Use the Tasker client SDK to submit tasks and check status
 
-### TAS-126 Documents
+The framework integration layer is intentionally thin: it translates your framework's idioms (Rails generators, FastAPI dependency injection, Bun middleware) into Tasker concepts without inventing new abstractions.
 
-| Document | Description |
-|----------|-------------|
-| [README.md](ticket-specs/TAS-126/README.md) | Ticket summary and deliverables |
-| [foundations.md](ticket-specs/TAS-126/foundations.md) | Architectural deep-dive and design rationale |
-| [rails.md](ticket-specs/TAS-126/rails.md) | Rails-specific implementation plan |
-| [cli-plugin-architecture.md](ticket-specs/TAS-126/cli-plugin-architecture.md) | CLI plugin system design |
+## Available Integrations
 
-## Architecture
+| Framework | Language | SDK Package | CLI Plugin |
+|-----------|----------|-------------|------------|
+| Rails | Ruby | `tasker-core-rb` | `tasker-contrib-rails` |
+| FastAPI | Python | `tasker-py` | `tasker-contrib-python` |
+| Hono/Bun | TypeScript | `@tasker-systems/tasker` | `tasker-contrib-typescript` |
+| Axum | Rust | `tasker-worker` | `tasker-contrib-rust` |
 
-The [foundations document](ticket-specs/TAS-126/foundations.md) covers:
+Each plugin provides templates for all [handler types](../getting-started/handler-types.md): step, API, decision, and batchable (Rust provides step handler only).
 
-- Design rationale (why separate repos, why Railtie over Engine)
-- Framework integration patterns (lifecycle, events, generators)
-- Configuration architecture (three-layer model)
-- Testing architecture (unit, integration, E2E)
-- Versioning strategy
+## Example Applications
 
-## Milestones
+Four fully working apps demonstrate the same five workflow patterns, each using its SDK's idiomatic style. See the [Example Apps](example-apps.md) page for details on running them and what they demonstrate.
 
-| Milestone | Status | Description |
-|-----------|--------|-------------|
-| Foundations and CLI | 🚧 In Progress | TAS-126: Repo structure, vision, CLI plugin design |
-| Rails | 📋 Planned | tasker-contrib-rails gem, generators, event bridge |
-| Python | 📋 Planned | tasker-contrib-fastapi, pytest integration |
-| TypeScript | 📋 Planned | tasker-contrib-bun, Bun.serve patterns |
+## Getting Started
 
-## Framework Guides
+- **[Quick Start](../building/quick-start.md)** — Clone an example app and run it in 5 minutes
+- **[Using tasker-ctl](../building/tasker-ctl.md)** — Bootstrap a project with the CLI tool
+- **[Choosing Your Package](../getting-started/choosing-your-package.md)** — Which language SDK fits your project
 
-*Coming soon as packages are implemented*
+## Source Repository
 
-- Rails Integration Guide
-- FastAPI Integration Guide
-- Bun Integration Guide
-- Axum Integration Guide
-
-## Operational Guides
-
-*Coming soon*
-
-- Helm Chart Deployment
-- Terraform Infrastructure
-- Monitoring Setup
-- Production Checklist
+[tasker-systems/tasker-contrib](https://github.com/tasker-systems/tasker-contrib) on GitHub.

@@ -15,3 +15,5 @@ A progressive-disclosure blog series that teaches Tasker concepts through real-w
 | 06: Batch Processing | Batch step patterns | Planned |
 | 07: Conditional Workflows | Decision handlers | Planned |
 | 08: Production Debugging | DLQ investigation | Planned |
+
+Every published story (01-04) has working implementations in all four frameworks. See the [Example Apps](../contrib/example-apps.md) page for how to run them.
