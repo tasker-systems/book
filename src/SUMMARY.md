@@ -164,15 +164,6 @@
 
 ---
 
-# Operations
-
-- [Backpressure Monitoring](operations/backpressure-monitoring.md)
-- [Checkpoint Operations](operations/checkpoint-operations.md)
-- [Connection Pool Tuning](operations/connection-pool-tuning.md)
-- [Mpsc Channel Tuning](operations/mpsc-channel-tuning.md)
-
----
-
 # Testing
 
 - [Cluster Testing Guide](testing/cluster-testing-guide.md)

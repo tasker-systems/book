@@ -48,7 +48,6 @@ SYNC_DIRS=(
     "generated"
     "guides"
     "observability"
-    "operations"
     "principles"
     "reference"
     "security"

@@ -17,7 +17,6 @@ Owns **contributor-facing** and **architecture reference** content:
 | Guides | `docs/guides/` | Practical implementation guides (quick-start, workflows, caching) |
 | Workers | `docs/workers/` | Language-specific handler development |
 | Reference | `docs/reference/` | SQL functions, table management, FFI telemetry |
-| Operations | `docs/operations/` | Channel tuning, backpressure monitoring |
 | Observability | `docs/observability/` | Metrics, logging, tracing |
 | Testing | `docs/testing/` | Test infrastructure, cluster testing |
 | Benchmarks | `docs/benchmarks/` | Performance validation |
@@ -59,7 +58,6 @@ graph LR
         CoreGuides["docs/guides/"]
         CoreWorkers["docs/workers/"]
         CoreRef["docs/reference/"]
-        CoreOps["docs/operations/"]
         CoreOther["docs/{principles,auth,\nobservability,testing,\nbenchmarks,security,\ndecisions,generated}/"]
         CoreGS["docs/getting-started/"]
         CoreDev["docs/development/"]
@@ -72,7 +70,7 @@ graph LR
     end
 
     subgraph "tasker-book"
-        BookSynced["src/{architecture,guides,\nworkers,reference,\noperations,...}/"]
+        BookSynced["src/{architecture,guides,\nworkers,reference,...}/"]
         BookGS["src/getting-started/"]
         BookContrib["src/contrib/"]
         BookGenerated["src/generated/"]
@@ -104,7 +102,6 @@ These directories are copied from `tasker-core/docs/` into `tasker-book/src/` us
 - `generated/` — Core-generated content (with local file preservation)
 - `guides/` — Implementation guides
 - `observability/` — Monitoring docs
-- `operations/` — Production operations
 - `principles/` — Design philosophy
 - `reference/` — Technical specifications
 - `security/` — Security docs
@@ -135,7 +132,7 @@ When writing new documentation, use this decision tree:
    - Example app walkthroughs → **Author in tasker-book** (`src/contrib/`)
 
 2. **Is it about Tasker's internal architecture, design, or operation?**
-   - Architecture, guides, reference, operations → **Author in tasker-core** (`docs/`)
+   - Architecture, guides, reference → **Author in tasker-core** (`docs/`)
    - These will be synced to the book automatically
 
 3. **Is it about a specific example app or SDK?**

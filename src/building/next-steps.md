@@ -20,8 +20,8 @@ The [Engineering Stories](../stories/index.md) series teaches Tasker concepts th
 
 ### Operations
 
-- [Backpressure Monitoring](../operations/backpressure-monitoring.md) — Monitor and tune backpressure
-- [Connection Pool Tuning](../operations/connection-pool-tuning.md) — Database connection management
+- [Backpressure Architecture](../architecture/backpressure-architecture.md) — Monitor and tune backpressure
+- [Configuration Management](../guides/configuration-management.md) — Database connection and pool management
 - [Observability](../observability/index.md) — Metrics, tracing, and logging
 - [Auth & Security](../auth/index.md) — Authentication and authorization
 

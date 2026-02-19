@@ -698,7 +698,7 @@ end
 - [Dual-Channel Event System ADR](../decisions/adr-005-dual-event-system.md) - Dual-channel event system decision
 - [FFI Callback Safety](../workers/ffi-safety.md) - FFI guidelines
 - [RCA: Parallel Execution Timing Bugs](../decisions/rca-parallel-execution-timing-bugs.md) - Lessons learned
-- [Backpressure Monitoring Runbook](../operations/backpressure-monitoring.md) - Metrics and alerting
+- [Backpressure Architecture](backpressure-architecture.md) - Metrics and alerting
 
 ---
 
