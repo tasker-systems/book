@@ -166,7 +166,6 @@ generate_section() {
     fi
 
     generate_section "Auth"            "auth"           "Authentication & Authorization"
-    generate_section "Operations"      "operations"     "Operations"
     generate_section "Testing"         "testing"        "Testing"
     generate_section "Security"        "security"       "Security"
     generate_section "Decisions"       "decisions"      "Architectural Decisions"

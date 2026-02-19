@@ -110,32 +110,6 @@ fixup "workers" \
     "workers/: ../events-and-commands.md -> ../architecture/"
 
 # =========================================================================
-# 2. From operations/: parent-relative links to architecture files
-#    ../backpressure-architecture.md -> ../architecture/backpressure-architecture.md
-#    ../circuit-breakers.md -> ../architecture/circuit-breakers.md
-#    ../worker-event-systems.md -> ../architecture/worker-event-systems.md
-# =========================================================================
-fixup "operations" \
-    '](../backpressure-architecture.md' \
-    '](../architecture/backpressure-architecture.md' \
-    "operations/: ../backpressure-architecture.md -> ../architecture/"
-
-fixup "operations" \
-    '](../circuit-breakers.md' \
-    '](../architecture/circuit-breakers.md' \
-    "operations/: ../circuit-breakers.md -> ../architecture/"
-
-fixup "operations" \
-    '](../worker-event-systems.md' \
-    '](../architecture/worker-event-systems.md' \
-    "operations/: ../worker-event-systems.md -> ../architecture/"
-
-fixup "operations" \
-    '](../development/mpsc-channel-guidelines.md' \
-    '](../architecture/backpressure-architecture.md' \
-    "operations/: ../development/mpsc-channel-guidelines.md -> ../architecture/backpressure-architecture.md"
-
-# =========================================================================
 # 3. From observability/: parent-relative links to architecture files
 #    ../domain-events.md -> ../architecture/domain-events.md
 #    ../backpressure-architecture.md -> ../architecture/backpressure-architecture.md
@@ -213,13 +187,13 @@ fixup "architecture" \
 
 fixup "architecture" \
     '](operations/backpressure-monitoring.md' \
-    '](../operations/backpressure-monitoring.md' \
-    "architecture/: operations/backpressure-monitoring.md -> ../operations/"
+    '](backpressure-architecture.md' \
+    "architecture/: operations/backpressure-monitoring.md -> backpressure-architecture.md (operations removed)"
 
 fixup "architecture" \
     '](operations/mpsc-channel-tuning.md' \
-    '](../operations/mpsc-channel-tuning.md' \
-    "architecture/: operations/mpsc-channel-tuning.md -> ../operations/"
+    '](../guides/configuration-management.md' \
+    "architecture/: operations/mpsc-channel-tuning.md -> ../guides/configuration-management.md (operations removed)"
 
 fixup "architecture" \
     '](quick-start.md' \
@@ -451,6 +425,60 @@ fixup "observability" \
     '](./phase-5.4-distributed-benchmarks-plan.md' \
     '](benchmark-strategy-summary.md' \
     "observability/: phase-5.4 plan -> benchmark-strategy-summary.md"
+
+# =========================================================================
+# 18. Operations section removed — redirect any remaining operations/ refs
+#     These may appear in any section after sync
+# =========================================================================
+for section in architecture building guides observability reference workers; do
+    fixup "${section}" \
+        '](../operations/backpressure-monitoring.md' \
+        '](../architecture/backpressure-architecture.md' \
+        "${section}/: ../operations/backpressure-monitoring.md -> ../architecture/backpressure-architecture.md (operations removed)"
+
+    fixup "${section}" \
+        '](../operations/connection-pool-tuning.md' \
+        '](../guides/configuration-management.md' \
+        "${section}/: ../operations/connection-pool-tuning.md -> ../guides/configuration-management.md (operations removed)"
+
+    fixup "${section}" \
+        '](../operations/mpsc-channel-tuning.md' \
+        '](../architecture/backpressure-architecture.md' \
+        "${section}/: ../operations/mpsc-channel-tuning.md -> ../architecture/backpressure-architecture.md (operations removed)"
+
+    fixup "${section}" \
+        '](../operations/checkpoint-operations.md' \
+        '](../guides/configuration-management.md' \
+        "${section}/: ../operations/checkpoint-operations.md -> ../guides/configuration-management.md (operations removed)"
+done
+
+# =========================================================================
+# 19. README.md → index.md in all content links
+#     mdBook converts README.md to index.html for chapters, but does NOT
+#     rewrite inline markdown links — they render as README.html (404).
+#     SUMMARY.md must keep README.md (mdBook requires it).
+# =========================================================================
+echo "Fixing README.md -> index.md in inline links..."
+readme_fixed=0
+while IFS= read -r -d '' file; do
+    # Skip SUMMARY.md — mdBook needs README.md there
+    if [[ "${file}" == *"SUMMARY.md" ]]; then
+        continue
+    fi
+    # Only fix markdown link targets ](path/README.md), not backtick refs
+    if grep -q '](.*README\.md' "${file}" 2>/dev/null; then
+        sed_i 's|](\(\.\.\/\)README\.md|](\1index.md|g' "${file}"
+        sed_i 's|](\([^)]*\)/README\.md)|](\1/index.md)|g' "${file}"
+        sed_i 's|](README\.md)|](index.md)|g' "${file}"
+        sed_i 's|](README\.md#\([^)]*\))|](index.md#\1)|g' "${file}"
+        readme_fixed=$((readme_fixed + 1))
+    fi
+done < <(find "${SRC_DIR}" -name '*.md' -print0)
+
+if [[ ${readme_fixed} -gt 0 ]]; then
+    fixed=$((fixed + readme_fixed))
+    echo "  README.md -> index.md (${readme_fixed} files)"
+fi
 
 # ---------------------------------------------------------------------------
 # Summary

@@ -561,7 +561,7 @@ starvation_warning_threshold_ms = 10000  # Warn if event waits this long
 
 ## Monitoring and Alerting
 
-See [Backpressure Monitoring Runbook](../operations/backpressure-monitoring.md) for:
+Key areas to monitor for backpressure:
 
 - Key metrics to monitor
 - Alerting thresholds
@@ -584,7 +584,7 @@ See [Backpressure Monitoring Runbook](../operations/backpressure-monitoring.md) 
 
 - [Worker Event Systems](worker-event-systems.md) - Dual-channel architecture
 - [MPSC Channel Guidelines](backpressure-architecture.md) - Channel creation guide
-- [MPSC Channel Tuning](../operations/mpsc-channel-tuning.md) - Operational tuning
+- [Configuration Management](../guides/configuration-management.md) - Operational tuning
 - [Bounded MPSC Channels ADR](../decisions/adr-002-bounded-mpsc-channels.md)
 
 ---
