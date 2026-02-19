@@ -258,4 +258,4 @@ Auth tests are compatible with CI without special environment setup:
 
 - [Permissions](permissions.md) — Full permission vocabulary and endpoint mapping
 - [Configuration](configuration.md) — Auth config reference
-- [`config/tasker/generated/auth-test.toml`](../../config/tasker/generated/auth-test.toml) — Test auth configuration
+- [`config/tasker/generated/auth-test.toml`](https://github.com/tasker-systems/tasker-core/blob/main/config/tasker/generated/auth-test.toml) — Test auth configuration

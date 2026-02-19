@@ -4,7 +4,7 @@
 **Audience**: TypeScript/JavaScript Developers
 **Status**: Active
 **Package**: `@tasker-systems/tasker`
-**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
+**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../architecture/worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
 <- Back to [Worker Crates Overview](README.md)
 
 ---
@@ -1172,4 +1172,4 @@ typescript-worker:
 - [Patterns and Practices](patterns-and-practices.md) - Common patterns
 - [Python Worker](python.md) - Python implementation
 - [Ruby Worker](ruby.md) - Ruby implementation
-- [Worker Event Systems](../worker-event-systems.md) - Architecture details
+- [Worker Event Systems](../architecture/worker-event-systems.md) - Architecture details

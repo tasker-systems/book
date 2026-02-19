@@ -3,7 +3,7 @@
 **Last Updated**: 2025-01-19
 **Audience**: Architects, Developers
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [States and Lifecycles](states-and-lifecycles.md) | [Events and Commands](events-and-commands.md) | [Task Readiness & Execution](task-and-step-readiness-and-execution.md)
+**Related Docs**: [Documentation Hub](README.md) | [States and Lifecycles](states-and-lifecycles.md) | [Events and Commands](events-and-commands.md) | [Task Readiness & Execution](../reference/task-and-step-readiness-and-execution.md)
 
 ← Back to [Documentation Hub](README.md)
 
@@ -691,7 +691,7 @@ This enhancement is deferred (implementation not yet scheduled).
 ## SQL Function Atomicity
 
 **File**: `tasker-shared/src/database/sql/`
-**Documented**: [Task Readiness & Execution](task-and-step-readiness-and-execution.md)
+**Documented**: [Task Readiness & Execution](../reference/task-and-step-readiness-and-execution.md)
 
 ### Atomic State Transitions
 

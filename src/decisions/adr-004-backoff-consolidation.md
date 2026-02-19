@@ -317,10 +317,10 @@ Since this is greenfield alpha:
 
 ## References
 
-- [Task and Step Readiness Documentation](../task-and-step-readiness-and-execution.md)
-- [States and Lifecycles Documentation](../states-and-lifecycles.md)
-- [BackoffCalculator Implementation](../../tasker-orchestration/src/orchestration/backoff_calculator.rs)
-- [SQL Migration 20250927000000](../../migrations/20250927000000_add_waiting_for_retry_state.sql)
+- [Task and Step Readiness Documentation](../reference/task-and-step-readiness-and-execution.md)
+- [States and Lifecycles Documentation](../architecture/states-and-lifecycles.md)
+- [BackoffCalculator Implementation](https://github.com/tasker-systems/tasker-core/blob/main/tasker-orchestration/src/orchestration/backoff_calculator.rs)
+- [SQL Migration 20250927000000](https://github.com/tasker-systems/tasker-core/blob/main/migrations/20250927000000_add_waiting_for_retry_state.sql)
 
 ## Related ADRs
 

@@ -425,4 +425,4 @@ end
 
 - [Tasker Core Tenets](./tasker-core-tenets.md) - Tenet #3: Composition Over Inheritance
 - [Cross-Language Consistency](./cross-language-consistency.md) - How composition works across languages
-- [Patterns and Practices](../worker-crates/patterns-and-practices.md) - Handler patterns
+- [Patterns and Practices](../workers/patterns-and-practices.md) - Handler patterns

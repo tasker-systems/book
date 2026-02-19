@@ -4,7 +4,7 @@
 **Audience**: Python Developers
 **Status**: Active
 **Package**: `tasker_core`
-**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
+**Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../architecture/worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
 <- Back to [Worker Crates Overview](README.md)
 
 ---
@@ -1004,4 +1004,4 @@ class ApprovalRouterHandler(DecisionHandler):
 - [Worker Crates Overview](README.md) - High-level introduction
 - [Patterns and Practices](patterns-and-practices.md) - Common patterns
 - [Ruby Worker](ruby.md) - Ruby implementation
-- [Worker Event Systems](../worker-event-systems.md) - Architecture details
+- [Worker Event Systems](../architecture/worker-event-systems.md) - Architecture details

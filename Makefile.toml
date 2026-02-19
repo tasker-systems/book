@@ -74,6 +74,7 @@ echo ""
 echo "Quality:"
 echo "  cargo make lint        (l)   Check markdown formatting"
 echo "  cargo make fix               Auto-fix markdown formatting"
+echo "  cargo make detect-broken-links (bl)  Find broken internal links in source"
 echo "  cargo make setup-hooks       Install git pre-commit hook"
 echo ""
 echo "Validation:"
@@ -256,6 +257,15 @@ args = ["--yes", "markdownlint-cli2"]
 description = "Auto-fix markdown formatting"
 command = "npx"
 args = ["--yes", "markdownlint-cli2", "--fix"]
+
+[tasks.detect-broken-links]
+description = "Find broken internal links in markdown source"
+script = '''
+bash ${SCRIPTS_DIR}/detect-broken-links.sh
+'''
+
+[tasks.bl]
+alias = "detect-broken-links"
 
 [tasks.setup-hooks]
 description = "Install git pre-commit hook"

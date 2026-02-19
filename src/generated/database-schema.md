@@ -143,7 +143,6 @@ erDiagram
         timestamp updated_at
     }
 
-    -- FOREIGN KEY CONSTRAINTS ||--o{ workflow_steps : "-- FOREIGN KEY CONSTRAINTS"
     named_steps ||--o{ named_tasks_named_steps : "named_step_uuid"
     named_tasks ||--o{ named_tasks_named_steps : "named_task_uuid"
     task_namespaces ||--o{ named_tasks : "task_namespace_uuid"
@@ -180,7 +179,6 @@ erDiagram
 
 | Source Table | Column | Target Table | Target Column |
 |-------------|--------|-------------|---------------|
-| `workflow_steps` | `-- FOREIGN KEY CONSTRAINTS` | `-- FOREIGN KEY CONSTRAINTS` | `-- FOREIGN KEY CONSTRAINTS` |
 | `named_tasks_named_steps` | `named_step_uuid` | `named_steps` | `named_step_uuid` |
 | `named_tasks_named_steps` | `named_task_uuid` | `named_tasks` | `named_task_uuid` |
 | `named_tasks` | `task_namespace_uuid` | `task_namespaces` | `task_namespace_uuid` |

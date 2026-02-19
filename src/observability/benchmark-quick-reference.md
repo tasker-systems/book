@@ -178,5 +178,5 @@ cargo build --all-features
 ## Documentation
 
 - **Full Strategy**: [benchmark-strategy-summary.md](./benchmark-strategy-summary.md)
-- **Implementation Plan**: [phase-5.4-distributed-benchmarks-plan.md](./phase-5.4-distributed-benchmarks-plan.md)
+- **Implementation Plan**: [phase-5.4-distributed-benchmarks-plan.md](benchmark-strategy-summary.md)
 - **SQL Benchmark Guide**: [benchmarking-guide.md](./benchmarking-guide.md)

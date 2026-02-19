@@ -3,7 +3,7 @@
 **Last Updated**: 2025-10-17
 **Audience**: Operators, Developers, Architects
 **Status**: Active
-**Related Docs**: [Environment Configuration Comparison](environment-configuration-comparison.md), [Deployment Patterns](deployment-patterns.md)
+**Related Docs**: [Environment Configuration Comparison](configuration-management.md), [Deployment Patterns](../architecture/deployment-patterns.md)
 
 ← Back to [Documentation Hub](README.md)
 
@@ -511,7 +511,7 @@ TASKER_ENV=production cargo run --bin config-validator
 
 ## Part 4: Environment-Specific Configurations
 
-See **[Environment Configuration Comparison](environment-configuration-comparison.md)** for complete details on configuration values across environments.
+See **[Environment Configuration Comparison](configuration-management.md)** for complete details on configuration values across environments.
 
 ### 4.1 Scaling Pattern
 
@@ -1030,8 +1030,8 @@ tasker-ctl config detect-unused --context orchestration --fix
 
 ## Related Documentation
 
-- **[Environment Configuration Comparison](environment-configuration-comparison.md)** - Detailed comparison of configuration values across environments
-- **[Deployment Patterns](deployment-patterns.md)** - Deployment modes and strategies
+- **[Environment Configuration Comparison](configuration-management.md)** - Detailed comparison of configuration values across environments
+- **[Deployment Patterns](../architecture/deployment-patterns.md)** - Deployment modes and strategies
 - **[Quick Start Guide](quick-start.md)** - Getting started with Tasker
 
 ---

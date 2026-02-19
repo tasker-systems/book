@@ -31,4 +31,4 @@ This directory contains architectural reference documentation describing how Tas
 
 - [Principles](../principles/) - The "why" behind architectural decisions
 - [Guides](../guides/) - Practical "how-to" documentation
-- [CHRONOLOGY](../CHRONOLOGY.md) - Historical context for decisions
+- [CHRONOLOGY](../why-tasker.md) - Historical context for decisions

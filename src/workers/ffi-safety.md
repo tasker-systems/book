@@ -203,7 +203,7 @@ When implementing a new language worker:
 
 ## Related Documentation
 
-- [FFI Callback Safety](../development/ffi-callback-safety.md) - Detailed callback patterns and deadlock prevention
+- [FFI Callback Safety](ffi-safety.md) - Detailed callback patterns and deadlock prevention
 - [Worker Event Systems](../architecture/worker-event-systems.md) - Dispatch and completion channel architecture
-- [MPSC Channel Guidelines](../development/mpsc-channel-guidelines.md) - Channel sizing and configuration
+- [MPSC Channel Guidelines](../architecture/backpressure-architecture.md) - Channel sizing and configuration
 - [Worker Patterns & Practices](./patterns-and-practices.md) - General worker development patterns

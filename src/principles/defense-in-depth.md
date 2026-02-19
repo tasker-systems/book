@@ -267,6 +267,6 @@ Together they ensure: if something goes wrong, we know about it—either protect
 
 - [Tasker Core Tenets](./tasker-core-tenets.md) - Tenet #1: Defense in Depth, Tenet #11: Fail Loudly
 - [Fail Loudly](./fail-loudly.md) - Errors as first-class citizens
-- [Idempotency and Atomicity](../idempotency-and-atomicity.md) - Implementation details
-- [States and Lifecycles](../states-and-lifecycles.md) - State machine specifications
+- [Idempotency and Atomicity](../architecture/idempotency-and-atomicity.md) - Implementation details
+- [States and Lifecycles](../architecture/states-and-lifecycles.md) - State machine specifications
 - [Ownership Removal ADR](../decisions/adr-003-ownership-removal.md) - Processor UUID ownership removal decision

@@ -456,5 +456,5 @@ export TASKER_TEST_WORKER_URL="http://localhost:9081"
 
 ## Documentation
 
-- **Full Plan**: [phase-5.4-distributed-benchmarks-plan.md](./phase-5.4-distributed-benchmarks-plan.md)
+- **Full Plan**: [phase-5.4-distributed-benchmarks-plan.md](benchmark-strategy-summary.md)
 - **SQL Benchmarks**: [benchmarking-guide.md](./benchmarking-guide.md)

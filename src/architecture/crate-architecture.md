@@ -3,7 +3,7 @@
 **Last Updated**: 2026-01-15
 **Audience**: Developers, Architects
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Actor-Based Architecture](actors.md) | [Events and Commands](events-and-commands.md) | [Quick Start](quick-start.md)
+**Related Docs**: [Documentation Hub](README.md) | [Actor-Based Architecture](actors.md) | [Events and Commands](events-and-commands.md) | [Quick Start](../guides/quick-start.md)
 
 ← Back to [Documentation Hub](README.md)
 
@@ -830,11 +830,11 @@ Don't create a new crate when:
 
 - **[Actor-Based Architecture](actors.md)** - Actor pattern implementation in tasker-orchestration
 - **[Messaging Abstraction](messaging-abstraction.md)** - Provider-agnostic messaging
-- **[Quick Start](quick-start.md)** - Get running with the crates
+- **[Quick Start](../guides/quick-start.md)** - Get running with the crates
 - **[Events and Commands](events-and-commands.md)** - How crates coordinate
 - **[States and Lifecycles](states-and-lifecycles.md)** - State machines in tasker-shared
-- **[Task Readiness & Execution](task-and-step-readiness-and-execution.md)** - SQL functions in tasker-shared
-- **[Archive: Ruby Integration Lessons](archive/ruby-integration-lessons.md)** - FFI patterns
+- **[Task Readiness & Execution](../reference/task-and-step-readiness-and-execution.md)** - SQL functions in tasker-shared
+- **[Archive: Ruby Integration Lessons](../workers/ruby.md)** - FFI patterns
 
 ---
 

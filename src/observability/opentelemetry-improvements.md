@@ -3,7 +3,7 @@
 **Last Updated**: 2025-12-01
 **Audience**: Developers, Operators
 **Status**: Active
-**Related Docs**: [Observability Hub](README.md) | [Metrics Reference](metrics-reference.md) | [Domain Events](../domain-events.md)
+**Related Docs**: [Observability Hub](README.md) | [Metrics Reference](metrics-reference.md) | [Domain Events](../architecture/domain-events.md)
 
 ← Back to [Observability Hub](README.md)
 
@@ -693,7 +693,7 @@ info!(
 ## Related Documentation
 
 - **Metrics Reference**: [metrics-reference.md](metrics-reference.md) - Complete metrics catalog
-- **Domain Events**: [../domain-events.md](../domain-events.md) - Event system architecture
+- **Domain Events**: [../domain-events.md](../architecture/domain-events.md) - Event system architecture
 - **Logging Standards**: [logging-standards.md](logging-standards.md) - Structured logging best practices
 
 ---

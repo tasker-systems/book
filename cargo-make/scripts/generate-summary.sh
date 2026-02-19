@@ -94,6 +94,7 @@ generate_section() {
     echo ""
     echo "[Introduction](README.md)"
     echo "[Why Tasker?](why-tasker.md)"
+    echo "[Contributing](CONTRIBUTING.md)"
 
     # -----------------------------------------------------------------------
     # Getting Started (Understand track) — hand-written structure
@@ -107,6 +108,7 @@ generate_section() {
     echo "  - [Core Concepts](getting-started/concepts.md)"
     echo "  - [Handler Types](getting-started/handler-types.md)"
     echo "  - [Choosing Your Package](getting-started/choosing-your-package.md)"
+    echo "  - [Example Apps](getting-started/example-apps.md)"
 
     # -----------------------------------------------------------------------
     # Build Your First Project (Build track) — hand-written structure
@@ -169,36 +171,6 @@ generate_section() {
     generate_section "Security"        "security"       "Security"
     generate_section "Decisions"       "decisions"      "Architectural Decisions"
     generate_section "Benchmarks"      "benchmarks"     "Benchmarks"
-
-    # -----------------------------------------------------------------------
-    # Contrib
-    # -----------------------------------------------------------------------
-    if [[ -d "${SRC_DIR}/contrib" ]]; then
-        echo ""
-        echo "---"
-        echo ""
-        echo "# Contrib"
-        echo ""
-        if [[ -f "${SRC_DIR}/contrib/README.md" ]]; then
-            echo "- [Framework Integrations](contrib/README.md)"
-        fi
-        if [[ -f "${SRC_DIR}/contrib/example-apps.md" ]]; then
-            echo "  - [Example Apps](contrib/example-apps.md)"
-        fi
-
-        if [[ -d "${SRC_DIR}/contrib/examples" ]]; then
-            if [[ -f "${SRC_DIR}/contrib/examples/README.md" ]]; then
-                echo "  - [Examples](contrib/examples/README.md)"
-            fi
-            for example_dir in "${SRC_DIR}/contrib/examples"/*/; do
-                if [[ -f "${example_dir}/README.md" ]]; then
-                    dirname=$(basename "${example_dir}")
-                    title=$(to_title_case "${dirname}")
-                    echo "    - [${title}](contrib/examples/${dirname}/README.md)"
-                fi
-            done
-        fi
-    fi
 
     # -----------------------------------------------------------------------
     # Stories (hand-written blog series)

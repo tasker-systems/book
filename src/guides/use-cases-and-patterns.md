@@ -3,7 +3,7 @@
 **Last Updated**: 2025-10-10
 **Audience**: Developers, Architects, Product Managers
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Quick Start](quick-start.md) | [Crate Architecture](crate-architecture.md)
+**Related Docs**: [Documentation Hub](README.md) | [Quick Start](quick-start.md) | [Crate Architecture](../architecture/crate-architecture.md)
 
 ← Back to [Documentation Hub](README.md)
 
@@ -981,10 +981,10 @@ Task: fetch_user_data
 
 - **[Quick Start](quick-start.md)** - Get your first workflow running
 - **[Conditional Workflows](conditional-workflows.md)** - Runtime decision-making and dynamic step creation
-- **[Crate Architecture](crate-architecture.md)** - Understand the codebase
-- **[Deployment Patterns](deployment-patterns.md)** - Deploy to production
-- **[States and Lifecycles](states-and-lifecycles.md)** - State machine deep dive
-- **[Events and Commands](events-and-commands.md)** - Event-driven patterns
+- **[Crate Architecture](../architecture/crate-architecture.md)** - Understand the codebase
+- **[Deployment Patterns](../architecture/deployment-patterns.md)** - Deploy to production
+- **[States and Lifecycles](../architecture/states-and-lifecycles.md)** - State machine deep dive
+- **[Events and Commands](../architecture/events-and-commands.md)** - Event-driven patterns
 
 ---
 

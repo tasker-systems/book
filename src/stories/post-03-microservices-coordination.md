@@ -319,4 +319,4 @@ Workflows within a single team are manageable, but what happens when multiple te
 
 ---
 
-*See this pattern implemented in all four frameworks on the [Example Apps](../contrib/example-apps.md) page.*
+*See this pattern implemented in all four frameworks on the [Example Apps](../getting-started/example-apps.md) page.*

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Sync documentation from tasker-contrib into src/contrib/
+# Sync documentation from tasker-contrib
 # =============================================================================
 #
-# Copies documentation and examples from tasker-contrib into the mdBook source
-# directory under src/contrib/.
+# Previously synced tasker-contrib docs into src/contrib/. That section has been
+# removed — contrib content is now integrated into getting-started/example-apps.md
+# (book-owned). This script remains as a no-op placeholder for the cargo-make
+# pipeline.
 #
 # Environment:
 #   TASKER_CONTRIB_DIR - Path to tasker-contrib repo (default: ../tasker-contrib)
@@ -15,7 +17,6 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
-SRC_DIR="${REPO_ROOT}/src"
 
 CONTRIB_DIR="${TASKER_CONTRIB_DIR:-../tasker-contrib}"
 
@@ -33,32 +34,6 @@ if [[ ! -d "${CONTRIB_DIR}" ]]; then
 fi
 
 echo "Syncing from: ${CONTRIB_DIR}"
-echo "Syncing to:   ${SRC_DIR}/contrib"
-echo ""
-
-DEST="${SRC_DIR}/contrib"
-mkdir -p "${DEST}"
-
-# ---------------------------------------------------------------------------
-# contrib/README.md is book-owned (consumer-facing landing page)
-# Skip syncing to avoid overwriting with internal planning doc
-# ---------------------------------------------------------------------------
-echo "  README.md -> skipped (book-owned)"
-
-# ---------------------------------------------------------------------------
-# Sync contrib-specific docs (skip ticket-specs)
-# ---------------------------------------------------------------------------
-for dir in "architecture" "guides"; do
-    src="${CONTRIB_DIR}/docs/${dir}"
-    if [[ -d "${src}" ]] && [[ -n "$(ls -A "${src}" 2>/dev/null)" ]]; then
-        mkdir -p "${DEST}/${dir}"
-        rsync -a --delete \
-            --exclude='.DS_Store' \
-            "${src}/" "${DEST}/${dir}/"
-        count=$(find "${DEST}/${dir}" -name '*.md' | wc -l | tr -d ' ')
-        echo "  docs/${dir}/ -> ${count} files"
-    fi
-done
-
+echo "Syncing to:   (no-op — contrib content is now book-owned)"
 echo ""
 echo "Contrib sync complete."

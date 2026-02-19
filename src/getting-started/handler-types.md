@@ -52,7 +52,7 @@ tasker-ctl template generate step_handler \
 
 Available for all four languages: `tasker-contrib-rails`, `tasker-contrib-python`, `tasker-contrib-typescript`, `tasker-contrib-rust`.
 
-**See it in action**: All five workflows in the [example apps](../contrib/example-apps.md) use step handlers. Start with the e-commerce checkout ([Post 01](../stories/post-01-ecommerce-checkout.md)) for the simplest example.
+**See it in action**: All five workflows in the [example apps](example-apps.md) use step handlers. Start with the e-commerce checkout ([Post 01](../stories/post-01-ecommerce-checkout.md)) for the simplest example.
 
 **Next**: [Your First Handler](../building/first-handler.md) walks through writing and registering a step handler end-to-end.
 

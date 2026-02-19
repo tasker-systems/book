@@ -24,4 +24,4 @@ This directory contains technical reference documentation with precise specifica
 
 - [Architecture](../architecture/) - System structure and patterns
 - [Guides](../guides/) - Practical how-to documentation
-- [Development](../development/) - Developer tooling and patterns
+- [Development](../workers/) - Developer tooling and patterns

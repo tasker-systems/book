@@ -3,7 +3,7 @@
 **Last Updated**: 2026-02-05
 **Audience**: Operations, SRE, On-Call Engineers
 **Status**: Active
-**Related Docs**: [Backpressure Architecture](../backpressure-architecture.md) | [MPSC Channel Tuning](mpsc-channel-tuning.md)
+**Related Docs**: [Backpressure Architecture](../architecture/backpressure-architecture.md) | [MPSC Channel Tuning](mpsc-channel-tuning.md)
 
 ---
 
@@ -664,6 +664,6 @@ Import this dashboard for backpressure monitoring:
 
 ## Related Documentation
 
-- [Backpressure Architecture](../backpressure-architecture.md) - Strategy overview
+- [Backpressure Architecture](../architecture/backpressure-architecture.md) - Strategy overview
 - [MPSC Channel Tuning](mpsc-channel-tuning.md) - Channel configuration
-- [Worker Event Systems](../worker-event-systems.md) - Worker architecture
+- [Worker Event Systems](../architecture/worker-event-systems.md) - Worker architecture

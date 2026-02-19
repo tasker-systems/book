@@ -2,6 +2,7 @@
 
 [Introduction](README.md)
 [Why Tasker?](why-tasker.md)
+[Contributing](CONTRIBUTING.md)
 
 ---
 
@@ -11,6 +12,7 @@
   - [Core Concepts](getting-started/concepts.md)
   - [Handler Types](getting-started/handler-types.md)
   - [Choosing Your Package](getting-started/choosing-your-package.md)
+  - [Example Apps](getting-started/example-apps.md)
 
 ---
 
@@ -58,10 +60,10 @@
   - [Caching](guides/caching.md)
   - [Conditional Workflows](guides/conditional-workflows.md)
   - [Configuration Management](guides/configuration-management.md)
-  - [Contributing To Tasker](guides/contributing-to-tasker.md)
   - [Dlq System](guides/dlq-system.md)
   - [Handler Resolution](guides/handler-resolution.md)
   - [Identity Strategy](guides/identity-strategy.md)
+  - [Quick Start](guides/quick-start.md)
   - [Retry Semantics](guides/retry-semantics.md)
   - [Use Cases And Patterns](guides/use-cases-and-patterns.md)
 
@@ -205,13 +207,6 @@
 
 - [Benchmarks](benchmarks/README.md)
   - [E2e Benchmarks](benchmarks/e2e-benchmarks.md)
-
----
-
-# Contrib
-
-- [Framework Integrations](contrib/README.md)
-  - [Example Apps](contrib/example-apps.md)
 
 ---
 

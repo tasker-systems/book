@@ -91,7 +91,7 @@ Tasker supports polyglot workers through FFI:
 - **Python** via [PyO3](https://pyo3.rs/) — `workers/python/`
 - **TypeScript** via [napi-rs](https://napi.rs/) — `workers/typescript/`
 
-Each worker directory has its own build and test commands. See the [Worker Guides](../workers/README.md) for language-specific details.
+Each worker directory has its own build and test commands. See the [Worker Guides](workers/README.md) for language-specific details.
 
 ### SQLx Query Cache
 

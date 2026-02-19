@@ -125,5 +125,10 @@ done
 # ---------------------------------------------------------------------------
 find "${SRC_DIR}" -name 'CLAUDE.md' -not -path "${SRC_DIR}/CLAUDE.md" -type f -delete 2>/dev/null || true
 
+# ---------------------------------------------------------------------------
+# Post-sync: fix cross-directory link patterns
+# ---------------------------------------------------------------------------
+bash "${SCRIPT_DIR}/fixup-synced-links.sh" "${SRC_DIR}"
+
 echo ""
 echo "Core docs sync complete."

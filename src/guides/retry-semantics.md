@@ -3,7 +3,7 @@
 **Last Updated**: 2025-10-10
 **Audience**: Developers
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Bug Report: Retry Eligibility Logic](bug-reports/2025-10-05-retry-eligibility-bug.md) | [States and Lifecycles](states-and-lifecycles.md)
+**Related Docs**: [Documentation Hub](README.md) | [Bug Report: Retry Eligibility Logic](../decisions/adr-004-backoff-consolidation.md) | [States and Lifecycles](../architecture/states-and-lifecycles.md)
 
 ← Back to [Documentation Hub](README.md)
 
@@ -232,8 +232,8 @@ retry:
 
 ## Related Documentation
 
-- [Bug Report: Retry Eligibility Logic](bug-reports/2025-10-05-retry-eligibility-bug.md)
-- [State Machine Documentation](states-and-lifecycles.md)
+- [Bug Report: Retry Eligibility Logic](../decisions/adr-004-backoff-consolidation.md)
+- [State Machine Documentation](../architecture/states-and-lifecycles.md)
 - SQL Function: `get_step_readiness_status_batch`
 - Migration: `20251006000000_fix_retry_eligibility_logic.sql`
 
