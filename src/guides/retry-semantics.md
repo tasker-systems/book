@@ -3,9 +3,9 @@
 **Last Updated**: 2025-10-10
 **Audience**: Developers
 **Status**: Active
-**Related Docs**: [Documentation Hub](README.md) | [Bug Report: Retry Eligibility Logic](../decisions/adr-004-backoff-consolidation.md) | [States and Lifecycles](../architecture/states-and-lifecycles.md)
+**Related Docs**: [Documentation Hub](index.md) | [Bug Report: Retry Eligibility Logic](../decisions/adr-004-backoff-consolidation.md) | [States and Lifecycles](../architecture/states-and-lifecycles.md)
 
-← Back to [Documentation Hub](README.md)
+← Back to [Documentation Hub](index.md)
 
 ---
 

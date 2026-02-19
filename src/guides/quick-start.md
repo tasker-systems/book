@@ -4,9 +4,9 @@
 **Audience**: Developers
 **Status**: Active
 **Time to Complete**: 5 minutes
-**Related Docs**: [Documentation Hub](README.md) | [Use Cases](use-cases-and-patterns.md) | [Crate Architecture](../architecture/crate-architecture.md)
+**Related Docs**: [Documentation Hub](index.md) | [Use Cases](use-cases-and-patterns.md) | [Crate Architecture](../architecture/crate-architecture.md)
 
-← Back to [Documentation Hub](README.md)
+← Back to [Documentation Hub](index.md)
 
 ---
 
@@ -432,8 +432,8 @@ steps:
 Learn about deployment:
 
 - **[Deployment Patterns](../architecture/deployment-patterns.md)** - Hybrid, EventDriven, PollingOnly modes
-- **[Observability](../observability/README.md)** - Metrics, logging, monitoring
-- **[Benchmarks](../benchmarks/README.md)** - Performance validation
+- **[Observability](../observability/index.md)** - Metrics, logging, monitoring
+- **[Benchmarks](../benchmarks/index.md)** - Performance validation
 
 ### 5. **Run Tests Locally**
 
@@ -558,6 +558,6 @@ You've successfully:
 
 ---
 
-← Back to [Documentation Hub](README.md)
+← Back to [Documentation Hub](index.md)
 
 **Next**: [Use Cases and Patterns](use-cases-and-patterns.md) | [Crate Architecture](../architecture/crate-architecture.md)

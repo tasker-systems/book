@@ -3,9 +3,9 @@
 **Last Updated**: 2025-12-01
 **Audience**: Operators, Developers
 **Status**: Active
-**Related Docs**: [Documentation Hub](../README.md) | [Benchmarks](../benchmarks/README.md) | [Deployment Patterns](../architecture/deployment-patterns.md) | [Domain Events](../architecture/domain-events.md)
+**Related Docs**: [Documentation Hub](../index.md) | [Benchmarks](../benchmarks/index.md) | [Deployment Patterns](../architecture/deployment-patterns.md) | [Domain Events](../architecture/domain-events.md)
 
-← Back to [Documentation Hub](../README.md)
+← Back to [Documentation Hub](../index.md)
 
 ---
 
@@ -19,7 +19,7 @@ This directory contains documentation for monitoring, metrics, logging, and perf
 
 All benchmark documentation has been consolidated in the `docs/benchmarks/` directory.
 
-**See**: [Benchmark README](../benchmarks/README.md) for:
+**See**: [Benchmark README](../benchmarks/index.md) for:
 
 - API performance benchmarks
 - SQL function benchmarks
@@ -31,9 +31,9 @@ All benchmark documentation has been consolidated in the `docs/benchmarks/` dire
 **Migration Note**: The following files remain in this directory for historical context but are superseded by the consolidated benchmarks documentation:
 
 - `benchmark-implementation-decision.md` - Decision rationale (archived)
-- `benchmark-quick-reference.md` - Superseded by [../benchmarks/README.md](../benchmarks/README.md)
+- `benchmark-quick-reference.md` - Superseded by [../benchmarks/README.md](../benchmarks/index.md)
 - `benchmark-strategy-summary.md` - Consolidated into benchmark-specific docs
-- `benchmarking-guide.md` - SQL benchmarks moved to [../benchmarks/sql-benchmarks.md](../benchmarks/README.md)
+- `benchmarking-guide.md` - SQL benchmarks moved to [../benchmarks/sql-benchmarks.md](../benchmarks/index.md)
 - `phase-5.4-distributed-benchmarks-plan.md` - Implementation complete
 
 ---
@@ -468,7 +468,7 @@ docker-compose logs orchestration | jq 'select(.level == "ERROR")'
 
 ## Related Documentation
 
-- **Benchmarks**: [../benchmarks/README.md](../benchmarks/README.md)
+- **Benchmarks**: [../benchmarks/README.md](../benchmarks/index.md)
 - **SQL Functions**: [../task-and-step-readiness-and-execution.md](../reference/task-and-step-readiness-and-execution.md)
 
 ---

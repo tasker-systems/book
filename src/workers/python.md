@@ -5,7 +5,7 @@
 **Status**: Active
 **Package**: `tasker_core`
 **Related Docs**: [Patterns and Practices](patterns-and-practices.md) | [Worker Event Systems](../architecture/worker-event-systems.md) | [API Convergence Matrix](api-convergence-matrix.md)
-<- Back to [Worker Crates Overview](README.md)
+<- Back to [Worker Crates Overview](index.md)
 
 ---
 
@@ -1001,7 +1001,7 @@ class ApprovalRouterHandler(DecisionHandler):
 
 ## See Also
 
-- [Worker Crates Overview](README.md) - High-level introduction
+- [Worker Crates Overview](index.md) - High-level introduction
 - [Patterns and Practices](patterns-and-practices.md) - Common patterns
 - [Ruby Worker](ruby.md) - Ruby implementation
 - [Worker Event Systems](../architecture/worker-event-systems.md) - Architecture details

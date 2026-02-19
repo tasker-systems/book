@@ -5,7 +5,7 @@
 **Status**: Active
 **Related Docs**: [Worker Event Systems](../architecture/worker-event-systems.md) | [Worker Actors](../architecture/worker-actors.md)
 
-<- Back to [Worker Crates Overview](README.md)
+<- Back to [Worker Crates Overview](index.md)
 
 ---
 
@@ -752,7 +752,7 @@ def setup_method(self):
 
 ## See Also
 
-- [Worker Crates Overview](README.md) - High-level introduction
+- [Worker Crates Overview](index.md) - High-level introduction
 - [Rust Worker](rust.md) - Native Rust implementation
 - [Ruby Worker](ruby.md) - Ruby gem documentation
 - [Python Worker](python.md) - Python package documentation

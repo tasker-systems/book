@@ -81,4 +81,4 @@ pip install tasker-py
 npm install @tasker-systems/tasker
 ```
 
-See the [individual language guides](../building/README.md) for detailed setup and examples.
+See the [individual language guides](../building/index.md) for detailed setup and examples.
