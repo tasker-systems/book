@@ -86,40 +86,46 @@ For the full state machine diagrams and transition tables, see [States and Lifec
 
 ## Step Handlers
 
-A **Step Handler** is your code that executes a step's business logic. Handlers:
-
-- Extend a base class (`StepHandler` in Ruby/Python/TS, `RustStepHandler` trait in Rust)
-- Implement a `call()` method
-- Access task context via `get_input()`
-- Access upstream results via `get_dependency_result()` (or `sequence.get()` in Ruby)
+A **Step Handler** is your code that executes a step's business logic. The DSL approach declares what a handler receives — its inputs from the task context and results from upstream steps — and delegates to a service:
 
 ```python
-from tasker_core import StepHandler, StepContext, StepHandlerResult
+from tasker_core.step_handler.functional import inputs, step_handler
+from app.services.types import EcommerceOrderInput
+from app.services import ecommerce as svc
 
-class OrderValidationHandler(StepHandler):
-    handler_name = "order_validation"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        order_id = context.get_input("order_id")
-        # Validate the order...
-        return StepHandlerResult.success({"valid": True, "order_total": 99.99})
+@step_handler("validate_cart")
+@inputs(EcommerceOrderInput)
+def validate_cart(inputs: EcommerceOrderInput, context: StepContext):
+    return svc.validate_cart_items(inputs.resolved_items)
 ```
+
+The `@inputs` decorator extracts fields from the task context into a typed Pydantic model. The `@depends_on` decorator (shown below) does the same for upstream step results. Your handler function receives typed arguments instead of parsing raw JSON.
+
+> Class-based handlers (`class MyHandler(StepHandler)`) are also supported. See [Class-Based Handlers](../reference/class-based-handlers.md).
 
 ## Dependency Results
 
-Steps can access results from their dependencies:
+Steps can access typed results from their dependencies using `@depends_on`:
 
 ```python
-class PaymentHandler(StepHandler):
-    handler_name = "payment"
+from tasker_core.step_handler.functional import depends_on, inputs, step_handler
+from app.services.types import EcommerceOrderInput, EcommerceValidateCartResult
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # Get result from upstream step
-        validation = context.get_dependency_result("validate_order")
-        order_total = validation["order_total"]
-        # Process payment...
-        return StepHandlerResult.success({"charged": True})
+@step_handler("process_payment")
+@depends_on(cart_result=("validate_cart", EcommerceValidateCartResult))
+@inputs(EcommerceOrderInput)
+def process_payment(
+    cart_result: EcommerceValidateCartResult,
+    inputs: EcommerceOrderInput,
+    context: StepContext,
+):
+    return svc.process_payment(
+        payment_token=inputs.payment_token,
+        total=cart_result.total or 0.0,
+    )
 ```
+
+Each `@depends_on` entry maps a parameter name to a `("step_name", ResultModel)` tuple. Tasker resolves the upstream step's result and deserializes it into the model, so your handler receives a typed object — not a raw dict.
 
 ## Workflow Steps
 

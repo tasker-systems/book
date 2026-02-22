@@ -1,6 +1,6 @@
 # Handler Types
 
-Tasker provides four specialized handler types that cover the most common workflow patterns. Each type is a composable mixin that you combine with the base `StepHandler` via multiple inheritance, adding purpose-built methods so you write business logic instead of boilerplate.
+Tasker provides four handler types that cover the most common workflow patterns. The DSL approach lets you declare what a handler receives — typed inputs and dependency results — while your business logic stays in your service layer.
 
 ## Cross-Language Availability
 
@@ -11,36 +11,54 @@ Tasker provides four specialized handler types that cover the most common workfl
 | **Decision Handler** | Yes | Yes | Yes | -- |
 | **Batchable Handler** | Yes | Yes | Yes | -- |
 
-Rust provides only the base Step Handler. The specialized types (API, Decision, Batchable) are unnecessary in Rust because the native ecosystem already provides excellent HTTP clients, pattern matching, and iterator-based parallelism. See [Rust intentional omissions](#why-rust-has-only-step-handler) below.
+Rust provides only the base Step Handler. See [Why Rust Has Only Step Handler](#why-rust-has-only-step-handler) below.
 
-## Step Handler
+## Step Handler (DSL)
 
-The base handler type. All other handler types extend it.
+The base handler type. All other types extend it.
 
 **When to use**: General-purpose business logic — database operations, calculations, transformations, service calls, or anything that takes input and produces output.
 
+### Python
+
 ```python
-from tasker_core import StepHandler, StepContext, StepHandlerResult
+from tasker_core.step_handler.functional import inputs, step_handler
+from app.services.types import EcommerceOrderInput
+from app.services import ecommerce as svc
 
-
-class ProcessPaymentHandler(StepHandler):
-    handler_name = "process_payment"
-    handler_version = "1.0.0"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # Access input data from the task context
-        input_data = context.input_data
-
-        # Access results from upstream dependency steps
-        # prev_result = context.get_dependency_result("previous_step_name")
-
-        result = {
-            "processed": True,
-            "handler": "process_payment",
-        }
-
-        return StepHandlerResult.success(result=result)
+@step_handler("validate_cart")
+@inputs(EcommerceOrderInput)
+def validate_cart(inputs: EcommerceOrderInput, context: StepContext):
+    return svc.validate_cart_items(inputs.resolved_items)
 ```
+
+### Ruby
+
+```ruby
+extend TaskerCore::StepHandler::Functional
+
+ValidateCartHandler = step_handler(
+  'Ecommerce::StepHandlers::ValidateCartHandler',
+  inputs: Types::Ecommerce::OrderInput
+) do |inputs:, context:|
+  Ecommerce::Service.validate_cart_items(cart_items: inputs.cart_items)
+end
+```
+
+### TypeScript
+
+```typescript
+import { defineHandler } from '@tasker-systems/tasker';
+import * as svc from '../services/ecommerce';
+
+export const ValidateCartHandler = defineHandler(
+  'Ecommerce.StepHandlers.ValidateCartHandler',
+  { inputs: { cartItems: 'cart_items' } },
+  async ({ cartItems }) => svc.validateCartItems(cartItems as CartItem[]),
+);
+```
+
+> For the class-based alternative, see [Class-Based Handlers](../reference/class-based-handlers.md).
 
 **Generate with tasker-ctl**:
 
@@ -56,216 +74,130 @@ Available for all four languages: `tasker-contrib-rails`, `tasker-contrib-python
 
 **Next**: [Your First Handler](../building/first-handler.md) walks through writing and registering a step handler end-to-end.
 
-## API Handler
+## What the DSL Composes
 
-A mixin that adds HTTP client methods with built-in error classification. The `APIMixin` provides `self.get()`, `self.post()`, `self.put()`, `self.patch()`, `self.delete()` methods that return an `ApiResponse` wrapper, plus `self.api_success()` and `self.api_failure()` helpers that automatically classify HTTP errors as retryable or permanent.
+The DSL builds a typed method signature from two sources:
 
-**When to use**: Calling external APIs where you need to distinguish retryable errors (5xx, timeouts) from permanent errors (4xx). The mixin handles error classification so the orchestrator knows whether to retry.
+| Decorator / Config | Source | What it provides |
+|---|---|---|
+| `@inputs(Model)` / `inputs:` | Task context (submitted data) | Typed input fields |
+| `@depends_on(name=("step", Model))` / `depends:` | Upstream step results | Typed dependency results |
 
-```python
-import httpx
+Both are injected as function parameters. Your handler receives typed objects — not raw dicts or JSON — and delegates to a service function that contains the actual business logic.
 
-from tasker_core.step_handler import StepHandler
-from tasker_core.step_handler.mixins import APIMixin
-
-
-class FetchOrderHandler(APIMixin, StepHandler):
-    handler_name = "fetch_order"
-    base_url = "https://api.example.com"
-    default_timeout = 30.0
-
-    def call(self, context):
-        order_id = context.input_data["order_id"]
-
-        try:
-            response = self.get(f"/orders/{order_id}")
-        except httpx.ConnectError as e:
-            return self.connection_error(e, "fetching order")
-        except httpx.TimeoutException as e:
-            return self.timeout_error(e, "fetching order")
-
-        if response.ok:
-            return self.api_success(response)
-        return self.api_failure(response)
-```
-
-The `APIMixin` provides:
-
-| Method | Purpose |
-|--------|---------|
-| `self.get()`, `self.post()`, etc. | HTTP methods returning `ApiResponse` |
-| `self.api_success(response)` | Success result with response metadata |
-| `self.api_failure(response)` | Failure with automatic error classification (4xx = permanent, 5xx/429 = retryable) |
-| `self.connection_error(exc)` | Retryable failure for connection errors |
-| `self.timeout_error(exc)` | Retryable failure for timeouts |
-
-The `ApiResponse` wrapper exposes `.ok`, `.is_retryable`, `.is_client_error`, `.is_server_error`, and `.retry_after` for fine-grained control when you need it.
-
-**Generate with tasker-ctl**:
-
-```bash
-tasker-ctl template generate step_handler_api \
-  --plugin tasker-contrib-python \
-  --param name=FetchOrder \
-  --param base_url=https://api.example.com
-```
-
-**Cross-language notes**: Ruby and TypeScript provide equivalent API handler mixins with the same error classification pattern.
-
-## Decision Handler
-
-A mixin that adds workflow routing methods. The `DecisionMixin` provides `self.decision_success()` to activate downstream steps and `self.skip_branches()` when no steps should execute.
-
-**When to use**: Conditional branching — when the next steps depend on runtime data. The decision handler returns a list of step names to activate, enabling dynamic workflow paths without hardcoding logic into the DAG definition.
+Here's a handler that uses both:
 
 ```python
-from tasker_core.step_handler import StepHandler
-from tasker_core.step_handler.mixins import DecisionMixin
-
-
-class OrderRoutingHandler(DecisionMixin, StepHandler):
-    handler_name = "order_routing"
-
-    def call(self, context):
-        order_type = context.input_data.get("order_type")
-
-        if order_type == "premium":
-            return self.decision_success(
-                ["validate_premium", "process_premium"],
-                routing_context={"order_type": order_type},
-            )
-        elif order_type == "review_required":
-            return self.decision_success(
-                ["manual_review", "approval_gate"],
-                routing_context={"order_type": order_type},
-            )
-        else:
-            return self.decision_success(["standard_processing"])
+@step_handler("create_order")
+@depends_on(
+    cart_result=("validate_cart", EcommerceValidateCartResult),
+    payment_result=("process_payment", EcommerceProcessPaymentResult),
+    inventory_result=("update_inventory", EcommerceUpdateInventoryResult),
+)
+@inputs(EcommerceOrderInput)
+def create_order(
+    cart_result: EcommerceValidateCartResult,
+    payment_result: EcommerceProcessPaymentResult,
+    inventory_result: EcommerceUpdateInventoryResult,
+    inputs: EcommerceOrderInput,
+    context: StepContext,
+):
+    return svc.create_order(
+        cart=cart_result, payment=payment_result,
+        inventory=inventory_result, customer_email=inputs.customer_email,
+    )
 ```
 
-The `DecisionMixin` provides:
+The handler declares *what it needs*; Tasker resolves *how to get it*.
 
-| Method | Purpose |
-|--------|---------|
-| `self.decision_success(steps, routing_context)` | Activate downstream steps by name |
-| `self.skip_branches(reason)` | Successful outcome with no follow-up steps |
-| `self.decision_failure(message)` | Decision could not be made (usually not retryable) |
+## Type System by Language
 
-Key differences from a regular step handler:
+Each language uses its native type system for input and result models:
 
-- Composes `DecisionMixin` with `StepHandler` via multiple inheritance
-- Returns `self.decision_success(["step_name", ...])` with step names to activate
-- The `routing_context` is stored as part of the step result for downstream access
+| | Python | Ruby | TypeScript |
+|---|---|---|---|
+| **Library** | Pydantic `BaseModel` | `Dry::Struct` | TypeScript interfaces |
+| **Validation** | `@model_validator` | `validate!` method | Manual type guards |
+| **Optional fields** | `field: str \| None = None` | `attribute :field, Types::String.optional` | `field?: string` |
+| **Field aliases** | `@property` methods | Attribute readers | Getter functions |
+| **Error on invalid** | Raises `PermanentError` | Raises `PermanentError` | Throws `PermanentError` |
 
-**Generate with tasker-ctl**:
+**Python** (Pydantic BaseModel):
 
-```bash
-tasker-ctl template generate step_handler_decision \
-  --plugin tasker-contrib-python \
-  --param name=OrderRouting
+```python
+class EcommerceOrderInput(BaseModel):
+    cart_items: list[dict[str, Any]] | None = None
+    customer_email: str | None = None
+    payment_token: str | None = None
+
+    @property
+    def resolved_items(self) -> list[dict[str, Any]]:
+        return self.items or self.cart_items or []
 ```
 
-**Learn more**: [Conditional Workflows](../guides/conditional-workflows.md) covers decision handler patterns in depth, including multi-level routing and fallback strategies.
+**Ruby** (Dry::Struct):
 
-## Batchable Handler
+```ruby
+module Types
+  module Ecommerce
+    class OrderInput < Types::InputStruct
+      attribute :cart_items, Types::Array.of(Types::Hash).optional
+      attribute :customer_email, Types::String.optional
+      attribute :payment_token, Types::String.optional
+    end
+  end
+end
+```
 
-A mixin that adds batch processing methods for splitting large workloads into parallel cursor-based batches. The `Batchable` mixin provides `self.create_batch_outcome()` and `self.batch_analyzer_success()` for the analyzer role, plus batch worker context helpers and aggregation utilities.
+**TypeScript** (interfaces):
+
+```typescript
+interface CartItem {
+  sku: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+```
+
+## Specialized Handler Patterns
+
+### API Handler
+
+Adds HTTP client methods with built-in error classification. The `APIMixin` provides `self.get()`, `self.post()`, etc. with automatic retryable/permanent error detection.
+
+**When to use**: Calling external APIs where you need to distinguish retryable errors (5xx, timeouts) from permanent errors (4xx).
+
+API handlers currently use the class-based pattern with mixin composition. See [Class-Based Handlers — API Handler](../reference/class-based-handlers.md#api-handler) for the full pattern.
+
+### Decision Handler
+
+Adds workflow routing methods. `decision_success()` activates downstream steps by name; `skip_branches()` when no steps should execute.
+
+**When to use**: Conditional branching — when the next steps depend on runtime data.
+
+```python
+from tasker_core.step_handler.functional import decision_handler
+
+@decision_handler("order_routing")
+def order_routing(context: StepContext):
+    order_type = context.get_input("order_type")
+    if order_type == "premium":
+        return ["validate_premium", "process_premium"]
+    return ["standard_processing"]
+```
+
+See [Conditional Workflows](../guides/conditional-workflows.md) for decision handler patterns in depth.
+
+### Batchable Handler
+
+Adds batch processing for splitting large workloads into parallel cursor-based batches.
 
 **When to use**: Processing large datasets where you want to divide work across multiple parallel workers.
 
-**Workflow pattern**:
+**Workflow pattern**: Analyzer → parallel Workers → optional Aggregator.
 
-1. **Analyzer step** — determines total work and creates cursor configs that divide it into batches
-2. **Worker steps** — Tasker spawns parallel workers, each processing one batch
-3. **Aggregator step** — (optional) combines results from all workers
-
-### Analyzer
-
-```python
-from tasker_core.step_handler import StepHandler
-from tasker_core.batch_processing import Batchable
-
-
-class CsvAnalyzerHandler(StepHandler, Batchable):
-    handler_name = "analyze_csv"
-
-    def call(self, context):
-        total_rows = int(context.input_data.get("total_rows", 10000))
-
-        outcome = self.create_batch_outcome(
-            total_items=total_rows,
-            batch_size=100,
-        )
-        return self.batch_analyzer_success(outcome)
-```
-
-### Worker
-
-```python
-class CsvBatchProcessorHandler(StepHandler, Batchable):
-    handler_name = "process_csv_batch"
-
-    def call(self, context):
-        batch_context = self.get_batch_worker_context(context)
-        cursor = batch_context.cursor
-
-        # Process rows in the assigned range
-        rows_processed = cursor.end_cursor - cursor.start_cursor
-
-        return self.batch_worker_success(
-            batch_context,
-            result={"rows_processed": rows_processed},
-        )
-```
-
-### Aggregator
-
-```python
-from tasker_core.batch_processing import Batchable, BatchAggregationScenario
-
-
-class CsvResultsAggregatorHandler(StepHandler, Batchable):
-    handler_name = "aggregate_csv_results"
-
-    def call(self, context):
-        scenario = BatchAggregationScenario.detect(
-            context.dependency_results,
-            "analyze_csv",
-            "process_csv_batch_",
-        )
-
-        if scenario.is_no_batches:
-            return self.success({"total_rows": 0, "skipped": True})
-
-        total = sum(
-            r.get("rows_processed", 0)
-            for r in scenario.batch_results.values()
-        )
-        return self.success({
-            "total_rows": total,
-            "worker_count": scenario.worker_count,
-        })
-```
-
-The `Batchable` mixin provides:
-
-| Method | Role | Purpose |
-|--------|------|---------|
-| `self.create_batch_outcome(total_items, batch_size)` | Analyzer | Create cursor ranges dividing work into batches |
-| `self.batch_analyzer_success(outcome)` | Analyzer | Return batch config for worker spawning |
-| `self.get_batch_worker_context(context)` | Worker | Extract cursor and batch metadata |
-| `self.batch_worker_success(batch_context, result)` | Worker | Return per-batch results |
-| `BatchAggregationScenario.detect(...)` | Aggregator | Detect whether batches ran and collect results |
-
-**Generate with tasker-ctl**:
-
-```bash
-tasker-ctl template generate step_handler_batchable \
-  --plugin tasker-contrib-python \
-  --param name=DataExport
-```
-
-**Learn more**: [Batch Processing](../guides/batch-processing.md) covers the full analyzer/worker/aggregator pattern with production examples.
+Batchable handlers currently use the class-based pattern due to their stateful nature (cursor management, batch context). See [Class-Based Handlers — Batchable Handler](../reference/class-based-handlers.md#batchable-handler) for the full pattern, and [Batch Processing](../guides/batch-processing.md) for the production guide.
 
 ## Task Templates
 

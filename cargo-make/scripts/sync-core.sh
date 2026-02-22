@@ -77,6 +77,14 @@ LOCAL_GENERATED_FILES=(
 )
 
 # ---------------------------------------------------------------------------
+# Files to preserve in reference/ (book-owned content)
+# These are authored in tasker-book, not synced from tasker-core
+# ---------------------------------------------------------------------------
+LOCAL_REFERENCE_FILES=(
+    "class-based-handlers.md"
+)
+
+# ---------------------------------------------------------------------------
 # Sync directories
 # ---------------------------------------------------------------------------
 for dir in "${SYNC_DIRS[@]}"; do
@@ -95,6 +103,13 @@ for dir in "${SYNC_DIRS[@]}"; do
         # For generated/, also preserve locally-generated files
         if [[ "${dir}" == "generated" ]]; then
             for file in "${LOCAL_GENERATED_FILES[@]}"; do
+                RSYNC_EXCLUDES+=(--exclude="${file}")
+            done
+        fi
+
+        # For reference/, also preserve book-owned files
+        if [[ "${dir}" == "reference" ]]; then
+            for file in "${LOCAL_REFERENCE_FILES[@]}"; do
                 RSYNC_EXCLUDES+=(--exclude="${file}")
             done
         fi

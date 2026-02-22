@@ -1,14 +1,10 @@
 # Your First Handler
 
-This guide walks you through writing your first step handler.
+This guide walks you through writing your first step handler using the DSL.
 
 ## What is a Handler?
 
-A **Step Handler** is a class (or function, in Rust) that executes business logic for a single workflow step. Handlers:
-
-- Receive a **StepContext** with input data, dependency results, and configuration
-- Perform operations (API calls, database queries, calculations)
-- Return a **success** or **failure** result for downstream steps
+A **Step Handler** is your code that executes business logic for a single workflow step. With the DSL, a handler declares what it receives — typed inputs from the task context and typed results from upstream steps — and delegates to a service function. Handlers are thin wrappers: Tasker handles sequencing, retries, and error classification; your service layer handles the business logic.
 
 You can generate a handler from a template with `tasker-ctl`:
 
@@ -18,105 +14,97 @@ tasker-ctl template generate step_handler --language python --param name=Process
 
 Or write one from scratch using the patterns below.
 
-## Handler Anatomy by Language
+## The DSL Approach
+
+Every handler follows the same three-layer pattern:
+
+1. **Type definition** — the contract (what the handler receives and returns)
+2. **Handler declaration** — the DSL wiring (which step, which inputs, which dependencies)
+3. **Service delegation** — one-line call to your business logic
 
 ### Python
 
 ```python
-from tasker_core import StepContext, StepHandler, StepHandlerResult
+# app/services/types.py — the contract
+class EcommerceOrderInput(BaseModel):
+    cart_items: list[dict[str, Any]] | None = None
+    customer_email: str | None = None
+    payment_token: str | None = None
 
+    @property
+    def resolved_items(self) -> list[dict[str, Any]]:
+        return self.items or self.cart_items or []
 
-class ProcessOrderHandler(StepHandler):
-    handler_name = "process_order"
-    handler_version = "1.0.0"
+# app/handlers/ecommerce.py — the handler
+from tasker_core.step_handler.functional import inputs, step_handler
+from app.services.types import EcommerceOrderInput
+from app.services import ecommerce as svc
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        # Access input data from the task context
-        input_data = context.input_data
-
-        # Access results from upstream dependency steps
-        # prev_result = context.get_dependency_result("previous_step_name")
-
-        result = {
-            "processed": True,
-            "handler": "process_order",
-        }
-
-        return StepHandlerResult.success(result=result)
+@step_handler("validate_cart")
+@inputs(EcommerceOrderInput)
+def validate_cart(inputs: EcommerceOrderInput, context: StepContext):
+    return svc.validate_cart_items(inputs.resolved_items)
 ```
+
+The `@step_handler` decorator registers this function as the handler for the `validate_cart` step. The `@inputs` decorator tells Tasker to extract the task context into an `EcommerceOrderInput` Pydantic model. The function body is a single service call.
 
 ### Ruby
 
 ```ruby
-require 'tasker_core'
+# app/services/types.rb — the contract
+module Types
+  module Ecommerce
+    class OrderInput < Types::InputStruct
+      attribute :cart_items, Types::Array.of(Types::Hash).optional
+      attribute :customer_email, Types::String.optional
+    end
+  end
+end
 
-module Handlers
-  class ProcessOrderHandler < TaskerCore::StepHandler::Base
-    def call(context)
-      # Access input data from the task context
-      input = context.input_data
+# app/handlers/ecommerce/step_handlers/validate_cart_handler.rb — the handler
+module Ecommerce
+  module StepHandlers
+    extend TaskerCore::StepHandler::Functional
 
-      # Access results from upstream dependency steps
-      # prev_result = context.get_dependency_result('previous_step_name')
-
-      result = {
-        processed: true,
-        handler: 'process_order'
-      }
-
-      success(result: result)
-    rescue StandardError => e
-      failure(
-        message: e.message,
-        error_type: 'RetryableError',
-        retryable: true,
-        metadata: { handler: 'process_order' }
-      )
+    ValidateCartHandler = step_handler(
+      'Ecommerce::StepHandlers::ValidateCartHandler',
+      inputs: Types::Ecommerce::OrderInput
+    ) do |inputs:, context:|
+      Ecommerce::Service.validate_cart_items(cart_items: inputs.cart_items)
     end
   end
 end
 ```
 
+Ruby uses `step_handler` as a method that takes a block. The `inputs:` keyword argument receives a `Dry::Struct` instance with typed attributes.
+
 ### TypeScript
 
 ```typescript
-import {
-  StepHandler,
-  type StepContext,
-  type StepHandlerResult,
-  ErrorType,
-} from '@tasker-systems/tasker';
-
-export class ProcessOrderHandler extends StepHandler {
-  static handlerName = 'process_order';
-  static handlerVersion = '1.0.0';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    try {
-      // Access input data from the task context
-      const inputData = context.inputData;
-
-      // Access results from upstream dependency steps
-      // const prevResult = context.getDependencyResult('previous_step_name');
-
-      const result = {
-        processed: true,
-        handler: 'process_order',
-      };
-
-      return this.success(result);
-    } catch (error) {
-      return this.failure(
-        error instanceof Error ? error.message : String(error),
-        ErrorType.RETRYABLE_ERROR,
-        true,
-      );
-    }
-  }
+// src/services/types.ts — the contract
+export interface CartItem {
+  sku: string;
+  name: string;
+  price: number;
+  quantity: number;
 }
+
+// src/handlers/ecommerce.ts — the handler
+import { defineHandler } from '@tasker-systems/tasker';
+import * as svc from '../services/ecommerce';
+
+export const ValidateCartHandler = defineHandler(
+  'Ecommerce.StepHandlers.ValidateCartHandler',
+  { inputs: { cartItems: 'cart_items' } },
+  async ({ cartItems }) => svc.validateCartItems(cartItems as CartItem[]),
+);
 ```
 
+TypeScript uses `defineHandler` as a factory function. The `inputs` config maps camelCase parameter names to snake\_case YAML field names.
+
 ### Rust
+
+Rust uses the `RustStepHandler` trait directly — this is Rust's only handler pattern. There is no DSL equivalent, by design.
 
 ```rust
 use anyhow::Result;
@@ -147,12 +135,7 @@ impl RustStepHandler for ProcessOrderHandler {
         step_data: &TaskSequenceStep,
     ) -> Result<StepExecutionResult> {
         let start = Instant::now();
-
-        // Access input data from the task context
         let _input_data = &step_data.task.context;
-
-        // Access dependency results from upstream steps
-        // let _dep_results = &step_data.dependency_results;
 
         let result_data = json!({
             "processed": true,
@@ -171,14 +154,17 @@ impl RustStepHandler for ProcessOrderHandler {
 }
 ```
 
-## Key Patterns
+## Reading the DSL
 
-| Concept | Python | Ruby | TypeScript | Rust |
-|---------|--------|------|------------|------|
-| Input data | `context.input_data` | `context.input_data` | `context.inputData` | `step_data.task.context` |
-| Dependency result | `context.get_dependency_result("step")` | `context.get_dependency_result('step')` | `context.getDependencyResult('step')` | `step_data.dependency_results` |
-| Success | `StepHandlerResult.success(result=data)` | `success(result: data)` | `this.success(data)` | `Ok(success_result(...))` |
-| Failure | `StepHandlerResult.failure(...)` | `failure(message:, ...)` | `this.failure(msg, type, retryable)` | `Ok(error_result(...))` |
+Each language's DSL has the same three concepts:
+
+| Concept | Python | Ruby | TypeScript |
+|---------|--------|------|------------|
+| Register a handler | `@step_handler("name")` | `step_handler('Name', ...) do` | `defineHandler('Name', ...)` |
+| Inject task inputs | `@inputs(Model)` | `inputs: Model` | `{ inputs: { key: 'field' } }` |
+| Inject dependency results | `@depends_on(x=("step", Model))` | `depends_on: { x: ['step', Model] }` | `{ depends: { x: 'step' } }` |
+
+The handler function always receives `context` as its last parameter — a `StepContext` with execution metadata. Most handlers don't need it directly, but it's available for advanced patterns.
 
 ## Registering Handlers
 
@@ -186,10 +172,14 @@ Handlers are resolved by matching the `handler.callable` field in task template 
 
 | Language | Format | Example |
 |----------|--------|---------|
-| Ruby | `Module::ClassName` | `Handlers::ProcessOrderHandler` |
-| Python | `module.file.ClassName` | `handlers.process_order_handler.ProcessOrderHandler` |
-| TypeScript | `ClassName` | `ProcessOrderHandler` |
+| Ruby | `Module::ClassName` | `Ecommerce::StepHandlers::ValidateCartHandler` |
+| Python | `function_name` | `validate_cart` |
+| TypeScript | `Namespace.ClassName` | `Ecommerce.StepHandlers.ValidateCartHandler` |
 | Rust | `function_name` | `process_order` |
+
+## Class-Based Alternative
+
+If you prefer class inheritance, all handler types support a class-based pattern where you extend `StepHandler` and implement `call(context)`. See [Class-Based Handlers](../reference/class-based-handlers.md) for the full reference.
 
 ## See It in Action
 
