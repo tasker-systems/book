@@ -390,7 +390,7 @@ EOF
             echo -e "  ${CYAN}Inspecting generated docker-compose.yml:${NC}"
 
             if grep -q ":latest" docker-compose.yml; then
-                warn "Uses :latest tags (examples pin to 0.1.4 / pg18-latest)"
+                warn "Uses :latest tags (examples pin to 0.1.5 / pg18-latest)"
             fi
 
             if ! grep -q "platform:" docker-compose.yml; then
