@@ -4,7 +4,7 @@
 
 Tasker is an open-source workflow orchestration engine built on PostgreSQL and PGMQ. You define workflows as task templates with ordered steps, implement handlers in Rust, Ruby, Python, or TypeScript, and the engine handles execution, retries, circuit breaking, and observability.
 
-Your existing business logic — API calls, database operations, service integrations — becomes a distributed, event-driven, retryable workflow with minimal ceremony. No DSLs to learn, no framework rewrites. Just thin handler wrappers around code you already have.
+Your existing business logic — API calls, database operations, service integrations — becomes a distributed, event-driven, retryable workflow with minimal ceremony. No complex abstractions to learn, no framework rewrites. Just thin handler wrappers around code you already have.
 
 ---
 
