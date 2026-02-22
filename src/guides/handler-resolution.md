@@ -37,7 +37,7 @@ handler:
 
 ### 1. Address (callable)
 
-The `callable` field is a **logical address** that identifies the handler. Think of it like a URL - it points to where the handler lives, but the format depends on your resolution strategy:
+The `callable` field is a **logical address** that identifies the handler. Think of it like a URL — it points to where the handler lives, but the format depends on your resolution strategy:
 
 | Format | Example | Resolver |
 |--------|---------|----------|
@@ -45,6 +45,8 @@ The `callable` field is a **logical address** that identifies the handler. Think
 | Class path (Ruby) | `PaymentHandlers::ProcessPaymentHandler` | ClassConstantResolver |
 | Module path (Python) | `payment_handlers.ProcessPaymentHandler` | ClassLookupResolver |
 | Namespace path (TS) | `PaymentHandlers.ProcessPaymentHandler` | ClassLookupResolver |
+
+**Convention vs. requirement:** The ExplicitMappingResolver treats the callable as an **opaque key** — any string works as long as it exactly matches the name the handler was registered with. The format conventions above are *recommendations*, not constraints. Short names like `validate_cart` work perfectly well because DSL handlers register via explicit mapping, and exact-match always wins (priority 10 vs. 100). Qualified names like `Ecommerce::StepHandlers::ValidateCartHandler` are conventional in Ruby and TypeScript because they also enable the class lookup fallback resolver, but a short name registered via `@step_handler("validate_cart")` in Python resolves just as reliably.
 
 ### 2. Entry Point (method)
 

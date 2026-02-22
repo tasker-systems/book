@@ -7,7 +7,7 @@ Tasker supports multiple languages through FFI bindings. Each language package p
 | Language | Package | Guide |
 |----------|---------|-------|
 | **Rust** | `tasker-worker` + `tasker-client` | [Rust Guide](../building/rust.md) |
-| **Ruby** | `tasker-core-rb` | [Ruby Guide](../building/ruby.md) |
+| **Ruby** | `tasker-rb` | [Ruby Guide](../building/ruby.md) |
 | **Python** | `tasker-py` | [Python Guide](../building/python.md) |
 | **TypeScript** | `@tasker-systems/tasker` | [TypeScript Guide](../building/typescript.md) |
 

@@ -20,7 +20,7 @@ The framework integration layer is intentionally thin: it translates your framew
 
 | Framework | Language | SDK Package | CLI Plugin |
 |-----------|----------|-------------|------------|
-| Rails | Ruby | `tasker-core-rb` | `tasker-contrib-rails` |
+| Rails | Ruby | `tasker-rb` | `tasker-contrib-rails` |
 | FastAPI | Python | `tasker-py` | `tasker-contrib-python` |
 | Hono/Bun | TypeScript | `@tasker-systems/tasker` | `tasker-contrib-typescript` |
 | Axum | Rust | `tasker-worker` | `tasker-contrib-rust` |
@@ -31,7 +31,7 @@ Each plugin provides templates for all [handler types](handler-types.md): step, 
 
 | App | Framework | SDK Package | Source |
 |-----|-----------|-------------|--------|
-| **rails-app** | Rails 7 | `tasker-core-rb` | [GitHub](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app) |
+| **rails-app** | Rails 8 | `tasker-rb` | [GitHub](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app) |
 | **fastapi-app** | FastAPI | `tasker-py` | [GitHub](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app) |
 | **bun-app** | Hono/Bun | `@tasker-systems/tasker` | [GitHub](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app) |
 | **axum-app** | Axum | `tasker-worker` | [GitHub](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/axum-app) |
