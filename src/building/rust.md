@@ -25,6 +25,8 @@ tasker-ctl template generate step_handler \
 
 This creates a handler struct implementing the `RustStepHandler` trait.
 
+> **No DSL equivalent**: Rust uses the `RustStepHandler` trait directly — the trait IS the pattern. Python, Ruby, and TypeScript have DSL wrappers for ergonomics, but Rust's trait system provides the same structure natively. For the DSL approach in other languages, see [Python](python.md), [Ruby](ruby.md), or [TypeScript](typescript.md).
+
 ## Writing a Step Handler
 
 Rust supports two handler patterns: standalone functions (used in the example apps) and
@@ -431,8 +433,22 @@ mod tests {
 }
 ```
 
+## Capability Traits
+
+Beyond the base `RustStepHandler`, the worker crate defines capability traits in `handler_capabilities.rs` for specialized patterns:
+
+| Trait | What it provides |
+|---|---|
+| `APICapable` | HTTP client methods with retryable/permanent error classification |
+| `DecisionCapable` | Workflow routing via step activation |
+| `BatchableCapable` | Cursor-based parallel batch processing |
+
+A Rust handler implements `RustStepHandler` and adds any capability traits it needs — this is idiomatic Rust trait composition. For a complex example combining multiple capabilities, see `diamond_decision_batch.rs` in the Rust worker crate.
+
+The Rust `batch_processing` module is the **foundation** that Python, Ruby, and TypeScript access through FFI. The specialized handler types in those languages are ergonomic wrappers — Rust developers work with the underlying traits directly.
+
 ## Next Steps
 
-- See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
-- See [Architecture](../architecture/index.md) for system design details
-- Browse the [Axum example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/axum-app) for complete handler implementations
+- [Your First Workflow](first-workflow.md) — Build a multi-step DAG end-to-end
+- [Architecture](../architecture/index.md) — System design details
+- [Axum example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/axum-app) — Complete working implementation

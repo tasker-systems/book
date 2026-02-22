@@ -22,367 +22,322 @@ tasker-ctl template generate step_handler \
   --param module_name=handlers.ecommerce
 ```
 
-This creates a handler class that extends `StepHandler` with the standard `call(context)` method.
+This creates a DSL-style handler with typed inputs that delegates to a service function.
 
-## Writing a Step Handler
+## Writing a Handler (DSL)
 
-Every Python handler extends `StepHandler` and implements `call`:
+Every handler follows the three-layer pattern: **type definition**, **handler declaration**, **service delegation**.
 
 ```python
-from __future__ import annotations
-
-from datetime import datetime, timezone
+# app/services/types.py — the contract
+from pydantic import BaseModel
 from typing import Any
 
-from tasker_core import ErrorType, StepContext, StepHandler, StepHandlerResult
+class EcommerceOrderInput(BaseModel):
+    items: list[dict[str, Any]] | None = None
+    cart_items: list[dict[str, Any]] | None = None
+    customer_email: str | None = None
+    payment_token: str | None = None
 
+    @property
+    def resolved_items(self) -> list[dict[str, Any]]:
+        """Accept either field name from the task context."""
+        return self.items or self.cart_items or []
 
-class ValidateCartHandler(StepHandler):
-    handler_name = "validate_cart"
-    handler_version = "1.0.0"
+# app/handlers/ecommerce.py — the handler
+from tasker_core.step_handler.functional import inputs, step_handler
+from app.services.types import EcommerceOrderInput
+from app.services import ecommerce as svc
 
-    TAX_RATE = 0.08
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        cart_items = context.get_input("items") or context.get_input("cart_items")
-        if not cart_items or not isinstance(cart_items, list):
-            return StepHandlerResult.failure(
-                message="Cart is empty or items field is missing",
-                error_type=ErrorType.VALIDATION_ERROR,
-                retryable=False,
-                error_code="EMPTY_CART",
-            )
-
-        validated_items: list[dict[str, Any]] = []
-        subtotal = 0.0
-
-        for item in cart_items:
-            sku = item.get("sku")
-            quantity = item.get("quantity", 0)
-            unit_price = item.get("unit_price", 0.0)
-
-            if quantity < 1:
-                return StepHandlerResult.failure(
-                    message=f"Item '{sku}' has invalid quantity: {quantity}",
-                    error_type=ErrorType.VALIDATION_ERROR,
-                    retryable=False,
-                    error_code="INVALID_QUANTITY",
-                )
-
-            line_total = round(quantity * unit_price, 2)
-            subtotal += line_total
-            validated_items.append({
-                "sku": sku,
-                "name": item.get("name"),
-                "quantity": quantity,
-                "unit_price": unit_price,
-                "line_total": line_total,
-            })
-
-        tax = round(subtotal * self.TAX_RATE, 2)
-        total = round(subtotal + tax, 2)
-
-        return StepHandlerResult.success(
-            result={
-                "validated_items": validated_items,
-                "item_count": len(validated_items),
-                "subtotal": subtotal,
-                "tax": tax,
-                "total": total,
-                "validated_at": datetime.now(timezone.utc).isoformat(),
-            },
-            metadata={"items_validated": len(validated_items)},
-        )
+@step_handler("validate_cart")
+@inputs(EcommerceOrderInput)
+def validate_cart(inputs: EcommerceOrderInput, context: StepContext):
+    return svc.validate_cart_items(inputs.resolved_items)
 ```
 
-The handler receives a `StepContext` and returns a `StepHandlerResult` — either
-`StepHandlerResult.success()` or `StepHandlerResult.failure()`.
+The `@step_handler` decorator registers this function as the handler for the `validate_cart` step. The `@inputs` decorator tells Tasker to extract the task context into a Pydantic model. The function body is a single service call.
+
+## Type System
+
+Python handlers use **Pydantic `BaseModel`** for both input and result types. The DSL deserializes JSON into these models automatically.
+
+**Input types** receive the task context:
+
+```python
+class EcommerceOrderInput(BaseModel):
+    items: list[dict[str, Any]] | None = None
+    cart_items: list[dict[str, Any]] | None = None
+    payment_token: str | None = None
+    customer_email: str | None = None
+
+    @property
+    def resolved_items(self) -> list[dict[str, Any]]:
+        """Accept either field name from the task context."""
+        return self.items or self.cart_items or []
+```
+
+**Result types** describe what a handler returns (used by downstream `@depends_on`):
+
+```python
+class EcommerceValidateCartResult(BaseModel):
+    validated_items: list[dict[str, Any]] | None = None
+    item_count: int | None = None
+    subtotal: float | None = None
+    tax: float | None = None
+    total: float | None = None
+```
+
+All fields are optional with `None` defaults. This is intentional — task context may not include every field, and upstream results may vary. The type system provides structure and IDE autocomplete without brittle required-field failures.
+
+**Validation** with `@model_validator`:
+
+```python
+from pydantic import model_validator
+
+class ValidateRefundRequestInput(BaseModel):
+    ticket_id: str | None = None
+    order_ref: str | None = None
+    refund_amount: float | None = None
+
+    @property
+    def resolved_ticket_id(self) -> str | None:
+        return self.ticket_id or self.order_ref
+
+    @model_validator(mode='after')
+    def check_required_fields(self) -> 'ValidateRefundRequestInput':
+        if not self.resolved_ticket_id:
+            raise PermanentError(
+                message="ticket_id or order_ref is required",
+                error_code="MISSING_TICKET_ID",
+            )
+        return self
+```
 
 ## Accessing Task Context
 
-Use `get_input()` to read values from the task context (TAS-137 cross-language standard):
+The `@inputs(Model)` decorator extracts the full task context into a typed Pydantic model. Fields are matched by name from the submitted JSON:
 
 ```python
-# Read a top-level field from the task context
-cart_items = context.get_input("cart_items")
-customer_email = context.get_input("customer_email")
-
-# Read a nested object
-payment_info = context.get_input("payment_info")
-token = payment_info.get("token") if payment_info else None
+@step_handler("validate_cart")
+@inputs(EcommerceOrderInput)
+def validate_cart(inputs: EcommerceOrderInput, context: StepContext):
+    # inputs.cart_items, inputs.customer_email, etc. are typed fields
+    return svc.validate_cart_items(inputs.resolved_items)
 ```
 
-## Accessing Dependency Results
+The `context` parameter provides execution metadata (task UUID, step UUID, step config) but most handlers don't need it directly.
 
-Use `get_dependency_result()` to read results from upstream steps. The return value
-is auto-unwrapped — you get the result dict directly:
+## Working with Dependencies
+
+The `@depends_on` decorator injects typed results from upstream steps. Each entry maps a parameter name to a `("step_name", ResultModel)` tuple:
 
 ```python
-# Get the full result from an upstream step
-cart_result = context.get_dependency_result("validate_cart")
-total = cart_result.get("total", 0.0)
-
-# Combine data from multiple upstream steps
-payment_result = context.get_dependency_result("process_payment")
-inventory_result = context.get_dependency_result("update_inventory")
+@step_handler("process_payment")
+@depends_on(cart_result=("validate_cart", EcommerceValidateCartResult))
+@inputs(EcommerceOrderInput)
+def process_payment(
+    cart_result: EcommerceValidateCartResult,
+    inputs: EcommerceOrderInput,
+    context: StepContext,
+):
+    return svc.process_payment(
+        payment_token=inputs.payment_token,
+        total=cart_result.total or 0.0,
+    )
 ```
+
+Handlers can reference **any ancestor step** in the DAG — not just direct predecessors. Tasker makes all ancestor results available. Here's a convergence handler that accesses three upstream steps:
+
+```python
+@step_handler("create_order")
+@depends_on(
+    cart_result=("validate_cart", EcommerceValidateCartResult),
+    payment_result=("process_payment", EcommerceProcessPaymentResult),
+    inventory_result=("update_inventory", EcommerceUpdateInventoryResult),
+)
+@inputs(EcommerceOrderInput)
+def create_order(
+    cart_result: EcommerceValidateCartResult,
+    payment_result: EcommerceProcessPaymentResult,
+    inventory_result: EcommerceUpdateInventoryResult,
+    inputs: EcommerceOrderInput,
+    context: StepContext,
+):
+    return svc.create_order(
+        cart=cart_result, payment=payment_result,
+        inventory=inventory_result, customer_email=inputs.customer_email,
+    )
+```
+
+## Multi-Step Example: Data Pipeline
+
+The data pipeline workflow demonstrates a parallel DAG — three independent extract branches, each feeding its own transform, converging at aggregation:
+
+```text
+extract_sales    extract_inventory    extract_customers
+     │                  │                    │
+     ▼                  ▼                    ▼
+transform_sales  transform_inventory  transform_customers
+     │                  │                    │
+     └──────────────────┼────────────────────┘
+                        ▼
+               aggregate_metrics
+                        │
+                        ▼
+              generate_insights
+```
+
+The handlers are just as concise as the e-commerce ones:
+
+```python
+from app.services import data_pipeline as svc
+from app.services.types import (
+    DataPipelineInput,
+    PipelineExtractSalesResult,
+    PipelineTransformSalesResult,
+    PipelineTransformInventoryResult,
+    PipelineTransformCustomersResult,
+    PipelineAggregateMetricsResult,
+)
+
+# Extract — no dependencies, runs in parallel
+@step_handler("extract_sales_data")
+@inputs(DataPipelineInput)
+def extract_sales_data(inputs: DataPipelineInput, context: StepContext):
+    return svc.extract_sales_data(
+        source=inputs.source,
+        date_range_start=inputs.date_range_start,
+        date_range_end=inputs.date_range_end,
+        granularity=inputs.granularity,
+    )
+
+# Transform — depends on one extract branch
+@step_handler("transform_sales")
+@depends_on(sales_data=("extract_sales_data", PipelineExtractSalesResult))
+def transform_sales(sales_data: PipelineExtractSalesResult, context: StepContext):
+    return svc.transform_sales(sales_data=sales_data)
+
+# Aggregate — converges three transform branches
+@step_handler("aggregate_metrics")
+@depends_on(
+    sales_transform=("transform_sales", PipelineTransformSalesResult),
+    traffic_transform=("transform_inventory", PipelineTransformInventoryResult),
+    inventory_transform=("transform_customers", PipelineTransformCustomersResult),
+)
+def aggregate_metrics(
+    sales_transform: PipelineTransformSalesResult,
+    traffic_transform: PipelineTransformInventoryResult,
+    inventory_transform: PipelineTransformCustomersResult,
+    context: StepContext,
+):
+    return svc.aggregate_metrics(
+        sales_transform=sales_transform,
+        traffic_transform=traffic_transform,
+        inventory_transform=inventory_transform,
+    )
+```
+
+Eight handlers, eight service delegations. The pipeline DAG runs three extract steps in parallel, feeds each into a transform, then converges at aggregation and insight generation.
 
 ## Error Handling
 
-Return `StepHandlerResult.failure()` with an error type and retryable flag:
+Raise `PermanentError` or `RetryableError` from your handler or service functions:
 
 ```python
+from tasker_core.errors import PermanentError, RetryableError
+
 # Non-retryable validation failure
-return StepHandlerResult.failure(
+raise PermanentError(
     message="Payment declined: insufficient funds",
-    error_type=ErrorType.PERMANENT_ERROR,
-    retryable=False,
     error_code="PAYMENT_DECLINED",
 )
 
 # Retryable transient failure
-return StepHandlerResult.failure(
+raise RetryableError(
     message="Payment gateway returned an error, will retry",
-    error_type=ErrorType.RETRYABLE_ERROR,
-    retryable=True,
     error_code="GATEWAY_ERROR",
 )
 ```
 
-Error types available via the `ErrorType` enum:
-
-- `ErrorType.VALIDATION_ERROR` — Bad input data (non-retryable)
-- `ErrorType.PERMANENT_ERROR` — Business logic rejection (non-retryable)
-- `ErrorType.RETRYABLE_ERROR` — Transient failure (retryable)
-- `ErrorType.HANDLER_ERROR` — Internal handler error
-
-## Task Template Configuration
-
-Generate a task template with `tasker-ctl`:
-
-```bash
-tasker-ctl template generate task_template \
-  --language python \
-  --param name=EcommerceOrderProcessing \
-  --param namespace=ecommerce \
-  --param handler_callable=ecommerce.task_handlers.OrderProcessingHandler
-```
-
-This generates a YAML file defining the workflow. Here is a multi-step example from
-the ecommerce example app:
-
-```yaml
-name: ecommerce_order_processing
-namespace_name: ecommerce_py
-version: 1.0.0
-description: "Complete e-commerce order processing workflow"
-metadata:
-  author: FastAPI Example Application
-  tags:
-    - namespace:ecommerce
-    - pattern:order_processing
-    - language:python
-task_handler:
-  callable: ecommerce.task_handlers.OrderProcessingHandler
-  initialization:
-    input_validation:
-      required_fields:
-        - items
-        - customer_email
-system_dependencies:
-  primary: default
-  secondary: []
-input_schema:
-  type: object
-  required:
-    - items
-    - customer_email
-  properties:
-    items:
-      type: array
-      items:
-        type: object
-        required: [sku, name, quantity, unit_price]
-    customer_email:
-      type: string
-      format: email
-steps:
-  - name: validate_cart
-    description: "Validate cart items, calculate totals"
-    handler:
-      callable: validate_cart
-    dependencies: []
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: process_payment
-    description: "Process customer payment"
-    handler:
-      callable: process_payment
-    dependencies:
-      - validate_cart
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: update_inventory
-    description: "Reserve inventory for order items"
-    handler:
-      callable: update_inventory
-    dependencies:
-      - process_payment
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: create_order
-    description: "Create order record"
-    handler:
-      callable: create_order
-    dependencies:
-      - update_inventory
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: send_confirmation
-    description: "Send order confirmation email"
-    handler:
-      callable: send_confirmation
-    dependencies:
-      - create_order
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-```
-
-Key fields:
-
-- **`metadata`** — Tags, authorship, and documentation links
-- **`task_handler`** — The top-level handler and initialization config
-- **`system_dependencies`** — External service connections the workflow requires
-- **`input_schema`** — JSON Schema validating task input before execution
-- **`steps[].handler.callable`** — Python callable name (e.g., `validate_cart` or `handlers.ecommerce.ValidateCartHandler`)
-- **`steps[].dependencies`** — DAG edges defining execution order
-- **`steps[].retry`** — Per-step retry policy with backoff
-
-## Handler Variants
-
-### API Handler (`step_handler_api`)
-
-```bash
-tasker-ctl template generate step_handler_api \
-  --language python \
-  --param name=FetchUser \
-  --param module_name=handlers \
-  --param base_url=https://api.example.com
-```
-
-Generates a handler that extends `APIMixin` with `StepHandler`, providing HTTP methods
-(`get`, `post`, `put`, `delete`) with automatic error classification and retry support
-via `httpx`.
-
-### Decision Handler (`step_handler_decision`)
-
-```bash
-tasker-ctl template generate step_handler_decision \
-  --language python \
-  --param name=RouteOrder \
-  --param module_name=handlers
-```
-
-Generates a handler that extends `DecisionHandler`, providing `decision_success()` for
-routing workflows to different downstream step sets based on runtime conditions.
-
-### Batchable Handler (`step_handler_batchable`)
-
-```bash
-tasker-ctl template generate step_handler_batchable \
-  --language python \
-  --param name=ProcessRecords \
-  --param module_name=handlers
-```
-
-Generates an Analyzer/Worker pattern with two handler classes:
-`ProcessRecordsAnalyzerHandler` divides work into cursor ranges, and
-`ProcessRecordsWorkerHandler` processes batches in parallel.
+Pydantic `@model_validator` errors are also caught and converted to `PermanentError` automatically — invalid input data won't be retried.
 
 ## Testing
 
-The template generates a pytest test file alongside the handler:
+DSL handlers are plain functions — test them by calling the function directly with mocked inputs:
 
 ```python
-import uuid
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
-from handlers.ecommerce import ValidateCartHandler
+def test_validate_cart():
+    context = MagicMock()
+    # Mock the inputs that @inputs would inject
+    inputs = EcommerceOrderInput(
+        cart_items=[{"sku": "SKU-001", "name": "Widget", "quantity": 2, "unit_price": 29.99}]
+    )
 
+    with patch("app.services.ecommerce.validate_cart_items") as mock_svc:
+        mock_svc.return_value = {"validated_items": [], "total": 64.79}
+        result = validate_cart(inputs=inputs, context=context)
 
-class TestValidateCartHandler:
-    def test_validates_cart_successfully(self):
-        handler = ValidateCartHandler()
-        context = MagicMock()
-        context.get_input = MagicMock(
-            side_effect=lambda key: [
-                {"sku": "SKU-001", "name": "Widget", "quantity": 2, "unit_price": 29.99}
-            ] if key in ("items", "cart_items") else None
+    mock_svc.assert_called_once()
+    assert result["total"] == 64.79
+```
+
+For handlers with dependencies, construct the result models directly:
+
+```python
+def test_create_order():
+    context = MagicMock()
+    cart = EcommerceValidateCartResult(total=64.79, validated_items=[])
+    payment = EcommerceProcessPaymentResult(payment_id="pay_abc", transaction_id="txn_xyz")
+    inventory = EcommerceUpdateInventoryResult(inventory_log_id="log_123")
+    inputs = EcommerceOrderInput(customer_email="test@example.com")
+
+    with patch("app.services.ecommerce.create_order") as mock_svc:
+        mock_svc.return_value = {"order_id": "ORD-001"}
+        result = create_order(
+            cart_result=cart, payment_result=payment,
+            inventory_result=inventory, inputs=inputs, context=context,
         )
 
-        result = handler.call(context)
-
-        assert result.success is True
-        assert result.result["total"] > 0
-        assert result.result["item_count"] == 1
-
-    def test_rejects_empty_cart(self):
-        handler = ValidateCartHandler()
-        context = MagicMock()
-        context.get_input = MagicMock(return_value=None)
-
-        result = handler.call(context)
-
-        assert result.success is False
+    assert result["order_id"] == "ORD-001"
 ```
 
-Test handlers that use dependency results by configuring `get_dependency_result`:
+Because handlers delegate to service functions, you can also test the services directly without any Tasker infrastructure.
+
+## Handler Variants
+
+### API Handler
+
+Adds HTTP client methods with built-in error classification. Currently uses the class-based pattern with `APIMixin`. See [Class-Based Handlers — API Handler](../reference/class-based-handlers.md#api-handler).
+
+### Decision Handler
+
+Adds workflow routing. The DSL provides `@decision_handler`:
 
 ```python
-def test_creates_order_from_upstream_data(self):
-    handler = CreateOrderHandler()
-    context = MagicMock()
-    context.get_input = MagicMock(
-        side_effect=lambda key: "test@example.com" if key == "customer_email" else None
-    )
-    context.get_dependency_result = MagicMock(side_effect=lambda step: {
-        "validate_cart": {"total": 64.79, "validated_items": []},
-        "process_payment": {"payment_id": "pay_abc", "transaction_id": "txn_xyz"},
-        "update_inventory": {"inventory_log_id": "log_123"},
-    }.get(step))
+from tasker_core.step_handler.functional import decision_handler
 
-    result = handler.call(context)
-
-    assert result.success is True
-    assert result.result["order_id"].startswith("ORD-")
+@decision_handler("order_routing")
+def order_routing(context: StepContext):
+    order_type = context.get_input("order_type")
+    if order_type == "premium":
+        return ["validate_premium", "process_premium"]
+    return ["standard_processing"]
 ```
+
+See [Conditional Workflows](../guides/conditional-workflows.md) for decision handler patterns.
+
+### Batchable Handler
+
+Adds batch processing for splitting large workloads. Uses the class-based pattern due to its stateful nature (cursor management, batch context). See [Class-Based Handlers — Batchable Handler](../reference/class-based-handlers.md#batchable-handler) and [Batch Processing](../guides/batch-processing.md).
+
+## Class-Based Alternative
+
+If you prefer class inheritance, all handler types support a class-based pattern where you extend `StepHandler` and implement `call(context)`. See [Class-Based Handlers](../reference/class-based-handlers.md) for the full reference.
 
 ## Next Steps
 
-- See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
-- See [Architecture](../architecture/index.md) for system design details
-- Browse the [FastAPI example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app) for complete handler implementations
+- [Your First Workflow](first-workflow.md) — Build a multi-step DAG end-to-end
+- [Architecture](../architecture/index.md) — System design details
+- [FastAPI example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app) — Complete working implementation
