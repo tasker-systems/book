@@ -1,6 +1,6 @@
-# Probabilistic Planning, Deterministic Execution
+# Generative Workflows, Deterministic Execution
 
-*A Vision for LLM-Integrated Workflow Orchestration in Tasker*
+*A Vision for Composable, LLM-Integrated Workflow Orchestration in Tasker*
 
 ---
 
@@ -12,7 +12,7 @@ The workflow step is the atomic unit of the system. Each step has a lifecycle mo
 
 These properties were designed to make Tasker reliable. But reliability, it turns out, is also what makes a system *composable* in ways that weren't necessarily planned for. When you can trust that a step will do exactly what it says — succeed, fail, or retry — you can assemble steps into novel configurations without losing the safety properties of the whole. Reliable parts enable unreliable planners.
 
-This is the generative insight: **the determinism of the execution layer creates space for non-deterministic planning**.
+This is the generative insight: **the determinism of the execution layer creates space for non-deterministic planning**. And the stronger the execution guarantees, the more freedom the planning layer has.
 
 ---
 
@@ -28,39 +28,55 @@ Tasker's conditional workflow architecture already proves the core mechanism. Th
 
 Batch processing extends this further — a single batchable step can spawn N worker instances at runtime, all created transactionally, all converging through the same intersection semantics. The graph is not just branching dynamically; it is *scaling* dynamically.
 
-These are not theoretical capabilities. They are implemented, tested, and approaching production readiness in v0.1.2.
+These are not theoretical capabilities. They are implemented, tested, and approaching production readiness.
 
 ---
 
-## The Vision: What If the Planner Were an LLM?
+## Action Grammars: A Type System for Workflow Actions
 
-Today, decision point handlers contain business logic written by engineers. The decision is deterministic: if the amount is under $1,000, auto-approve; if over $5,000, require dual approval. The handler returns `CreateSteps { step_names }` where those names are drawn from a template that was designed at development time.
+The existing vision for dynamic workflows imagines a *handler catalog* — a library of generic, parameterized step handlers (HTTP request, data transformation, schema validation, fan-out) that can be composed without writing new code. This is valuable, but it treats the handler as the unit of composition. We can go deeper.
 
-But the machinery doesn't care *how* the decision was made. It cares that the decision produced valid step names, that those steps have registered handlers, and that the resulting graph is acyclic. The decision point is a contract: given context, return a plan. The execution layer validates and materializes that plan with the same transactional guarantees regardless of whether the plan came from a `match` statement or a language model.
+Consider how handlers actually work. An HTTP-calling handler does several things: it constructs a request, manages authentication, makes the call, handles errors, extracts relevant data from the response, and shapes its output for downstream consumption. A validation handler reads input, applies rules, partitions results into valid and invalid sets, and shapes its output. These handlers share lower-level actions — acquiring data, transforming shapes, asserting conditions, emitting results — even though their higher-level purposes differ.
 
-This is the vision: **an LLM acting as a workflow planner within Tasker's deterministic execution framework**.
+An **action grammar** is a formalization of these lower-level actions as composable primitives with declared input and output contracts. The term "grammar" is borrowed from compositional pattern work in the Storyteller project, but the application here is grounded in distributed systems concerns rather than narrative ones. An action grammar primitive:
 
-Not an autonomous agent. Not an uncontrolled system making arbitrary decisions. A planner — constrained by a capability schema, bounded by resource limits, validated before execution, observable throughout — that determines the topology of a workflow graph while the system guarantees the execution.
+- **Has a single concern.** Acquire external data. Transform a data shape. Assert an invariant. Gate on a condition. Emit a notification.
+- **Declares its input and output contracts.** Not as JSON Schema validated at runtime, but as Rust structs and traits enforced at compile time. Primitive A's output type must be compatible with primitive B's input type for the composition to compile.
+- **Preserves execution properties.** Each primitive is idempotent, retryable, and side-effect bounded. A composition of primitives inherits these properties because the composition rules enforce them.
 
-The LLM is stochastic. The step is deterministic. If the LLM's role is constrained to *planning* — generating graph topology and parameterizing steps — while execution remains within Tasker's guarantees, the result is something genuinely novel: probabilistic planning with deterministic execution.
+A handler, then, is a *composition of action grammar primitives* — a layered assembly of discrete actions where each layer's data contracts are enforced by the Rust type system. The handler catalog becomes a library of pre-composed handlers built on this grammar, rather than a flat collection of independent implementations.
+
+This matters for two reasons. First, it gives an LLM planner a richer vocabulary than "pick a handler." The LLM can compose from primitives — "acquire data from this endpoint, validate against this schema, transform into this shape" — and the composition is guaranteed correct because the type system enforces it. Second, it makes the catalog extensible without sacrificing safety. New handlers are compositions of existing primitives, not new implementations that need independent verification.
 
 ---
 
-## Building From Existing Affordances
+## Two Trust Tiers
 
-This vision does not require a new system. It requires extending affordances that already exist:
+This architecture creates a natural separation between two levels of trust:
 
-**Decision Point Steps → Planning Steps.** A planning step is a decision handler backed by an LLM instead of business logic. It receives the task context (including accumulated results from prior steps) and a capability schema describing what handlers are available. It returns a workflow fragment — a set of steps, their dependencies, their handler configurations — that the orchestration layer validates and materializes through the same transactional creation path that conditional workflows already use.
+**Developer-authored handlers** are written in whatever language the developer's application uses — Python, Ruby, TypeScript, Rust — registered through the DSL or class-based patterns, and executed through the polyglot FFI worker infrastructure. These handlers contain business logic that the developer owns. The system routes to them, retries them, manages their lifecycle, but the correctness of what's inside is the developer's responsibility. This is the model Tasker has today, and it remains the primary developer experience.
 
-**Step Templates → Handler Catalog.** Today, step handlers are application-specific code registered in each worker. A handler catalog is a library of generic, parameterized step handlers — HTTP request, data transformation, validation, fan-out, aggregation, notification, gating — that can be composed without writing new code. The LLM plans in terms of capabilities ("fetch this data, validate against this schema, transform into this shape"), and the catalog provides the handlers that execute those capabilities.
+**System-invoked action grammars** are the primitives and compositions that an LLM assembles into workflow fragments at runtime. These are implemented in Rust because they are *the system's responsibility*. When a planner says "acquire data from this endpoint, validate against this schema, transform into this shape," the code that executes needs to be as close to provably correct as possible. Rust provides this: the composition rules are compiled, the data contracts are enforced by the type system, the side-effect boundaries are explicit. The system is not trusting a JSON configuration to be right at runtime — it is trusting that the Rust compiler already verified the composition is sound.
 
-**Namespace Queues → Catalog Workers.** Today, workers subscribe to namespace queues based on their registered templates. A catalog worker is a worker deployment that ships with all standard catalog handlers pre-registered, listening on a dedicated namespace. Dynamically planned steps that reference catalog handlers route to these workers through the existing queue infrastructure.
+The action grammar tier is where certainty lives *precisely because* the planner is probabilistic. The stronger the floor beneath the planner, the more freedom the planner has to compose novel workflows. A planner that can only compose from a vocabulary it cannot break is fundamentally different from a planner that can compose from a vocabulary that might fail at runtime.
 
-**Deferred Convergence → Recursive Planning.** Today, convergence steps aggregate results from dynamic branches. In the planning model, a convergence step can itself be a planning step — one that receives the accumulated results of the previous phase and plans the next phase of work. The LLM doesn't have to plan the entire solution upfront. It can plan a reconnaissance phase, observe the results, and then plan the execution phase with the benefit of what it learned.
+Developer-authored handlers and system-invoked action grammars coexist in the same workflow. A task template can reference both — static steps backed by application-specific handlers and dynamically planned steps backed by grammar compositions. The orchestration layer treats both as steps; the difference is in the provenance and the trust model.
 
-**Batch Processing → Dynamic Scale.** The LLM planner can generate batchable steps, using the same cursor-based fan-out semantics that already exist. If the planner determines that a dataset needs parallel processing, it specifies a batchable step with a worker template, and the existing batch infrastructure handles decomposition, parallel execution, and convergence.
+---
 
-Each of these extensions builds on proven, tested machinery. The novelty is in the composition, not in the individual components.
+## The From-Here-to-There Path
+
+This vision does not require building everything before any of it is useful. There is a natural sequence of work where each step delivers real value to the Tasker ecosystem while building toward the full generative capability:
+
+**Step 1: Templates as Generative Contracts (TAS-280).** Extend the TaskTemplate with `result_schema` on step definitions. Build `tasker-ctl generate` to produce typed handler code, result models, and test scaffolds from templates. This has immediate utility for developer quality of life — typed dependency injection, IDE autocomplete, compile-time or lint-time shape checking. But it also establishes the first data contracts in the system and makes the template a source of code generation rather than just structural description.
+
+**Step 2: MCP Server for Workflow Authoring.** Build an MCP server that works with an LLM to help developers create well-structured templates, handler code, and test code from natural language descriptions. The MCP server validates templates for correctness, checks that handler-resolution patterns between templates and handler DSL code are valid, and generates calling code from the template's `input_schema`. This is the first point where an LLM touches the Tasker workflow lifecycle — not planning at runtime, but assisting with authoring at development time. The patterns learned here (prompt engineering, structured output quality, validation feedback loops) transfer directly to runtime planning.
+
+**Step 3: Action Grammars and Handler Catalog.** With data contracts established and MCP server experience revealing which workflow patterns recur, build the action grammar primitives in Rust and compose the handler catalog from them. This is where the compile-time enforcement comes in — where the grammar's type system ensures that compositions are correct and the catalog provides a vocabulary that an LLM can compose from safely.
+
+**Step 4: LLM Planning and Recursive Workflows.** With the vocabulary established and the MCP server experience informing prompt and context design, introduce planning steps that generate validated workflow fragments from runtime context, composed from action grammar primitives. Extend to recursive planning where each phase's plan is informed by accumulated results from prior phases.
+
+Each step depends on insights from the previous one. TAS-280 reveals what data contracts look like in practice. The MCP server reveals what the LLM needs to generate correct workflow components. Both inform the action grammar design. The action grammars provide the vocabulary the planning interface requires.
 
 ---
 
@@ -70,7 +86,7 @@ Precision matters when describing what AI integration means within an engineerin
 
 **It is not autonomous agents.** The LLM does not have persistent state, does not decide when to act, and does not operate outside the boundaries of the workflow system. Every step it plans goes through the same lifecycle, gets the same retry semantics, produces the same observability data as any other step. The system is always in control.
 
-**It is not code generation.** The LLM does not write handlers. It *selects and parameterizes* handlers from a known catalog. There is no hot-loading of generated code, no runtime compilation, no eval. The security boundary is configuration, not execution.
+**It is not code generation.** The LLM does not write handlers. In the developer-assistance context (MCP server), it generates handler *scaffolds* that developers review and extend. In the runtime planning context, it *composes and parameterizes* action grammar primitives from a known catalog. There is no hot-loading of generated code, no runtime compilation, no eval. The security boundary is composition of verified primitives, not execution of generated code.
 
 **It is not unconstrained.** Planning steps operate within explicit bounds: maximum graph depth, maximum step count, maximum cost budget, required convergence points. The orchestration layer validates every workflow fragment before materializing it. Invalid plans are rejected, not executed.
 
@@ -86,20 +102,18 @@ The core insight of that philosophy — that AI amplifies existing engineering p
 
 The principle of *specification before implementation* maps to the planning step's contract: the LLM produces a specification (the workflow fragment) that the system validates before implementing (materializing and executing). The principle of *human accountability as the final gate* maps to the gate handler — a catalog primitive that allows human approval at any decision point. The principle of *validation as a first-class concern* maps to the fragment validation pipeline that sits between planning and execution.
 
-This is what intentional partnership looks like at the systems level: the AI contributes its strengths (pattern recognition, problem decomposition, reasoning about complex workflows) while the system contributes its strengths (determinism, observability, resilience, accountability). Neither is asked to do what the other does better. The boundaries are clean, the contracts are explicit, and the guarantees are preserved.
+The two-tier trust model embodies the partnership concretely. Human developers write business logic in their language of choice with their domain expertise. The system provides a grammar of reliable, composable, type-safe primitives that the LLM can assemble. Neither is asked to do what the other does better. The boundaries are clean, the contracts are explicit, and the guarantees are preserved.
 
 ---
 
 ## Where This Leads
 
-The immediate practical implication is a system where problems can be described in terms of *what needs to happen* rather than *exactly how it should be orchestrated*. An engineer (or another system) describes a goal: "process this dataset, validate each record against these rules, enrich the valid records from this API, route failures to this review queue." The LLM planner decomposes that goal into a workflow graph using the handler catalog, and the system executes it with full deterministic guarantees.
+The immediate practical implication is a system where problems can be described at the level of *what needs to happen* rather than *exactly how it should be orchestrated*. Today this means a developer describes a workflow and an MCP server generates the template and handler code. Tomorrow this means a planning step receives runtime context and generates a workflow fragment from composable grammar primitives. Eventually this means multi-phase workflows where each phase adapts to what was learned in the previous phase.
 
-The longer-term implication is recursive problem-solving: multi-phase workflows where each phase's plan is informed by the results of previous phases. Reconnaissance, analysis, execution, validation — each phase planned dynamically based on what was learned, converging toward a goal rather than following a static path.
+The longer-term implication is a type system for workflow actions — an extensible grammar where new capabilities are compositions of existing primitives, where correctness is enforced at compile time, and where an LLM planner has a vocabulary rich enough to express complex workflows yet constrained enough that every composition is guaranteed to execute correctly.
 
-This does not replace engineering. It changes what engineers spend their time on. Instead of manually decomposing every workflow into steps and templates, engineers invest in the handler catalog (the vocabulary), the capability schemas (the grammar), the resource bounds (the guardrails), and the observability framework (the accountability). The LLM composes within those constraints. The system executes within its guarantees.
-
-The foundation is built. The machinery works. The extension is natural.
+The foundation is built. The machinery works. The extension is natural — and the path there delivers value at every step.
 
 ---
 
-*This document is part of the Tasker Core dynamic workflow planning initiative. It describes a vision that will be realized through phased implementation, beginning with the handler catalog and progressing through planning interfaces, sandboxed execution, and recursive planning capabilities.*
+*This document is part of the Tasker Core generative workflow initiative. It describes a vision that will be realized through phased implementation, beginning with templates as generative contracts and progressing through action grammars, planning interfaces, and recursive planning capabilities.*

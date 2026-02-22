@@ -1,4 +1,4 @@
-# Phase 4: Recursive Planning and Adaptive Workflows
+# Phase 3: Recursive Planning and Adaptive Workflows
 
 *Multi-phase workflows where each phase's plan is informed by previous results*
 
@@ -8,7 +8,7 @@
 
 Recursive planning enables workflows where the path forward is not just unknown at task creation time — it is *unknowable* until intermediate results are observed. A planning step generates a workflow fragment, that fragment executes, and a subsequent planning step uses the accumulated results to plan the next phase. This is not iteration in a loop; it is phased problem-solving where each phase operates with strictly more information than the one before.
 
-This is the full realization of the vision: a system that can approach a problem the way a thoughtful engineer would — reconnaissance first, then analysis, then execution, then validation — with each phase adapting to what was learned.
+This is the full realization of the vision: a system that can approach a problem the way a thoughtful engineer would — reconnaissance first, then analysis, then execution, then validation — with each phase adapting to what was learned. The action grammar's typed data contracts make context accumulation more reliable — schemas are known, not guessed — and the grammar's compositional vocabulary grows richer with each phase of planning experience.
 
 ---
 
@@ -22,7 +22,7 @@ This is the full realization of the vision: a system that can approach a problem
 
 - Study current `dependency_results` propagation patterns in conditional and batch workflows
 - Design a context accumulation strategy that provides sufficient information for planning without overwhelming the LLM's context window
-- Evaluate summarization strategies for large intermediate results
+- Leverage typed data contracts from action grammars to improve summarization accuracy
 
 **The context problem:**
 
@@ -35,16 +35,19 @@ In a two-phase workflow — plan → execute → plan → execute — the second
 
 For a three-phase workflow, the third planner needs all of the above for both prior phases. Context accumulates linearly with phases. With large step results (API responses, processed datasets), the accumulated context can exceed LLM context windows.
 
+**The typed data contract advantage:**
+
+Because grammar-backed steps have declared output contracts (from Phase 1), the context accumulation layer knows the *shape* of each step's result without inspecting the data. This enables more intelligent summarization — the system can summarize a step's results according to its output contract's type structure, preserving key fields and eliding bulk data, rather than attempting generic JSON summarization.
+
 **Proposed context accumulation patterns:**
 
 | Pattern | Description | When to Use |
 |---------|-------------|-------------|
-| **Full propagation** | All prior results passed to planner | Small results, shallow recursion (≤ 3 phases) |
-| **Summarized propagation** | Each phase's results summarized by a dedicated summarization step before the next planning step | Large results, deep recursion |
+| **Full propagation** | All prior results passed to planner | Small results, shallow recursion (2-3 phases) |
+| **Contract-guided summarization** | Results summarized according to their output contract types, preserving structure | Medium results, typed step outputs |
+| **LLM-generated summary** | Dedicated summarization step before next planning step | Large results, deep recursion |
 | **Selective propagation** | Planner declares which upstream results it needs; only those are passed | When the planner can predict its own information needs |
-| **Hierarchical propagation** | Each planning step receives only its immediate predecessor's summary, not the full chain | Deep recursion with clear phase boundaries |
-
-**Design consideration:** The summarization step could itself be an LLM-backed step — a "context compressor" that distills the results of a phase into the essential information the next planner needs. This is a powerful but recursive pattern: the quality of the next phase's plan depends on the quality of the summary.
+| **Hierarchical propagation** | Each planning step receives only its immediate predecessor's summary | Deep recursion with clear phase boundaries |
 
 **Open questions:**
 
@@ -162,7 +165,7 @@ The planning step's fragment must declare a convergence point. The orchestration
 ingest → plan_recon → [recon steps] → plan_execution → [execution steps] → finalize
 ```
 
-The reconnaissance phase gathers information (API calls, data profiling, schema inspection). The execution phase acts on what was learned. Two planning steps, each informed by the prior phase's results.
+The reconnaissance phase gathers information (API calls, data profiling, schema inspection). The execution phase acts on what was learned. Two planning steps, each informed by the prior phase's results. Typed data contracts from the recon phase's grammar-backed steps ensure the execution planner receives well-structured context.
 
 **Pattern 2: Iterative Refinement**
 
@@ -178,7 +181,7 @@ Each phase attempts a solution. An evaluation step (which could be LLM-backed) a
 ingest → plan_map → [fan_out batch processing] → plan_analyze → [analysis steps] → reduce
 ```
 
-The map phase parallelizes work across a dataset. The analysis phase examines aggregated results. The reduce phase produces final output. Planning enables each phase to adapt to the data's characteristics.
+The map phase parallelizes work across a dataset using the FanOut grammar primitive. The analysis phase examines aggregated results. The reduce phase produces final output. Planning enables each phase to adapt to the data's characteristics.
 
 **Pattern 4: Progressive Disclosure**
 
@@ -192,7 +195,7 @@ Initial triage determines problem complexity. Simple problems get lightweight pl
 
 **Open questions:**
 
-- Are there patterns that require capabilities beyond what Phases 1-3 provide?
+- Are there patterns that require capabilities beyond what Phases 0-2 provide?
 - Should pattern selection itself be LLM-assisted? (Meta-planning: "given this problem, which multi-phase pattern is most appropriate?")
 - How do we document and catalog these patterns for users?
 
@@ -240,7 +243,7 @@ Initial triage determines problem complexity. Simple problems get lightweight pl
 **Success criteria:**
 
 - First planning step gathers information and produces results
-- Second planning step receives first phase's results and plans execution
+- Second planning step receives first phase's results (with typed context from grammar-backed steps) and plans execution
 - Execution phase completes using only catalog handlers
 - Context accumulation works correctly across phases
 - Budget tracking decrements across phases
@@ -271,22 +274,22 @@ Initial triage determines problem complexity. Simple problems get lightweight pl
 
 ## Validation Criteria for Phase Completion
 
-1. ✅ Multi-phase workflow with at least 2 planning steps executes end-to-end
-2. ✅ Context accumulation provides sufficient information for subsequent planning steps
-3. ✅ Budget hierarchy enforced: task-level, phase-level, and per-fragment limits
-4. ✅ Recursive planning terminates under all conditions (depth limits, budget exhaustion)
-5. ✅ At least 2 canonical patterns (of the 4 proposed) demonstrated with real use cases
-6. ✅ Phase-level failure recovery demonstrated (re-planning after phase failure)
-7. ✅ Convergence works correctly with dynamically determined upstream steps
-8. ✅ Full observability across all planning phases (see Complexity Management document)
+1. Multi-phase workflow with at least 2 planning steps executes end-to-end
+2. Context accumulation provides sufficient information for subsequent planning steps, with typed data contracts improving summarization accuracy
+3. Budget hierarchy enforced: task-level, phase-level, and per-fragment limits
+4. Recursive planning terminates under all conditions (depth limits, budget exhaustion)
+5. At least 2 canonical patterns (of the 4 proposed) demonstrated with real use cases
+6. Phase-level failure recovery demonstrated (re-planning after phase failure)
+7. Convergence works correctly with dynamically determined upstream steps
+8. Full observability across all planning phases (see Complexity Management document)
 
 ---
 
 ## Relationship to Other Phases
 
-- **Phase 1** is foundational: catalog handlers execute at every phase.
+- **Phase 0** provides data contract patterns that inform context accumulation design.
+- **Phase 1** is foundational: grammar-backed catalog handlers execute at every phase, and typed output contracts improve cross-phase context quality.
 - **Phase 2** is a direct prerequisite: recursive planning is nested planning steps.
-- **Phase 3** is strongly recommended: sandboxed execution provides defense in depth for multi-phase workflows where multiple planning steps generate handler configurations.
 
 ---
 

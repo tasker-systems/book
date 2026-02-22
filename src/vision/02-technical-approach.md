@@ -1,4 +1,4 @@
-# Dynamic Workflow Planning: Technical Approach
+# Technical Approach: Action Grammars and Composable Handlers
 
 *Problem Statement, Solution Consideration, Recommendation, and Phases of Implementation*
 
@@ -26,7 +26,7 @@ Task templates define the complete set of *possible* steps. While conditional wo
 
 These constraints are not bugs. They are consequences of a system designed for reliability and predictability. But they also represent a ceiling on what the system can express.
 
-If we could introduce a planner capable of reasoning about problems and generating workflow topologies from a known set of composable capabilities — while preserving all of Tasker's execution guarantees — we would unlock a new class of workflows: ones where the *goal* is specified and the *path* is determined at runtime.
+If we could introduce a vocabulary of composable, type-safe action primitives — and a planner capable of composing them into workflow topologies at runtime — while preserving all of Tasker's execution guarantees, we would unlock a new class of workflows: ones where the *goal* is specified and the *path* is determined at runtime, composed from primitives the system guarantees are correct.
 
 ---
 
@@ -49,7 +49,7 @@ If we could introduce a planner capable of reasoning about problems and generati
 - Requires full template + handler deployment before execution
 - Loses the dynamic branching capabilities Tasker already has
 
-**Assessment:** This is already possible today and is valuable as a developer productivity tool. It does not address the core opportunity of runtime adaptive planning.
+**Assessment:** This is already possible today and is valuable as a developer productivity tool. It does not address the core opportunity of runtime adaptive planning. Phase 0's MCP server pursues this path for its immediate developer experience value.
 
 ### Approach B: LLM as Decision Handler (Current Architecture)
 
@@ -70,27 +70,30 @@ If we could introduce a planner capable of reasoning about problems and generati
 
 **Assessment:** Valuable and achievable immediately. Should be demonstrated in `tasker-contrib` as a pattern. But it is an incremental improvement, not a paradigm extension.
 
-### Approach C: LLM as Workflow Planner with Handler Catalog (Recommended)
+### Approach C: LLM as Workflow Planner with Action Grammar (Recommended)
 
-**Description:** Extend the decision point mechanism to support *workflow fragment generation* — a planning step backed by an LLM that generates not just step names but complete step configurations drawn from a catalog of generic, parameterized handlers. The orchestration layer validates and materializes these fragments using existing transactional infrastructure.
+**Description:** Introduce a layer of composable, Rust-native action grammar primitives with compile-time enforced data contracts. Build a handler catalog from compositions of these primitives. Extend the decision point mechanism to support *workflow fragment generation* — a planning step backed by an LLM that composes workflow fragments from the grammar's vocabulary. The orchestration layer validates and materializes these fragments using existing transactional infrastructure.
 
 **Strengths:**
 
 - Builds on proven conditional workflow machinery
 - Preserves all execution guarantees (transactionality, idempotency, observability)
-- No code generation or hot-loading — only configuration of known handlers
+- No code generation or hot-loading — only composition of verified primitives
+- Compile-time enforcement of data contracts between primitives makes composition provably correct
+- LLM composes from a vocabulary it cannot break — the type system prevents invalid compositions
 - Enables recursive planning through nested planning steps
-- Handler catalog is independently valuable even without LLM integration
-- WASM sandboxing provides security boundary for catalog execution
+- Handler catalog and action grammars are independently valuable even without LLM integration
+- Polyglot developers consume action grammars through FFI without needing to understand Rust
 
 **Weaknesses:**
 
-- Requires new infrastructure: handler catalog, fragment validation, capability schemas
-- WASM broker depends on ecosystem maturity (mitigated by phased approach)
+- Requires new infrastructure: action grammar primitives, data contracts, composition framework, fragment validation, capability schemas
+- Action grammar design requires careful research into which primitives are fundamental
 - LLM planning quality depends on capability schema design
 - New observability requirements for dynamically generated workflows
+- FFI boundary between Rust grammar layer and polyglot developer layer needs careful design
 
-**Assessment:** This is the approach that fully realizes the opportunity while building on Tasker's existing architecture. Each component is independently valuable, the phases can be delivered incrementally, and the risk is managed through clear validation boundaries.
+**Assessment:** This is the approach that fully realizes the opportunity while building on Tasker's existing architecture. The action grammar layer provides stronger guarantees than a flat handler catalog, and the phased path (TAS-280 → MCP server → action grammars → planning) allows each component to inform the next.
 
 ### Approach D: Full Agent Framework
 
@@ -115,87 +118,88 @@ If we could introduce a planner capable of reasoning about problems and generati
 
 ## Recommendation
 
-**Proceed with Approach C: LLM as Workflow Planner with Handler Catalog**, implemented through four phases with clear validation gates between each.
+**Proceed with Approach C: LLM as Workflow Planner with Action Grammar**, implemented through four phases with a pragmatic "from here to there" path where each phase delivers independent value.
 
 The key architectural decisions within this approach:
 
-1. **Handler catalog as the vocabulary.** Generic, parameterized step handlers that execute common operations (HTTP, transform, validate, fan-out, aggregate, gate, notify) without custom code. These handlers are independently valuable and should be developed in `tasker-contrib`.
+1. **Action grammars as the compositional foundation.** Rust-native primitives (acquire, transform, validate, gate, emit, decide, fan-out, aggregate) with compile-time enforced input/output contracts. The type system guarantees that compositions are correct — if it compiles, the data flow is sound.
 
-2. **Workflow fragments as the planning output.** The LLM planner does not return step names — it returns a structured workflow fragment (steps, dependencies, handler configurations, input mappings) that the orchestration layer validates against the handler catalog's capability schema before materialization.
+2. **Handler catalog as composed vocabulary.** The catalog is a library of pre-composed handlers built from action grammar primitives, not a flat collection of independent implementations. Capability schemas are derived from grammar composition rather than hand-authored, giving the LLM planner an accurate and consistent vocabulary.
 
-3. **Validation as the trust boundary.** The orchestration layer validates every fragment before materializing it: handler references exist in the catalog, the DAG is acyclic, input schemas match handler contracts, resource bounds are respected. Invalid fragments are rejected with diagnostic information.
+3. **Workflow fragments as the planning output.** The LLM planner returns a structured workflow fragment (steps, dependencies, grammar compositions, input mappings) that the orchestration layer validates against the grammar's type constraints before materialization.
 
-4. **WASM broker as the execution boundary.** Catalog handlers compiled to WASM execute in sandboxed environments. The broker is a Tasker worker from the orchestration layer's perspective — it subscribes to a namespace queue and processes steps — but internally it instantiates WASM modules with controlled host function access.
+4. **Validation as the trust boundary.** The orchestration layer validates every fragment before materializing it: grammar compositions are type-checked, the DAG is acyclic, input schemas match handler contracts, resource bounds are respected. Invalid fragments are rejected with diagnostic information.
 
-5. **Recursive planning through nested planning steps.** Planning steps can appear at any point in a workflow, including downstream of other planned segments. Each planning step receives accumulated context from prior steps, enabling multi-phase workflows where each phase's plan is informed by previous results.
+5. **Two-tier trust model.** Developer-authored handlers (polyglot, FFI, developer-owned) coexist with system-invoked action grammars (Rust-native, compile-time enforced, LLM-composable) in the same workflow. The orchestration layer treats both as steps.
+
+6. **Recursive planning through nested planning steps.** Planning steps can appear at any point in a workflow, including downstream of other planned segments. Each planning step receives accumulated context from prior steps, enabling multi-phase workflows where each phase's plan is informed by previous results.
 
 ---
 
 ## Phases of Implementation
 
-### Phase 1: Handler Catalog
+### Phase 0: Foundation — Templates as Generative Contracts
 
-**Goal:** Establish the vocabulary of composable step handlers.
+**Goal:** Establish the tooling foundation through typed code generation (TAS-280) and an MCP server for LLM-assisted workflow authoring.
 
 **Deliverables:**
 
-- Generic handler framework in `tasker-contrib` with parameterized configuration
-- Core catalog handlers: `http_request`, `transform`, `validate`, `fan_out`, `aggregate`, `gate`, `notify`, `decide`
-- Capability schema format (machine-readable descriptions of handler inputs, outputs, and behavior)
+- `result_schema` on TaskTemplate step definitions with typed code generation in all four languages
+- MCP server for template validation, handler resolution checking, and template/handler generation
+- Patterns and insights that inform action grammar design
+
+**Validation Gate:** `tasker-ctl generate` produces typed handler scaffolds. MCP server generates valid templates from natural language descriptions. Schema compatibility between connected steps is validated.
+
+**Dependencies:** None — builds on existing TaskTemplate infrastructure and TAS-280.
+
+### Phase 1: Action Grammars and Handler Catalog
+
+**Goal:** Establish the vocabulary of composable, type-safe action primitives and the handler catalog built from them.
+
+**Deliverables:**
+
+- Action grammar primitive framework in Rust with compile-time data contracts
+- Core primitives: acquire, transform, validate, gate, emit, decide, fan-out, aggregate
+- Handler catalog: pre-composed handlers built from grammar primitives
+- Capability schema format derived from grammar composition
+- FFI surface for polyglot developer consumption
 - Catalog worker deployment configuration
-- Documentation and examples
 
-**Validation Gate:** Catalog handlers can be used in manually-authored task templates, executing through standard Tasker workers. No LLM integration required — the catalog is independently valuable.
+**Validation Gate:** Catalog handlers composed from grammar primitives can be used in manually-authored task templates, executing through standard Tasker workers. Grammar compositions are type-checked at compile time. Polyglot developers can use catalog handlers through FFI.
 
-**Dependencies:** None — builds on existing handler registration and step execution infrastructure.
+**Dependencies:** Phase 0 informs grammar design through observed patterns.
 
 ### Phase 2: Planning Interface
 
-**Goal:** Enable LLM-backed planning steps that generate workflow fragments.
+**Goal:** Enable LLM-backed planning steps that generate workflow fragments composed from action grammar primitives.
 
 **Deliverables:**
 
-- Workflow fragment schema (structured representation of steps, dependencies, configurations)
-- Fragment validation pipeline (DAG validation, handler reference checking, schema validation, resource bound checking)
-- Planning step handler type (decision handler extension that returns fragments instead of step names)
-- LLM integration adapter (configurable model selection, prompt construction from capability schema and task context)
-- Fragment materialization service (extends existing dynamic step creation)
+- Workflow fragment schema (steps, dependencies, grammar compositions, input mappings)
+- Fragment validation pipeline (type checking, DAG validation, resource bound checking)
+- Planning step handler type
+- LLM integration adapter (configurable model selection, prompt construction from capability schema)
+- Fragment materialization service
 
-**Validation Gate:** An LLM-backed planning step can generate a valid workflow fragment from a problem description, and that fragment is validated and executed through standard Tasker infrastructure. Human-authored tests confirm correct fragment validation (acceptance and rejection).
+**Validation Gate:** An LLM-backed planning step generates a valid workflow fragment from a problem description, that fragment is validated (including grammar composition type checking) and executed through standard Tasker infrastructure.
 
-**Dependencies:** Phase 1 (handler catalog provides the handlers that fragments reference).
+**Dependencies:** Phase 1 (action grammar provides the vocabulary that fragments reference).
 
-### Phase 3: Sandboxed Execution via WASM Broker
-
-**Goal:** Provide a security and isolation boundary for catalog handler execution.
-
-**Deliverables:**
-
-- WASM compilation targets for catalog handlers
-- WASM broker worker (Wasmtime-based host that instantiates handler modules)
-- Host function interface (HTTP, logging, input/output — no direct database access)
-- Broker-level resource controls (memory limits, execution timeouts, I/O budgets)
-- Performance benchmarking (cold start, throughput, comparison with FFI workers)
-
-**Validation Gate:** Catalog handlers execute in WASM sandboxes with equivalent correctness to native execution. Security boundary prevents handlers from accessing resources not explicitly granted through host functions.
-
-**Dependencies:** Phase 1 (catalog handlers are what gets compiled to WASM). Independent of Phase 2 — the WASM broker benefits all catalog handler usage, not just LLM-planned workflows.
-
-### Phase 4: Recursive Planning and Adaptive Workflows
+### Phase 3: Recursive Planning and Adaptive Workflows
 
 **Goal:** Enable multi-phase workflows where each phase's plan is informed by previous results.
 
 **Deliverables:**
 
-- Nested planning step support (planning steps downstream of other planned segments)
-- Context accumulation patterns (how results from prior phases flow into subsequent planning steps)
-- Planning depth and breadth controls (resource bounds on recursive planning)
-- Cost tracking and budgeting (aggregate cost across planning phases)
-- Adaptive convergence patterns (planning steps that determine their own convergence criteria)
+- Nested planning step support
+- Context accumulation patterns (with typed data contracts aiding summarization)
+- Planning depth and breadth controls
+- Cost tracking and budgeting
+- Adaptive convergence patterns
 
 **Validation Gate:** A multi-phase workflow can plan, execute, observe results, and re-plan for subsequent phases. Resource bounds are enforced and the system terminates gracefully when bounds are exceeded.
 
-**Dependencies:** Phase 1 + Phase 2. Phase 3 is recommended but not strictly required (catalog handlers can execute through native workers without WASM sandboxing).
+**Dependencies:** Phase 1 + Phase 2. Phase 3 should be informed by operational experience with Phase 2.
 
 ---
 
@@ -203,24 +207,27 @@ The key architectural decisions within this approach:
 
 | Risk | Severity | Likelihood | Mitigation |
 |------|----------|------------|------------|
-| LLM generates invalid workflow fragments | Medium | High | Fragment validation pipeline rejects invalid plans before execution. This is expected behavior, not a failure mode. |
-| Handler catalog insufficient for real workflows | High | Medium | Design catalog as extensible; organization-specific handlers supplement but don't replace the standard set. Progressive enrichment based on observed planning patterns. |
-| WASM ecosystem not mature enough for Phase 3 | Medium | Medium | Phase 3 is independent and can be deferred. Catalog handlers execute through native workers in the interim. Monitor WASI 0.3+ stabilization. |
-| LLM planning quality too low for useful workflows | High | Low-Medium | Capability schema design is the primary lever. Investment in schema quality, planning prompts, and few-shot examples. Fallback to manually-authored workflows for critical paths. |
+| Action grammar primitives too coarse or too fine | High | Medium | Phase 0's MCP server and TAS-280 experience reveals actual patterns. Start with coarse primitives; refine based on observed composition needs. |
+| LLM generates invalid workflow fragments | Medium | High | Fragment validation pipeline rejects invalid plans before execution. Grammar type system prevents invalid compositions. This is expected behavior, not a failure mode. |
+| Handler catalog insufficient for real workflows | High | Medium | Catalog is extensible. Organization-specific handlers supplement the standard set. Developer-authored handlers coexist with catalog handlers in the same workflow. |
+| Rust-to-polyglot FFI boundary too complex | Medium | Medium | Phase 0's MCP server and code generation establish the pattern. Polyglot developers consume through configuration and their language's DSL, not raw FFI. |
+| LLM planning quality too low for useful workflows | High | Low-Medium | Capability schema design (derived from grammar composition) is the primary lever. MCP server experience from Phase 0 informs prompt engineering. |
 | Recursive planning creates runaway graphs | High | Medium | Resource bounds enforced at the orchestration level: max depth, max total steps, cost budgets. Planning steps that exceed bounds fail cleanly with diagnostic information. |
-| Observability overwhelmed by dynamic workflows | Medium | Medium | Phase-specific observability design (see Complexity Management document). Planning provenance, fragment lineage, and aggregated metrics designed alongside execution infrastructure. |
+| Data contract evolution breaks existing compositions | Medium | Medium | Schema versioning strategy. Grammar primitives are additive; existing compositions remain valid as new primitives are added. |
 
 ---
 
 ## Timeline Considerations
 
-Phase 1 (Handler Catalog) is the foundation and should begin immediately. It delivers independent value — composable handlers improve the developer experience for all Tasker users, not just those using LLM planning — and establishes the vocabulary that all subsequent phases depend on.
+Phase 0 (Foundation) is immediately actionable. TAS-280 is already specified. The MCP server can begin prototyping alongside it. Both deliver independent value and require no orchestration runtime changes.
 
-Phase 2 (Planning Interface) requires Phase 1 and is the core of the vision. It should begin as soon as the initial catalog handlers are functional.
+Phase 1 (Action Grammars) is the core architectural investment. It should begin as Phase 0's patterns inform the grammar design. This is where the most design research is needed.
 
-Phase 3 (WASM Broker) is architecturally independent and tracks external ecosystem maturity. It can be pursued in parallel with Phase 2 or deferred based on WASI progress.
+Phase 2 (Planning Interface) requires Phase 1 and is the heart of the generative vision. MCP server experience from Phase 0 significantly de-risks the LLM integration design.
 
-Phase 4 (Recursive Planning) requires Phase 2 and represents the full realization of the vision. It is also the phase with the most open design questions and should be informed by operational experience with Phase 2.
+Phase 3 (Recursive Planning) requires Phase 2 and represents the full realization of the vision. It is the most speculative phase and should be informed by operational experience with Phase 2.
+
+**WASM sandboxing** is a valuable capability that can be pursued as a parallel effort at any point. It complements the handler catalog by providing execution isolation for grammar compositions, but is not a prerequisite for any phase of this initiative.
 
 ---
 
