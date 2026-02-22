@@ -129,18 +129,16 @@ Each `@depends_on` entry maps a parameter name to a `("step_name", ResultModel)`
 
 ## Workflow Steps
 
-A **Workflow Step** is a special step that starts another task as a sub-workflow:
+A **Workflow Step** is a special step that delegates to another task template, creating a sub-workflow:
 
 ```yaml
 steps:
   - name: process_line_items
     handler:
       callable: WorkflowHandler
-      initialization:
-        task_template: line_item_processing
+    dependencies:
+      - validate_order
 ```
-
-This enables composing complex workflows from simpler building blocks.
 
 ## Error Handling
 

@@ -11,7 +11,7 @@ Tasker provides four handler types that cover the most common workflow patterns.
 | **Decision Handler** | Yes | Yes | Yes | -- |
 | **Batchable Handler** | Yes | Yes | Yes | -- |
 
-Rust provides only the base Step Handler. See [Why Rust Has Only Step Handler](#why-rust-has-only-step-handler) below.
+Rust provides only the base Step Handler trait, composing capability traits instead. See [Rust's Handler Architecture](#rusts-handler-architecture) below.
 
 ## Step Handler (DSL)
 
@@ -126,12 +126,14 @@ Each language uses its native type system for input and result models:
 
 ```python
 class EcommerceOrderInput(BaseModel):
-    cart_items: list[dict[str, Any]] | None = None
+    items: list[dict[str, Any]] | None = None        # submitted as "items"
+    cart_items: list[dict[str, Any]] | None = None    # or "cart_items"
     customer_email: str | None = None
     payment_token: str | None = None
 
     @property
     def resolved_items(self) -> list[dict[str, Any]]:
+        """Accept either field name from the task context."""
         return self.items or self.cart_items or []
 ```
 
@@ -235,12 +237,16 @@ Task templates are language-agnostic — the same YAML structure works across al
 
 For a complete walkthrough of building a multi-step workflow with templates, see [Your First Workflow](../building/first-workflow.md).
 
-## Why Rust Has Only Step Handler
+## Rust's Handler Architecture
 
-Rust's standard library and ecosystem already provide the patterns that the specialized handler types encapsulate:
+Rust provides `RustStepHandler` as its single handler trait — but this is not a limitation. The Rust worker crate defines **capability traits** in `handler_capabilities.rs` that Rust handlers compose directly:
 
-- **API calls**: `reqwest` or `hyper` with Rust's `Result` type for error classification
-- **Decision routing**: `match` expressions with exhaustiveness checking
-- **Batch processing**: `rayon` for data parallelism, iterators with `.chunks()` for batching
+| Capability Trait | What it provides |
+|---|---|
+| `APICapable` | HTTP client methods with retryable/permanent error classification |
+| `DecisionCapable` | Workflow routing via step activation |
+| `BatchableCapable` | Cursor-based parallel batch processing |
 
-The specialized handler types exist to give Python, Ruby, and TypeScript developers a structured pattern for these common operations. Rust developers get that structure from the language itself.
+A Rust handler implements `RustStepHandler` and adds any capability traits it needs. This is idiomatic Rust — trait composition instead of class inheritance. For a complex example that combines multiple capabilities, see `diamond_decision_batch.rs` in the Rust worker crate.
+
+In fact, the Rust `batch_processing` module is the **foundation** that Python, Ruby, and TypeScript access through FFI. The specialized handler types in those languages are ergonomic wrappers around the Rust implementation — Rust developers work with the underlying traits directly.

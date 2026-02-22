@@ -166,6 +166,16 @@ The `dependencies` field defines the execution graph:
 
 Tasker resolves these dependencies automatically. You declare *what* depends on *what*, and the engine figures out what can run in parallel.
 
+### YAML Dependencies vs Handler Dependencies
+
+The YAML `dependencies` field and the handler's `@depends_on` decorator serve **different purposes**:
+
+- **YAML `dependencies`** define the **DAG shape** — which steps must complete before this step *starts*. These are **proximal** (direct predecessors only). `create_order` lists `process_payment` and `update_inventory` because it must wait for both.
+
+- **Handler `@depends_on`** declares which **step results** the handler needs injected as typed parameters. These can reference **any ancestor step** — not just direct predecessors. Tasker makes all ancestor results available in the step context.
+
+In the `create_order` handler below, notice that `@depends_on` references `validate_cart` even though the YAML only lists `process_payment` and `update_inventory` as dependencies. The handler can access `validate_cart`'s result because it's a transitive ancestor — Tasker has already executed it earlier in the DAG.
+
 ## Step 2: Define Your Types
 
 Before writing handlers, define the types that describe what flows between steps. These are Pydantic models — the same types the DSL uses to inject inputs and dependency results:
@@ -176,12 +186,14 @@ from pydantic import BaseModel
 from typing import Any
 
 class EcommerceOrderInput(BaseModel):
-    cart_items: list[dict[str, Any]] | None = None
+    items: list[dict[str, Any]] | None = None        # submitted as "items"
+    cart_items: list[dict[str, Any]] | None = None    # or "cart_items"
     customer_email: str | None = None
     payment_token: str | None = None
 
     @property
     def resolved_items(self) -> list[dict[str, Any]]:
+        """Accept either field name from the task context."""
         return self.items or self.cart_items or []
 
 class EcommerceValidateCartResult(BaseModel):

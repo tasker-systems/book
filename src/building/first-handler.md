@@ -27,12 +27,14 @@ Every handler follows the same three-layer pattern:
 ```python
 # app/services/types.py — the contract
 class EcommerceOrderInput(BaseModel):
-    cart_items: list[dict[str, Any]] | None = None
+    items: list[dict[str, Any]] | None = None        # submitted as "items"
+    cart_items: list[dict[str, Any]] | None = None    # or "cart_items"
     customer_email: str | None = None
     payment_token: str | None = None
 
     @property
     def resolved_items(self) -> list[dict[str, Any]]:
+        """Accept either field name from the task context."""
         return self.items or self.cart_items or []
 
 # app/handlers/ecommerce.py — the handler
