@@ -365,23 +365,3 @@ Handlers are resolved by matching the `handler.callable` field in task template 
 | Rust | `function_name` | `process_order` |
 
 See [Handler Resolution](handler-resolution.md) for the full resolver chain and how callables are matched to handler implementations.
-
-## Generating Class-Based Handlers
-
-You can generate class-based handlers from templates with `tasker-ctl`:
-
-```bash
-# Step handler
-tasker-ctl template generate step_handler --plugin tasker-contrib-python --param name=ProcessOrder
-
-# API handler
-tasker-ctl template generate step_handler_api --plugin tasker-contrib-python --param name=FetchOrder
-
-# Decision handler
-tasker-ctl template generate step_handler_decision --plugin tasker-contrib-python --param name=OrderRouting
-
-# Batchable handler
-tasker-ctl template generate step_handler_batchable --plugin tasker-contrib-python --param name=DataExport
-```
-
-Replace `tasker-contrib-python` with `tasker-contrib-rails`, `tasker-contrib-typescript`, or `tasker-contrib-rust` for other languages.

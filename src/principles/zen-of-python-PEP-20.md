@@ -6,12 +6,14 @@ Type: Informational
 Created: 19-Aug-2004
 Post-History: 22-Aug-2004
 
+
 Abstract
 ========
 
 Long time Pythoneer Tim Peters succinctly channels the BDFL's guiding
 principles for Python's design into 20 aphorisms, only 19 of which
 have been written down.
+
 
 The Zen of Python
 =================
@@ -38,6 +40,7 @@ The Zen of Python
     If the implementation is easy to explain, it may be a good idea.
     Namespaces are one honking great idea -- let's do more of those!
 
+
 Easter Egg
 ==========
 
@@ -45,12 +48,14 @@ Easter Egg
 
   >>> import this
 
+
 References
 ==========
 
 Originally posted to comp.lang.python/python-list@python.org under a
 thread called `"The Way of Python"
 <https://groups.google.com/d/msg/comp.lang.python/B_VxeTBClM0/L8W9KlsiriUJ>`__
+
 
 Copyright
 =========

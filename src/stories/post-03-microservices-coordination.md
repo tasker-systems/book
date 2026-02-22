@@ -2,6 +2,8 @@
 
 *How the diamond dependency pattern replaces custom circuit breakers and service coordination glue.*
 
+> **Handler examples** use Ruby DSL syntax. See [Class-Based Handlers](../reference/class-based-handlers.md) for the class-based alternative. Full implementations in all four languages are linked at the bottom.
+
 ## The Problem
 
 Your user registration flow touches four services: the user service (account creation), the billing service (payment profile), the preferences service (notification settings), and the notification service (welcome emails). Each service has its own API, its own failure modes, and its own retry characteristics.
@@ -129,154 +131,88 @@ Steps 2 and 3 both depend on step 1, so they run **in parallel** once account cr
 
 #### CreateUserAccountHandler — Idempotent Account Creation
 
-The first step creates the user account. Since it's the entry point for the entire workflow, it validates inputs thoroughly.
+The first step creates the user account. Since it's the entry point, the DSL declares a typed input model that handles validation.
 
-**Ruby (Rails)**
+**Type definition** (the contract):
 
 ```ruby
-class CreateUserAccountHandler < TaskerCore::StepHandler::Base
-  EMAIL_REGEX = /\A[^@\s]+@[^@\s]+\.[^@\s]+\z/
-  BLOCKED_DOMAINS = %w[tempmail.com throwaway.email mailinator.com].freeze
-
-  def call(context)
-    user_info = context.get_input_or('user_info', {})
-    user_info = user_info.deep_symbolize_keys
-
-    email = user_info[:email]
-    name  = user_info[:name]
-    plan  = user_info[:plan] || 'free'
-
-    raise TaskerCore::Errors::PermanentError.new(
-      'Email address is required', error_code: 'MISSING_EMAIL'
-    ) if email.blank?
-
-    raise TaskerCore::Errors::PermanentError.new(
-      "Invalid email format: #{email}", error_code: 'INVALID_EMAIL'
-    ) unless email.match?(EMAIL_REGEX)
-
-    email_domain = email.split('@').last&.downcase
-    if BLOCKED_DOMAINS.include?(email_domain)
-      raise TaskerCore::Errors::PermanentError.new(
-        "Disposable email addresses are not allowed: #{email_domain}",
-        error_code: 'BLOCKED_EMAIL_DOMAIN'
-      )
+# app/services/types.rb
+module Types
+  module Microservices
+    class CreateUserAccountInput < Types::InputStruct
+      attribute :email, Types::String
+      attribute :name, Types::String.optional
+      attribute :plan, Types::String.optional
+      attribute :marketing_consent, Types::Bool.optional
     end
-
-    user_id = "usr_#{SecureRandom.hex(12)}"
-
-    TaskerCore::Types::StepHandlerCallResult.success(
-      result: {
-        user_id: user_id,
-        email: email.downcase,
-        name: name,
-        plan: plan,
-        status: 'created',
-        email_verified: false,
-        verification_token: SecureRandom.urlsafe_base64(32),
-        created_at: Time.current.iso8601
-      }
-    )
   end
 end
 ```
 
-**TypeScript (Bun/Hono)**
+**Handler** (DSL declaration + service delegation):
 
-```typescript
-export class CreateUserHandler extends StepHandler {
-  static handlerName = 'Microservices.StepHandlers.CreateUserAccountHandler';
+```ruby
+# app/handlers/microservices/step_handlers/create_user_account_handler.rb
+module Microservices
+  module StepHandlers
+    extend TaskerCore::StepHandler::Functional
 
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    const userInfo = (context.getInput('user_info') || {}) as {
-      email?: string; name?: string; plan?: string;
-    };
-
-    if (!userInfo.email) {
-      return this.failure('Email is required', ErrorType.PERMANENT_ERROR, false);
-    }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(userInfo.email)) {
-      return this.failure(
-        `Invalid email format: ${userInfo.email}`, ErrorType.PERMANENT_ERROR, false
-      );
-    }
-
-    const userId = crypto.randomUUID();
-    return this.success({
-      user_id: userId,
-      email: userInfo.email,
-      name: userInfo.name,
-      plan: userInfo.plan || 'free',
-      status: 'created',
-      created_at: new Date().toISOString(),
-    });
-  }
-}
+    CreateUserAccountHandler = step_handler(
+      'Microservices::StepHandlers::CreateUserAccountHandler',
+      inputs: Types::Microservices::CreateUserAccountInput
+    ) do |inputs:, context:|
+      Microservices::Service.create_user_account(input: inputs)
+    end
+  end
+end
 ```
 
-Note the use of `get_input_or('user_info', {})` in Ruby — this provides a default value if the input key is missing, preventing nil errors. Both implementations use permanent errors for validation failures (bad email, blocked domain) since these can't be fixed by retrying.
+The `inputs:` config extracts fields from the task context and validates them against the `Dry::Struct` type. Input validation (required email, format checks, blocked domains) lives in the service function — the handler stays thin. Validation failures raise `PermanentError` since bad input can't be fixed by retrying.
 
-> **Full implementations**: [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/microservices/create_user_account_handler.rb) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/microservices.ts)
+> **Full implementations**: [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/microservices/) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/microservices.ts)
 
 #### SendWelcomeSequenceHandler — Multi-Dependency Convergence
 
-The welcome sequence handler demonstrates the convergence pattern. It pulls results from **three** upstream steps — the account, billing profile, and preferences — and composes them into a personalized notification sequence.
-
-**Ruby (Rails)**
+The welcome sequence handler demonstrates the convergence pattern — the diamond's bottom vertex. Three `depends_on` entries compose the function signature with typed results from all upstream branches.
 
 ```ruby
-class SendWelcomeSequenceHandler < TaskerCore::StepHandler::Base
-  def call(context)
-    account_data     = context.get_dependency_result('create_user_account')
-    billing_data     = context.get_dependency_result('setup_billing_profile')
-    preferences_data = context.get_dependency_result('initialize_preferences')
+module Microservices
+  module StepHandlers
+    extend TaskerCore::StepHandler::Functional
 
-    raise TaskerCore::Errors::PermanentError.new(
-      'Upstream data not available for welcome sequence',
-      error_code: 'MISSING_DEPENDENCIES'
-    ) if account_data.nil? || billing_data.nil? || preferences_data.nil?
-
-    email    = account_data['email']
-    name     = account_data['name']
-    plan     = account_data['plan']
-    has_trial = billing_data['trial_days'].to_i > 0
-    notifications = preferences_data.dig('preferences', 'notifications') || {}
-
-    messages_sent = []
-
-    # Welcome email (always)
-    messages_sent << { channel: 'email', type: 'welcome', recipient: email,
-                       subject: "Welcome to Tasker, #{name}!" }
-
-    # Trial notification (if applicable)
-    if has_trial
-      messages_sent << { channel: 'email', type: 'trial_started', recipient: email,
-                         subject: "Your #{plan.capitalize} trial has started" }
-    end
-
-    # Push notification (if user opted in)
-    if notifications['push'] == true
-      messages_sent << { channel: 'push', type: 'welcome',
-                         body: "Your #{plan} account is ready. Let's get started!" }
-    end
-
-    TaskerCore::Types::StepHandlerCallResult.success(
-      result: {
-        user_id: account_data['user_id'],
-        channels_used: messages_sent.map { |m| m[:channel] }.uniq,
-        messages_sent: messages_sent.size,
-        status: 'sent',
-        sent_at: Time.current.iso8601
+    SendWelcomeSequenceHandler = step_handler(
+      'Microservices::StepHandlers::SendWelcomeSequenceHandler',
+      depends_on: {
+        account_data: ['create_user_account', Types::Microservices::CreateUserResult],
+        billing_data: ['setup_billing_profile', Types::Microservices::SetupBillingResult],
+        preferences_data: ['initialize_preferences', Types::Microservices::InitPreferencesResult]
       }
-    )
+    ) do |account_data:, billing_data:, preferences_data:, context:|
+      Microservices::Service.send_welcome_sequence(
+        account_data: account_data,
+        billing_data: billing_data,
+        preferences_data: preferences_data,
+      )
+    end
   end
 end
 ```
 
-The handler calls `get_dependency_result()` for each of the three upstream steps. The orchestrator guarantees that all three have completed successfully before this handler runs. The welcome content adapts based on the billing profile (trial status) and preferences (notification channels) — data that was gathered in parallel.
+The `depends_on:` hash declares three upstream step results, each typed with a `Dry::Struct` result model. The orchestrator guarantees that all three have completed successfully before this handler runs. The service function composes the welcome content — adapting based on the billing profile (trial status) and preferences (notification channels), data that was gathered in parallel.
 
-> **Full implementation**: [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/microservices/send_welcome_sequence_handler.rb) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/microservices.ts)
+The parallel steps that feed into this convergence point use the same pattern:
+
+```ruby
+# Runs in parallel with InitializePreferencesHandler (both depend on create_user_account)
+SetupBillingProfileHandler = step_handler(
+  'Microservices::StepHandlers::SetupBillingProfileHandler',
+  depends_on: { account_data: ['create_user_account', Types::Microservices::CreateUserResult] }
+) do |account_data:, context:|
+  Microservices::Service.setup_billing_profile(account_data: account_data)
+end
+```
+
+> **Full implementations**: [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/microservices/) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/microservices.ts)
 
 ### Creating a Task
 
@@ -298,9 +234,9 @@ task = TaskerCore::Client.create_task(
 ## Key Concepts
 
 - **Diamond dependency pattern**: One step fans out to parallel branches that converge before the workflow continues. Declare it with `dependencies` — no concurrency primitives needed.
-- **Parallel branches that converge**: `setup_billing_profile` and `initialize_preferences` run concurrently because they share the same single dependency. `send_welcome_sequence` waits for both because it lists both as dependencies.
+- **Typed convergence**: The `depends_on:` hash in the DSL composes the convergence handler's signature from three typed upstream results. No manual `get_dependency_result()` calls or nil checks.
 - **Service coordination without custom circuit breakers**: Each step's retry policy acts as a per-service circuit breaker. If billing fails 3 times, that step fails permanently — but preferences continues independently. No shared circuit breaker state to manage.
-- **Dependency-driven personalization**: The convergence handler composes data from all upstream branches to create personalized outputs (welcome messages tailored to plan, trial status, and notification preferences).
+- **Dependency-driven personalization**: The convergence handler's service function composes data from all upstream branches to create personalized outputs (welcome messages tailored to plan, trial status, and notification preferences).
 
 ## Full Implementations
 

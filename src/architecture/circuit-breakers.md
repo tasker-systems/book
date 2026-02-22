@@ -3,7 +3,7 @@
 **Last Updated**: 2026-02-04
 **Audience**: Architects, Operators, Developers
 **Status**: Active
-**Related Docs**: [Backpressure Architecture](backpressure-architecture.md) | [Observability](../observability/index.md)
+**Related Docs**: [Backpressure Architecture](backpressure-architecture.md) | [Observability](../observability/index.md) | [Operations: Backpressure Monitoring](backpressure-architecture.md)
 
 <- Back to [Documentation Hub](index.md)
 
@@ -552,6 +552,8 @@ Each circuit breaker operates **independently**:
 ## Related Documentation
 
 - **[Backpressure Architecture](backpressure-architecture.md)** - Complete resilience strategy
+- **[Operations: Backpressure Monitoring](backpressure-architecture.md)** - Operational runbooks
+- **[Operations: MPSC Channel Tuning](../guides/configuration-management.md)** - Channel capacity management
 - **[Observability](../observability/index.md)** - Metrics and logging standards
 - **[Configuration Management](../guides/configuration-management.md)** - TOML configuration reference
 

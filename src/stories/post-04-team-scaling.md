@@ -2,6 +2,8 @@
 
 *How namespace isolation lets multiple teams own workflows with the same name without stepping on each other.*
 
+> **Handler examples** use TypeScript DSL syntax (Customer Success) and Rust (Payments). See [Class-Based Handlers](../reference/class-based-handlers.md) for the class-based alternative. Full implementations in all four languages are linked at the bottom.
+
 ## The Problem
 
 Your company has grown. The Customer Success team handles refund requests through a multi-step approval workflow. The Payments team processes refunds directly through the payment gateway. Both teams call their workflow `process_refund` — because that's what it does.
@@ -148,63 +150,51 @@ Both templates use `name: process_refund`. The `namespace_name` field is what ma
 
 ### Step Handlers
 
-The namespace boundary extends to handler implementations — and even to language choice. The Customer Success team uses Ruby (Rails), their existing stack. The Payments team chose Rust (Axum) for their handlers because gateway latency is critical and they need predictable sub-millisecond overhead on every refund validation. Both languages connect to the same Tasker orchestration core via FFI.
+The namespace boundary extends to handler implementations — and even to language choice. The Customer Success team uses TypeScript (Bun/Hono), their existing stack. The Payments team chose Rust (Axum) for their handlers because gateway latency is critical and they need predictable sub-millisecond overhead on every refund validation. Both languages connect to the same Tasker orchestration core via FFI.
 
-#### Customer Success: ValidateRefundRequestHandler (Ruby)
+#### Customer Success: ValidateRefundRequestHandler (TypeScript)
 
-The Customer Success handler validates from the customer's perspective — ticket IDs, refund reasons, order history:
+The Customer Success handler validates from the customer's perspective — ticket IDs, refund reasons, order history. The `inputs` config maps camelCase parameter names to the snake\_case fields in the task context:
 
-```ruby
-module CustomerSuccess
-  module StepHandlers
-    class ValidateRefundRequestHandler < TaskerCore::StepHandler::Base
-      VALID_REASONS = %w[defective not_as_described changed_mind
-                         late_delivery duplicate_charge].freeze
+```typescript
+import { defineHandler, PermanentError } from '@tasker-systems/tasker';
+import * as svc from '../services/customer-success';
 
-      def call(context)
-        ticket_id     = context.get_input('ticket_id')
-        customer_id   = context.get_input('customer_id')
-        refund_amount = context.get_input('refund_amount')
-        reason        = context.get_input('refund_reason')
+export const ValidateRefundRequestHandler = defineHandler(
+  'CustomerSuccess.StepHandlers.ValidateRefundRequestHandler',
+  {
+    inputs: {
+      ticketId: 'ticket_id',
+      customerId: 'customer_id',
+      refundAmount: 'refund_amount',
+      refundReason: 'refund_reason',
+    },
+  },
+  async ({ ticketId, customerId, refundAmount, refundReason }) => {
+    const missingFields: string[] = [];
+    if (!ticketId) missingFields.push('ticket_id');
+    if (!customerId) missingFields.push('customer_id');
+    if (!refundAmount) missingFields.push('refund_amount');
 
-        missing = []
-        missing << 'ticket_id' if ticket_id.blank?
-        missing << 'customer_id' if customer_id.blank?
-        missing << 'refund_amount' if refund_amount.nil?
-        missing << 'refund_reason' if reason.blank?
+    if (missingFields.length > 0) {
+      throw new PermanentError(
+        `Missing required fields: ${missingFields.join(', ')}`,
+      );
+    }
 
-        unless missing.empty?
-          raise TaskerCore::Errors::PermanentError.new(
-            "Missing required fields: #{missing.join(', ')}",
-            error_code: 'MISSING_FIELDS'
-          )
-        end
-
-        unless VALID_REASONS.include?(reason)
-          raise TaskerCore::Errors::PermanentError.new(
-            "Invalid reason: #{reason}. Must be one of: #{VALID_REASONS.join(', ')}",
-            error_code: 'INVALID_REASON'
-          )
-        end
-
-        TaskerCore::Types::StepHandlerCallResult.success(
-          result: {
-            request_validated: true,
-            ticket_id: ticket_id,
-            customer_id: customer_id,
-            refund_amount: refund_amount.to_f,
-            reason: reason,
-            namespace: 'customer_success',
-            validated_at: Time.current.iso8601
-          }
-        )
-      end
-    end
-  end
-end
+    return svc.validateRefundRequest({
+      ticketId: ticketId as string,
+      customerId: customerId as string,
+      refundAmount: refundAmount as number,
+      refundReason: (refundReason as string) || 'customer_request',
+    });
+  },
+);
 ```
 
-> **Full implementation**: [Rails customer\_success handlers](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/customer_success/)
+The `defineHandler` factory registers the handler by name. The `inputs` config extracts fields from the task context — `ticketId` reads from `ticket_id` in the submitted JSON. Validation failures throw `PermanentError` since bad input can't be fixed by retrying.
+
+> **Full implementations**: [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/customer-success.ts) | [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/customer_success/)
 
 #### Payments: ValidatePaymentEligibilityHandler (Rust)
 

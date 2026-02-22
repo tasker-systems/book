@@ -129,6 +129,7 @@
 # Reference
 
 - [Reference](reference/README.md)
+  - [Class Based Handlers](reference/class-based-handlers.md)
   - [Ffi Boundary Types](reference/ffi-boundary-types.md)
   - [Ffi Telemetry Pattern](reference/ffi-telemetry-pattern.md)
   - [Library Deployment Patterns](reference/library-deployment-patterns.md)
