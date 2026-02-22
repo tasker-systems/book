@@ -48,7 +48,7 @@ def validate_cart(inputs: EcommerceOrderInput, context: StepContext):
     return svc.validate_cart_items(inputs.resolved_items)
 ```
 
-The `@step_handler` decorator registers this function as the handler for the `validate_cart` step. The `@inputs` decorator tells Tasker to extract the task context into an `EcommerceOrderInput` Pydantic model. The function body is a single service call.
+The `@step_handler` decorator registers this function under the name `validate_cart` — the exact string that must appear in the `handler.callable` field of the task template YAML. The `@inputs` decorator tells Tasker to extract the task context into an `EcommerceOrderInput` Pydantic model. The function body is a single service call.
 
 ### Ruby
 
@@ -170,14 +170,18 @@ The handler function always receives `context` as its last parameter — a `Step
 
 ## Registering Handlers
 
-Handlers are resolved by matching the `handler.callable` field in task template YAML. The callable format varies by language:
+Handlers are resolved by matching the `handler.callable` field in task template YAML against the name you registered with the DSL. The mechanism is identical across all languages — the callable is an opaque key that must match between registration and template.
 
-| Language | Format | Example |
-|----------|--------|---------|
+Each language follows its own naming convention:
+
+| Language | Convention | Example |
+|----------|------------|---------|
 | Ruby | `Module::ClassName` | `Ecommerce::StepHandlers::ValidateCartHandler` |
-| Python | `function_name` | `validate_cart` |
+| Python | `snake_case` name | `validate_cart` |
 | TypeScript | `Namespace.ClassName` | `Ecommerce.StepHandlers.ValidateCartHandler` |
-| Rust | `function_name` | `process_order` |
+| Rust | `snake_case` name | `process_order` |
+
+The registry doesn't enforce a format — any string works as long as the DSL registration and YAML callable match. Qualified names are recommended because they prevent collisions across modules and align with how each language's class-based fallback resolver works. Short names like `validate_cart` are equally valid and resolve reliably through exact-match (the highest-priority resolver). See [Handler Resolution](../guides/handler-resolution.md) for the full resolver chain architecture, fallback behavior, and conventions.
 
 ## Class-Based Alternative
 
