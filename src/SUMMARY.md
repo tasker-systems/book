@@ -1,6 +1,6 @@
 # Summary
 
-[Introduction](README.md)
+[Introduction](index.md)
 [Why Tasker?](why-tasker.md)
 [Contributing](CONTRIBUTING.md)
 
@@ -8,7 +8,7 @@
 
 # Getting Started
 
-- [Getting Started](getting-started/README.md)
+- [Getting Started](getting-started/index.md)
   - [Core Concepts](getting-started/concepts.md)
   - [Handler Types](getting-started/handler-types.md)
   - [Choosing Your Package](getting-started/choosing-your-package.md)
@@ -18,7 +18,7 @@
 
 # Build Your First Project
 
-- [Build Your First Project](building/README.md)
+- [Build Your First Project](building/index.md)
   - [Quick Start](building/quick-start.md)
   - [Installation](building/install.md)
   - [Using tasker-ctl](building/tasker-ctl.md)
@@ -34,7 +34,7 @@
 
 # Architecture
 
-- [Architecture Overview](architecture/README.md)
+- [Architecture Overview](architecture/index.md)
   - [Actors](architecture/actors.md)
   - [Backpressure Architecture](architecture/backpressure-architecture.md)
   - [Circuit Breakers](architecture/circuit-breakers.md)
@@ -53,7 +53,7 @@
 
 # Guides
 
-- [Operational Guides](guides/README.md)
+- [Operational Guides](guides/index.md)
   - [Api Security](guides/api-security.md)
   - [Auth Integration](guides/auth-integration.md)
   - [Batch Processing](guides/batch-processing.md)
@@ -71,7 +71,7 @@
 
 # Workers
 
-- [Worker Guides](workers/README.md)
+- [Worker Guides](workers/index.md)
   - [Api Convergence Matrix](workers/api-convergence-matrix.md)
   - [Client Wrapper](workers/client-wrapper.md)
   - [Example Handlers](workers/example-handlers.md)
@@ -86,7 +86,7 @@
 
 # Observability
 
-- [Observability](observability/README.md)
+- [Observability](observability/index.md)
   - [Benchmark Audit And Profiling Plan](observability/benchmark-audit-and-profiling-plan.md)
   - [Benchmark Implementation Decision](observability/benchmark-implementation-decision.md)
   - [Benchmark Quick Reference](observability/benchmark-quick-reference.md)
@@ -101,7 +101,7 @@
 
 # Principles
 
-- [Design Principles](principles/README.md)
+- [Design Principles](principles/index.md)
   - [Composition Over Inheritance](principles/composition-over-inheritance.md)
   - [Cross Language Consistency](principles/cross-language-consistency.md)
   - [Defense In Depth](principles/defense-in-depth.md)
@@ -115,7 +115,7 @@
 
 # Vision
 
-- [Vision](vision/README.md)
+- [Vision](vision/index.md)
   - [01 Vision](vision/01-vision.md)
   - [02 Technical Approach](vision/02-technical-approach.md)
   - [03 Phase 1 Handler Catalog](vision/03-phase-1-handler-catalog.md)
@@ -128,7 +128,7 @@
 
 # Reference
 
-- [Reference](reference/README.md)
+- [Reference](reference/index.md)
   - [Class Based Handlers](reference/class-based-handlers.md)
   - [Ffi Boundary Types](reference/ffi-boundary-types.md)
   - [Ffi Telemetry Pattern](reference/ffi-telemetry-pattern.md)
@@ -158,7 +158,7 @@
 
 # Auth
 
-- [Authentication & Authorization](auth/README.md)
+- [Authentication & Authorization](auth/index.md)
   - [Configuration](auth/configuration.md)
   - [Permissions](auth/permissions.md)
   - [Testing](auth/testing.md)
@@ -181,7 +181,7 @@
 
 # Decisions
 
-- [Architectural Decisions](decisions/README.md)
+- [Architectural Decisions](decisions/index.md)
   - [Adr 001 Actor Pattern](decisions/adr-001-actor-pattern.md)
   - [Adr 002 Bounded Mpsc Channels](decisions/adr-002-bounded-mpsc-channels.md)
   - [Adr 003 Ownership Removal](decisions/adr-003-ownership-removal.md)
@@ -197,14 +197,14 @@
 
 # Benchmarks
 
-- [Benchmarks](benchmarks/README.md)
+- [Benchmarks](benchmarks/index.md)
   - [E2e Benchmarks](benchmarks/e2e-benchmarks.md)
 
 ---
 
 # Stories
 
-- [Engineering Stories](stories/README.md)
+- [Engineering Stories](stories/index.md)
   - [Post 01 Ecommerce Checkout](stories/post-01-ecommerce-checkout.md)
   - [Post 02 Data Pipeline](stories/post-02-data-pipeline.md)
   - [Post 03 Microservices Coordination](stories/post-03-microservices-coordination.md)

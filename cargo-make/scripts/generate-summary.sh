@@ -26,7 +26,7 @@ to_title_case() {
 
 # ---------------------------------------------------------------------------
 # Helper: Generate entries for all .md files in a directory
-# Sorts alphabetically, skips README.md (used as section landing page).
+# Sorts alphabetically, skips index.md (used as section landing page).
 # ---------------------------------------------------------------------------
 generate_section_entries() {
     local dir="$1"
@@ -37,8 +37,8 @@ generate_section_entries() {
         return
     fi
 
-    # Find and sort markdown files, skip README.md and CLAUDE.md
-    find "${SRC_DIR}/${dir}" -maxdepth 1 -name '*.md' ! -name 'README.md' ! -name 'CLAUDE.md' -print0 \
+    # Find and sort markdown files, skip index.md and CLAUDE.md
+    find "${SRC_DIR}/${dir}" -maxdepth 1 -name '*.md' ! -name 'index.md' ! -name 'CLAUDE.md' -print0 \
         | sort -z \
         | while IFS= read -r -d '' file; do
             local fname
@@ -75,9 +75,9 @@ generate_section() {
     echo "# ${title}"
     echo ""
 
-    # Section landing page (README.md)
-    if [[ -f "${SRC_DIR}/${dir}/README.md" ]]; then
-        echo "- [${readme_title}](${dir}/README.md)"
+    # Section landing page (index.md)
+    if [[ -f "${SRC_DIR}/${dir}/index.md" ]]; then
+        echo "- [${readme_title}](${dir}/index.md)"
         # Individual pages as children
         generate_section_entries "${dir}" "${dir}" "  "
     else
@@ -92,7 +92,7 @@ generate_section() {
 {
     echo "# Summary"
     echo ""
-    echo "[Introduction](README.md)"
+    echo "[Introduction](index.md)"
     echo "[Why Tasker?](why-tasker.md)"
     echo "[Contributing](CONTRIBUTING.md)"
 
@@ -104,7 +104,7 @@ generate_section() {
     echo ""
     echo "# Getting Started"
     echo ""
-    echo "- [Getting Started](getting-started/README.md)"
+    echo "- [Getting Started](getting-started/index.md)"
     echo "  - [Core Concepts](getting-started/concepts.md)"
     echo "  - [Handler Types](getting-started/handler-types.md)"
     echo "  - [Choosing Your Package](getting-started/choosing-your-package.md)"
@@ -118,7 +118,7 @@ generate_section() {
     echo ""
     echo "# Build Your First Project"
     echo ""
-    echo "- [Build Your First Project](building/README.md)"
+    echo "- [Build Your First Project](building/index.md)"
     echo "  - [Quick Start](building/quick-start.md)"
     echo "  - [Installation](building/install.md)"
     echo "  - [Using tasker-ctl](building/tasker-ctl.md)"
@@ -155,7 +155,7 @@ generate_section() {
             fi
             # Skip index.md too (already used as landing page)
             find "${SRC_DIR}/generated" -maxdepth 1 -name '*.md' \
-                ! -name 'README.md' ! -name 'CLAUDE.md' ! -name 'index.md' -print0 \
+                ! -name 'CLAUDE.md' ! -name 'index.md' -print0 \
                 | sort -z \
                 | while IFS= read -r -d '' file; do
                     fname=$(basename "${file}" .md)

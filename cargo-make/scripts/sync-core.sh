@@ -144,5 +144,14 @@ find "${SRC_DIR}" -name 'CLAUDE.md' -not -path "${SRC_DIR}/CLAUDE.md" -type f -d
 # ---------------------------------------------------------------------------
 bash "${SCRIPT_DIR}/fixup-synced-links.sh" "${SRC_DIR}"
 
+# ---------------------------------------------------------------------------
+# Post-sync: auto-fix markdown formatting on synced content
+# ---------------------------------------------------------------------------
+if command -v npx &>/dev/null; then
+    echo ""
+    echo "Auto-fixing markdown formatting..."
+    npx markdownlint-cli2 --fix "${SRC_DIR}/**/*.md" 2>/dev/null || true
+fi
+
 echo ""
 echo "Core docs sync complete."

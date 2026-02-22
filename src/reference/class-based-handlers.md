@@ -364,4 +364,4 @@ Handlers are resolved by matching the `handler.callable` field in task template 
 | TypeScript | `ClassName` | `ProcessOrderHandler` |
 | Rust | `function_name` | `process_order` |
 
-See [Handler Resolution](handler-resolution.md) for the full resolver chain and how callables are matched to handler implementations.
+See [Handler Resolution](../guides/handler-resolution.md) for the full resolver chain and how callables are matched to handler implementations.
