@@ -71,8 +71,8 @@ Add to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-tasker-worker = "0.1.4"
-tasker-client = "0.1.4"
+tasker-worker = "0.1.5"
+tasker-client = "0.1.5"
 ```
 
 ## Infrastructure with Docker Compose

@@ -77,6 +77,14 @@ LOCAL_GENERATED_FILES=(
 )
 
 # ---------------------------------------------------------------------------
+# Files to preserve in reference/ (book-owned content)
+# These are authored in tasker-book, not synced from tasker-core
+# ---------------------------------------------------------------------------
+LOCAL_REFERENCE_FILES=(
+    "class-based-handlers.md"
+)
+
+# ---------------------------------------------------------------------------
 # Sync directories
 # ---------------------------------------------------------------------------
 for dir in "${SYNC_DIRS[@]}"; do
@@ -95,6 +103,13 @@ for dir in "${SYNC_DIRS[@]}"; do
         # For generated/, also preserve locally-generated files
         if [[ "${dir}" == "generated" ]]; then
             for file in "${LOCAL_GENERATED_FILES[@]}"; do
+                RSYNC_EXCLUDES+=(--exclude="${file}")
+            done
+        fi
+
+        # For reference/, also preserve book-owned files
+        if [[ "${dir}" == "reference" ]]; then
+            for file in "${LOCAL_REFERENCE_FILES[@]}"; do
                 RSYNC_EXCLUDES+=(--exclude="${file}")
             done
         fi
@@ -128,6 +143,15 @@ find "${SRC_DIR}" -name 'CLAUDE.md' -not -path "${SRC_DIR}/CLAUDE.md" -type f -d
 # Post-sync: fix cross-directory link patterns
 # ---------------------------------------------------------------------------
 bash "${SCRIPT_DIR}/fixup-synced-links.sh" "${SRC_DIR}"
+
+# ---------------------------------------------------------------------------
+# Post-sync: auto-fix markdown formatting on synced content
+# ---------------------------------------------------------------------------
+if command -v npx &>/dev/null; then
+    echo ""
+    echo "Auto-fixing markdown formatting..."
+    npx markdownlint-cli2 --fix "${SRC_DIR}/**/*.md" 2>/dev/null || true
+fi
 
 echo ""
 echo "Core docs sync complete."

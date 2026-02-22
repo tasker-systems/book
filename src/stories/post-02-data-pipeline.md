@@ -2,6 +2,8 @@
 
 *How DAG workflows and parallel execution turn brittle ETL scripts into observable, self-healing pipelines.*
 
+> **Handler examples** use Python DSL syntax. See [Class-Based Handlers](../reference/class-based-handlers.md) for the class-based alternative. Full implementations in all four languages are linked at the bottom.
+
 ## The Problem
 
 Your analytics pipeline runs nightly. It pulls sales data from your database, inventory snapshots from the warehouse system, and customer records from the CRM. Then it transforms each dataset, aggregates everything into a unified view, and generates business insights. Eight steps, chained together in a cron job.
@@ -147,131 +149,61 @@ All three extract steps have `dependencies: []`, so Tasker runs them **concurren
 
 Extract steps are "root" steps with no dependencies. They run immediately when the task starts, concurrently with other root steps.
 
-**Python (FastAPI)**
-
 ```python
-class ExtractSalesDataHandler(StepHandler):
-    handler_name = "extract_sales_data"
-    handler_version = "1.0.0"
+from tasker_core.step_handler.functional import step_handler, inputs
+from app.services.types import DataPipelineInput
+from app.services import data_pipeline as svc
 
-    PRODUCT_CATEGORIES = ["electronics", "clothing", "food", "home", "sports"]
-    REGIONS = ["us-east", "us-west", "eu-central", "ap-southeast"]
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        source = context.get_input("source") or "default"
-        date_start = context.get_input("date_range_start") or "2026-01-01"
-        date_end = context.get_input("date_range_end") or "2026-01-31"
-
-        records = []
-        for i in range(30):
-            category = random.choice(self.PRODUCT_CATEGORIES)
-            region = random.choice(self.REGIONS)
-            quantity = random.randint(1, 50)
-            unit_price = round(random.uniform(5.0, 500.0), 2)
-            revenue = round(quantity * unit_price, 2)
-
-            records.append({
-                "record_id": f"sale_{uuid.uuid4().hex[:10]}",
-                "category": category,
-                "region": region,
-                "quantity": quantity,
-                "unit_price": unit_price,
-                "revenue": revenue,
-            })
-
-        total_revenue = round(sum(r["revenue"] for r in records), 2)
-
-        return StepHandlerResult.success(
-            result={
-                "source": "sales_database",
-                "record_count": len(records),
-                "records": records,
-                "total_revenue": total_revenue,
-                "date_range": {"start": date_start, "end": date_end},
-                "extracted_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
+@step_handler("extract_sales_data")
+@inputs(DataPipelineInput)
+def extract_sales_data(inputs: DataPipelineInput, context):
+    return svc.extract_sales_data(
+        source=inputs.source,
+        date_range_start=inputs.date_range_start,
+        date_range_end=inputs.date_range_end,
+        granularity=inputs.granularity,
+    )
 ```
 
-**TypeScript (Bun/Hono)**
-
-```typescript
-export class ExtractSalesDataHandler extends StepHandler {
-  static handlerName = 'DataPipeline.StepHandlers.ExtractSalesDataHandler';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    const dateRange = context.getInput<{ start: string; end: string }>('date_range');
-
-    const recordCount = Math.floor(Math.random() * 500) + 100;
-    const records = generateSalesRecords(recordCount);
-    const totalRevenue = records.reduce((sum, r) => sum + r.value, 0);
-
-    return this.success({
-      records,
-      extracted_at: new Date().toISOString(),
-      source: 'SalesDatabase',
-      total_amount: Math.round(totalRevenue * 100) / 100,
-      record_count: recordCount,
-    });
-  }
-}
-```
-
-The important detail: this handler has no `get_dependency_result()` calls. It reads only from the task's initial input via `get_input()`. The orchestrator knows it can run this step immediately, in parallel with the other two extract steps.
+The important detail: this handler uses only `@inputs` (no `@depends_on`). It reads from the task's initial input — no upstream step results needed. The orchestrator knows it can run this step immediately, in parallel with the other two extract steps. The service function contains the actual data extraction logic.
 
 > **Full implementations**: [FastAPI](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app/app/handlers/data_pipeline.py) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/data-pipeline.ts)
 
 #### AggregateMetricsHandler — Multi-Dependency Convergence
 
-The aggregate step is the convergence point. It depends on all three transform steps and pulls results from each one.
-
-**Python (FastAPI)**
+The aggregate step is the convergence point. It depends on all three transform steps and pulls typed results from each one via `@depends_on`.
 
 ```python
-class AggregateMetricsHandler(StepHandler):
-    handler_name = "aggregate_metrics"
-    handler_version = "1.0.0"
+from tasker_core.step_handler.functional import step_handler, depends_on
+from app.services.types import (
+    PipelineTransformSalesResult,
+    PipelineTransformInventoryResult,
+    PipelineTransformCustomersResult,
+)
+from app.services import data_pipeline as svc
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        sales_transform = context.get_dependency_result("transform_sales")
-        traffic_transform = context.get_dependency_result("transform_inventory")
-        inventory_transform = context.get_dependency_result("transform_customers")
-
-        if not all([sales_transform, traffic_transform, inventory_transform]):
-            return StepHandlerResult.failure(
-                message="Missing one or more transform dependency results",
-                error_type=ErrorType.HANDLER_ERROR,
-                retryable=False,
-            )
-
-        total_revenue = sales_transform.get("total_revenue", 0)
-        total_inventory = traffic_transform.get("total_quantity_on_hand", 0)
-        total_customers = inventory_transform.get("record_count", 0)
-
-        revenue_per_customer = (
-            round(total_revenue / total_customers, 2) if total_customers > 0 else 0
-        )
-        inventory_turnover = (
-            round(total_revenue / total_inventory, 4) if total_inventory > 0 else 0
-        )
-
-        return StepHandlerResult.success(
-            result={
-                "total_revenue": total_revenue,
-                "total_inventory_quantity": total_inventory,
-                "total_customers": total_customers,
-                "revenue_per_customer": revenue_per_customer,
-                "inventory_turnover_indicator": inventory_turnover,
-                "aggregation_complete": True,
-                "sources_included": 3,
-                "aggregated_at": datetime.now(timezone.utc).isoformat(),
-            },
-        )
+@step_handler("aggregate_metrics")
+@depends_on(
+    sales_transform=("transform_sales", PipelineTransformSalesResult),
+    inventory_transform=("transform_inventory", PipelineTransformInventoryResult),
+    customers_transform=("transform_customers", PipelineTransformCustomersResult),
+)
+def aggregate_metrics(
+    sales_transform: PipelineTransformSalesResult,
+    inventory_transform: PipelineTransformInventoryResult,
+    customers_transform: PipelineTransformCustomersResult,
+    context,
+):
+    return svc.aggregate_metrics(
+        sales_transform=sales_transform,
+        inventory_transform=inventory_transform,
+        customers_transform=customers_transform,
+    )
 ```
 
-This handler calls `get_dependency_result()` three times — once for each upstream transform. The orchestrator guarantees all three have completed successfully before this step runs. If any transform failed (after exhausting its retries), this step never executes.
+Three `@depends_on` entries compose the function signature — each injects a typed result from an upstream transform step. The orchestrator guarantees all three have completed successfully before this step runs. If any transform failed (after exhausting its retries), this step never executes. The service function contains the cross-source aggregation logic.
 
-> **Full implementation**: [FastAPI](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app/app/handlers/data_pipeline.py) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/data-pipeline.ts)
+> **Full implementations**: [FastAPI](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app/app/handlers/data_pipeline.py) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/data-pipeline.ts)
 
 ### Creating a Task
 
@@ -297,7 +229,7 @@ task = client.create_task(
 
 - **Parallel steps via empty dependencies**: Steps with `dependencies: []` are root steps that run concurrently. No threading code, no async coordination — the orchestrator handles it.
 - **DAG convergence**: A step that depends on multiple upstream steps waits for all of them. The `aggregate_metrics` step converges three parallel branches into one.
-- **Multi-dependency access**: `get_dependency_result()` retrieves the complete result from any named upstream step. The handler doesn't need to know whether that step ran in parallel or sequentially.
+- **Typed dependency injection**: `@depends_on` injects typed upstream results directly into the function signature. The handler receives validated data — no manual `get_dependency_result()` calls or key lookups.
 - **Retry with backoff**: Each step configures its own retry policy. The extract steps use 3 attempts with exponential backoff because external systems have transient failures. Transform steps use 2 attempts because they're CPU-bound and unlikely to benefit from retrying.
 
 ## Full Implementations

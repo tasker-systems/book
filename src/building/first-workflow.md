@@ -1,6 +1,8 @@
 # Your First Workflow
 
-This guide walks you through creating a complete workflow with multiple steps. We'll use the e-commerce order processing pattern from the [example apps](../getting-started/example-apps.md), adapting it to demonstrate parallel execution.
+This guide walks you through creating a complete workflow with multiple steps. We'll use the e-commerce order processing pattern from the [example apps](../getting-started/example-apps.md), demonstrating parallel execution and typed dependency injection.
+
+> This walkthrough uses Python. See the [Ruby](ruby.md), [TypeScript](typescript.md), and [Rust](rust.md) guides for language-specific examples.
 
 ## What is a Workflow?
 
@@ -62,49 +64,39 @@ steps:
   - name: validate_cart
     description: "Validate cart items, check availability, calculate totals"
     handler:
-      callable: handlers.ecommerce.ValidateCartHandler
-      initialization: {}
+      callable: validate_cart
     dependencies: []
     retry:
       retryable: true
       max_attempts: 2
       backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
 
   - name: process_payment
     description: "Authorize payment through payment gateway"
     handler:
-      callable: handlers.ecommerce.ProcessPaymentHandler
-      initialization: {}
+      callable: process_payment
     dependencies:
       - validate_cart
     retry:
       retryable: true
       max_attempts: 3
       backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
 
   - name: update_inventory
     description: "Reserve inventory for order items"
     handler:
-      callable: handlers.ecommerce.UpdateInventoryHandler
-      initialization: {}
+      callable: update_inventory
     dependencies:
       - validate_cart
     retry:
       retryable: true
       max_attempts: 3
       backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
 
   - name: create_order
     description: "Create order record from payment and inventory results"
     handler:
-      callable: handlers.ecommerce.CreateOrderHandler
-      initialization: {}
+      callable: create_order
     dependencies:
       - process_payment
       - update_inventory
@@ -112,22 +104,17 @@ steps:
       retryable: true
       max_attempts: 2
       backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
 
   - name: send_confirmation
     description: "Send order confirmation email to customer"
     handler:
-      callable: handlers.ecommerce.SendConfirmationHandler
-      initialization: {}
+      callable: send_confirmation
     dependencies:
       - create_order
     retry:
       retryable: true
       max_attempts: 2
       backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
 
 input_schema:
   type: object
@@ -163,10 +150,9 @@ input_schema:
 | `name` | Task template name (used in API submissions) |
 | `namespace_name` | Logical grouping for templates and queues (max 29 chars) |
 | `steps` | List of steps forming the execution DAG |
-| `handler.callable` | Identifies which handler class processes this step |
-| `handler.initialization` | Configuration passed to the handler at setup |
+| `handler.callable` | Identifies which handler processes this step |
 | `dependencies` | List of step names that must complete before this step runs |
-| `retry` | Retry policy (retryable, attempts, backoff strategy, timing) |
+| `retry` | Retry policy (retryable, attempts, backoff strategy) |
 | `input_schema` | Optional JSON Schema for validating task context |
 
 ### How Dependencies Create the DAG
@@ -180,238 +166,164 @@ The `dependencies` field defines the execution graph:
 
 Tasker resolves these dependencies automatically. You declare *what* depends on *what*, and the engine figures out what can run in parallel.
 
-## Step 2: Implement Handlers
+### YAML Dependencies vs Handler Dependencies
 
-Each step needs a handler. The following Python implementations are adapted from the [FastAPI example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app) — they show the patterns you'll use in real handlers.
+The YAML `dependencies` field and the handler's `@depends_on` decorator serve **different purposes**:
 
-### Validate Cart
+- **YAML `dependencies`** define the **DAG shape** — which steps must complete before this step *starts*. These are **proximal** (direct predecessors only). `create_order` lists `process_payment` and `update_inventory` because it must wait for both.
 
-The entry-point handler reads from the task context and validates the input:
+- **Handler `@depends_on`** declares which **step results** the handler needs injected as typed parameters. These can reference **any ancestor step** — not just direct predecessors. Tasker makes all ancestor results available in the step context.
 
-```python
-from tasker_core import ErrorType, StepContext, StepHandler, StepHandlerResult
+In the `create_order` handler below, notice that `@depends_on` references `validate_cart` even though the YAML only lists `process_payment` and `update_inventory` as dependencies. The handler can access `validate_cart`'s result because it's a transitive ancestor — Tasker has already executed it earlier in the DAG.
 
+## Step 2: Define Your Types
 
-class ValidateCartHandler(StepHandler):
-    handler_name = "validate_cart"
-    handler_version = "1.0.0"
-
-    TAX_RATE = 0.08
-    FREE_SHIPPING_THRESHOLD = 100.00
-    STANDARD_SHIPPING = 9.99
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        cart_items = context.get_input("cart_items")
-        if not cart_items:
-            return StepHandlerResult.failure(
-                message="Cart is empty or items field is missing",
-                error_type=ErrorType.VALIDATION_ERROR,
-                retryable=False,
-                error_code="EMPTY_CART",
-            )
-
-        validated_items = []
-        subtotal = 0.0
-
-        for idx, item in enumerate(cart_items):
-            sku = item.get("sku")
-            quantity = item.get("quantity", 0)
-            unit_price = item.get("unit_price", 0.0)
-
-            if not sku or quantity < 1 or unit_price <= 0:
-                return StepHandlerResult.failure(
-                    message=f"Invalid item at index {idx}",
-                    error_type=ErrorType.VALIDATION_ERROR,
-                    retryable=False,
-                    error_code="INVALID_ITEM",
-                )
-
-            line_total = round(quantity * unit_price, 2)
-            subtotal += line_total
-            validated_items.append({
-                "sku": sku,
-                "name": item.get("name", sku),
-                "quantity": quantity,
-                "unit_price": unit_price,
-                "line_total": line_total,
-            })
-
-        subtotal = round(subtotal, 2)
-        tax = round(subtotal * self.TAX_RATE, 2)
-        shipping = 0.0 if subtotal >= self.FREE_SHIPPING_THRESHOLD else self.STANDARD_SHIPPING
-        total = round(subtotal + tax + shipping, 2)
-
-        return StepHandlerResult.success(result={
-            "validated_items": validated_items,
-            "item_count": len(validated_items),
-            "subtotal": subtotal,
-            "tax": tax,
-            "shipping": shipping,
-            "total": total,
-        })
-```
-
-Key points:
-
-- `context.get_input("cart_items")` reads from the task context (the data submitted when the task was created)
-- Validation failures return `StepHandlerResult.failure(...)` with `retryable=False` — bad data won't get better on retry
-- The result dict is available to downstream steps via `get_dependency_result("validate_cart")`
-
-### Process Payment (runs in parallel with Update Inventory)
-
-This handler reads from both the task context and an upstream dependency:
+Before writing handlers, define the types that describe what flows between steps. These are Pydantic models — the same types the DSL uses to inject inputs and dependency results:
 
 ```python
-class ProcessPaymentHandler(StepHandler):
-    handler_name = "process_payment"
-    handler_version = "1.0.0"
+# app/services/types.py
+from pydantic import BaseModel
+from typing import Any
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        payment_token = context.get_input("payment_token") or "tok_test_success"
+class EcommerceOrderInput(BaseModel):
+    items: list[dict[str, Any]] | None = None        # submitted as "items"
+    cart_items: list[dict[str, Any]] | None = None    # or "cart_items"
+    customer_email: str | None = None
+    payment_token: str | None = None
 
-        # Read the total from the validate_cart step's result
-        cart_result = context.get_dependency_result("validate_cart")
-        if cart_result is None:
-            return StepHandlerResult.failure(
-                message="Missing validate_cart dependency result",
-                error_type=ErrorType.HANDLER_ERROR,
-                retryable=False,
-            )
+    @property
+    def resolved_items(self) -> list[dict[str, Any]]:
+        """Accept either field name from the task context."""
+        return self.items or self.cart_items or []
 
-        total = cart_result.get("total", 0.0)
+class EcommerceValidateCartResult(BaseModel):
+    validated_items: list[dict[str, Any]] | None = None
+    item_count: int | None = None
+    subtotal: float | None = None
+    tax: float | None = None
+    total: float | None = None
 
-        # Call payment gateway (simulated here)
-        if payment_token == "tok_test_declined":
-            return StepHandlerResult.failure(
-                message="Payment declined",
-                error_type=ErrorType.PERMANENT_ERROR,
-                retryable=False,
-                error_code="PAYMENT_DECLINED",
-            )
+class EcommerceProcessPaymentResult(BaseModel):
+    payment_id: str | None = None
+    transaction_id: str | None = None
+    amount_charged: float | None = None
+    status: str | None = None
 
-        if payment_token == "tok_test_gateway_error":
-            return StepHandlerResult.failure(
-                message="Payment gateway error, will retry",
-                error_type=ErrorType.RETRYABLE_ERROR,
-                retryable=True,
-                error_code="GATEWAY_ERROR",
-            )
+class EcommerceUpdateInventoryResult(BaseModel):
+    total_items_reserved: int | None = None
+    inventory_log_id: str | None = None
 
-        return StepHandlerResult.success(result={
-            "payment_id": "pay_abc123",
-            "transaction_id": "txn_def456",
-            "amount_charged": total,
-            "status": "completed",
-        })
+class EcommerceCreateOrderResult(BaseModel):
+    order_id: str | None = None
+    customer_email: str | None = None
+    total: float | None = None
+    status: str | None = None
 ```
 
-Key points:
+All fields are optional with `None` defaults. This is intentional — task context may not include every field, and upstream step results may vary. The type system provides structure and IDE autocomplete without brittle required-field failures.
 
-- `context.get_dependency_result("validate_cart")` retrieves the result dict from an upstream step
-- Gateway timeouts use `retryable=True` — Tasker automatically retries with exponential backoff
-- Declined payments use `retryable=False` — a permanent failure that stops the workflow
+## Step 3: Implement Handlers
 
-### Update Inventory (runs in parallel with Process Payment)
+With types defined, the handlers are short — each one declares what it receives and delegates to a service function:
 
 ```python
-class UpdateInventoryHandler(StepHandler):
-    handler_name = "update_inventory"
-    handler_version = "1.0.0"
+# app/handlers/ecommerce.py
+from tasker_core.step_handler.functional import depends_on, inputs, step_handler
+from tasker_core.types import StepContext
+from app.services import ecommerce as svc
+from app.services.types import (
+    EcommerceCreateOrderResult,
+    EcommerceOrderInput,
+    EcommerceProcessPaymentResult,
+    EcommerceUpdateInventoryResult,
+    EcommerceValidateCartResult,
+)
 
-    def call(self, context: StepContext) -> StepHandlerResult:
-        cart_result = context.get_dependency_result("validate_cart")
-        if cart_result is None:
-            return StepHandlerResult.failure(
-                message="Missing validate_cart dependency result",
-                error_type=ErrorType.HANDLER_ERROR,
-                retryable=False,
-            )
+@step_handler("validate_cart")
+@inputs(EcommerceOrderInput)
+def validate_cart(inputs: EcommerceOrderInput, context: StepContext):
+    return svc.validate_cart_items(inputs.resolved_items)
 
-        validated_items = cart_result.get("validated_items", [])
-        reservations = []
+@step_handler("process_payment")
+@depends_on(cart_result=("validate_cart", EcommerceValidateCartResult))
+@inputs(EcommerceOrderInput)
+def process_payment(
+    cart_result: EcommerceValidateCartResult,
+    inputs: EcommerceOrderInput,
+    context: StepContext,
+):
+    return svc.process_payment(
+        payment_token=inputs.payment_token,
+        total=cart_result.total or 0.0,
+    )
 
-        for item in validated_items:
-            reservations.append({
-                "sku": item["sku"],
-                "quantity_reserved": item["quantity"],
-                "reservation_id": f"res_{item['sku'].lower()}",
-                "warehouse": "WH-EAST-01",
-            })
+@step_handler("update_inventory")
+@depends_on(cart_result=("validate_cart", EcommerceValidateCartResult))
+def update_inventory(cart_result: EcommerceValidateCartResult, context: StepContext):
+    return svc.update_inventory(cart_result.validated_items or [])
 
-        return StepHandlerResult.success(result={
-            "reservations": reservations,
-            "total_items_reserved": sum(r["quantity_reserved"] for r in reservations),
-            "inventory_log_id": "log_inv_001",
-        })
+@step_handler("create_order")
+@depends_on(
+    cart_result=("validate_cart", EcommerceValidateCartResult),
+    payment_result=("process_payment", EcommerceProcessPaymentResult),
+    inventory_result=("update_inventory", EcommerceUpdateInventoryResult),
+)
+@inputs(EcommerceOrderInput)
+def create_order(
+    cart_result: EcommerceValidateCartResult,
+    payment_result: EcommerceProcessPaymentResult,
+    inventory_result: EcommerceUpdateInventoryResult,
+    inputs: EcommerceOrderInput,
+    context: StepContext,
+):
+    return svc.create_order(
+        cart=cart_result, payment=payment_result,
+        inventory=inventory_result, customer_email=inputs.customer_email,
+    )
+
+@step_handler("send_confirmation")
+@depends_on(order_result=("create_order", EcommerceCreateOrderResult))
+@inputs(EcommerceOrderInput)
+def send_confirmation(
+    order_result: EcommerceCreateOrderResult,
+    inputs: EcommerceOrderInput,
+    context: StepContext,
+):
+    return svc.send_confirmation(
+        order=order_result, customer_email=inputs.customer_email,
+    )
 ```
 
-### Create Order (convergence point)
+That's the entire handler file — five handlers in about 50 lines. The service functions (`svc.validate_cart_items`, `svc.process_payment`, etc.) contain your actual business logic. Tasker doesn't care what happens inside them — it cares about the handler's typed signature and the result it returns.
 
-This handler depends on **both** `process_payment` and `update_inventory`. It only runs after both parallel branches complete successfully:
+### Anatomy of a Handler with Dependencies
+
+Look at `create_order` — the convergence point where three parallel branches meet:
 
 ```python
-class CreateOrderHandler(StepHandler):
-    handler_name = "create_order"
-    handler_version = "1.0.0"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        customer_email = context.get_input("customer_email")
-
-        # Gather results from all upstream steps
-        cart_result = context.get_dependency_result("validate_cart")
-        payment_result = context.get_dependency_result("process_payment")
-        inventory_result = context.get_dependency_result("update_inventory")
-
-        if not all([cart_result, payment_result, inventory_result]):
-            return StepHandlerResult.failure(
-                message="Missing upstream dependency results",
-                error_type=ErrorType.HANDLER_ERROR,
-                retryable=False,
-            )
-
-        return StepHandlerResult.success(result={
-            "order_id": "ORD-20260218-ABC",
-            "customer_email": customer_email,
-            "items": cart_result["validated_items"],
-            "total": cart_result["total"],
-            "payment_id": payment_result["payment_id"],
-            "transaction_id": payment_result["transaction_id"],
-            "inventory_log_id": inventory_result["inventory_log_id"],
-            "status": "confirmed",
-        })
+@step_handler("create_order")
+@depends_on(
+    cart_result=("validate_cart", EcommerceValidateCartResult),       # ① upstream step + type
+    payment_result=("process_payment", EcommerceProcessPaymentResult), # ② another upstream step
+    inventory_result=("update_inventory", EcommerceUpdateInventoryResult),
+)
+@inputs(EcommerceOrderInput)                                          # ③ task context
+def create_order(
+    cart_result: EcommerceValidateCartResult,   # injected as typed Pydantic model
+    payment_result: EcommerceProcessPaymentResult,
+    inventory_result: EcommerceUpdateInventoryResult,
+    inputs: EcommerceOrderInput,                # task context as typed model
+    context: StepContext,                       # execution metadata
+):
+    return svc.create_order(...)               # ④ delegate to service
 ```
 
-Key points:
+1. Each `@depends_on` entry maps a parameter name to a `("step_name", ResultModel)` tuple
+2. Tasker resolves the upstream step's result dict and deserializes it into the Pydantic model
+3. `@inputs` does the same for the task context
+4. The handler function receives fully typed objects and passes them to the service
 
-- `get_dependency_result()` can access results from **any** completed upstream step, not just direct parents
-- This handler reads from three different upstream steps — the DAG ensures all have completed
-- If either parallel branch fails (payment declined, inventory unavailable), this step never runs
-
-### Send Confirmation
-
-```python
-class SendConfirmationHandler(StepHandler):
-    handler_name = "send_confirmation"
-    handler_version = "1.0.0"
-
-    def call(self, context: StepContext) -> StepHandlerResult:
-        order_result = context.get_dependency_result("create_order")
-        if order_result is None:
-            return StepHandlerResult.failure(
-                message="Missing create_order dependency result",
-                error_type=ErrorType.HANDLER_ERROR,
-                retryable=False,
-            )
-
-        return StepHandlerResult.success(result={
-            "email_sent": True,
-            "recipient": order_result["customer_email"],
-            "subject": f"Order Confirmation - {order_result['order_id']}",
-            "status": "sent",
-        })
-```
-
-## Step 3: Submit a Task
+## Step 4: Submit a Task
 
 Submit a task via the REST API:
 
@@ -455,6 +367,12 @@ When this task runs:
 4. **send_confirmation** executes after create_order completes
 
 The total execution time is determined by the longest path through the DAG, not the sum of all steps. If payment takes 2 seconds and inventory takes 1 second, step 3 begins at the 2-second mark — the inventory result is already waiting.
+
+## Your Services, Tasker's Orchestration
+
+Notice what the handlers *don't* contain: no tax calculations, no payment gateway logic, no inventory reservation algorithms. That business logic lives in your service layer (`app/services/ecommerce.py`), where it can be tested independently and reused outside of Tasker.
+
+The handlers are thin wrappers that declare their typed signature and delegate. Tasker brings workflow orchestration to your existing codebase — it manages the DAG, sequencing, retries, and error classification. Your services do what they've always done.
 
 ## See It in Action
 

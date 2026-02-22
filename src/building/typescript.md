@@ -21,360 +21,278 @@ tasker-ctl template generate step_handler \
   --param name=ValidateCart
 ```
 
-This creates a handler class that extends `StepHandler` with the standard async
-`call(context)` method.
+This creates a DSL-style handler with typed inputs that delegates to a service function.
 
-## Writing a Step Handler
+## Writing a Handler (DSL)
 
-Every TypeScript handler extends `StepHandler` and implements `call`:
+Every handler follows the three-layer pattern: **type definition**, **handler declaration**, **service delegation**.
 
 ```typescript
-import {
-  StepHandler,
-  type StepContext,
-  type StepHandlerResult,
-  ErrorType,
-} from '@tasker-systems/tasker';
+// src/services/types.ts — the contract
+export interface CartItem {
+  sku: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
 
-export class ValidateCartHandler extends StepHandler {
-  static handlerName = 'Ecommerce.StepHandlers.ValidateCartHandler';
-  static handlerVersion = '1.0.0';
+// src/handlers/ecommerce.ts — the handler
+import { defineHandler } from '@tasker-systems/tasker';
+import type { CartItem } from '../services/types';
+import * as svc from '../services/ecommerce';
 
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    try {
-      const cartItems = context.getInput<CartItem[]>('cart_items');
+export const ValidateCartHandler = defineHandler(
+  'Ecommerce.StepHandlers.ValidateCartHandler',
+  { inputs: { cartItems: 'cart_items' } },
+  async ({ cartItems }) => svc.validateCartItems(cartItems as CartItem[] | undefined),
+);
+```
 
-      if (!cartItems || cartItems.length === 0) {
-        return this.failure(
-          'Cart is empty or missing',
-          ErrorType.VALIDATION_ERROR,
-          false,
-        );
-      }
+The `defineHandler` factory registers a handler by name. The `inputs` config maps camelCase parameter names to snake\_case YAML field names. The async callback receives typed arguments and delegates to a service function.
 
-      // Validate items, calculate totals...
-      const validatedItems: CartItem[] = [];
-      for (const item of cartItems) {
-        if (item.price <= 0 || item.quantity <= 0) {
-          return this.failure(
-            `Invalid item: ${item.sku}`,
-            ErrorType.VALIDATION_ERROR,
-            false,
-          );
-        }
-        validatedItems.push(item);
-      }
+## Type System
 
-      const subtotal = validatedItems.reduce(
-        (sum, item) => sum + item.price * item.quantity, 0,
-      );
-      const tax = Math.round(subtotal * 0.0875 * 100) / 100;
-      const total = Math.round((subtotal + tax) * 100) / 100;
+TypeScript handlers use standard **interfaces** for both input and result types. The DSL injects values from the task context and upstream results as plain objects matching these interfaces.
 
-      return this.success(
-        {
-          validated_items: validatedItems,
-          item_count: validatedItems.length,
-          subtotal,
-          tax,
-          total,
-        },
-        { processing_time_ms: Math.random() * 50 + 10 },
-      );
-    } catch (error) {
-      return this.failure(
-        error instanceof Error ? error.message : String(error),
-        ErrorType.HANDLER_ERROR,
-        true,
-      );
-    }
-  }
+**Input types**:
+
+```typescript
+export interface CartItem {
+  sku: string;
+  name: string;
+  price: number;
+  quantity: number;
+}
+
+export interface PaymentInfo {
+  method: string;
+  card_last_four?: string;
+  token: string;
+  amount: number;
 }
 ```
 
-The handler receives a `StepContext` and returns a `StepHandlerResult` via
-`this.success()` or `this.failure()`.
+**Result types** describe what a handler returns (used by downstream `depends`):
+
+```typescript
+export interface EcommerceValidateCartResult {
+  [key: string]: unknown;
+  validated_items: CartItem[];
+  item_count: number;
+  subtotal: number;
+  tax: number;
+  total: number;
+}
+
+export interface EcommerceProcessPaymentResult {
+  [key: string]: unknown;
+  payment_id: string;
+  transaction_id: string;
+  amount_charged: number;
+  status: string;
+}
+```
+
+The `[key: string]: unknown` index signature allows result objects to carry additional fields without type errors when accessing known fields.
 
 ## Accessing Task Context
 
-Use `getInput()` to read values from the task context (TAS-137 cross-language standard):
+The `inputs` config in `defineHandler` extracts fields from the task context. Each entry maps a camelCase parameter name to the snake\_case field name in the submitted JSON:
 
 ```typescript
-// Get a typed value from the task context
-const cartItems = context.getInput<CartItem[]>('cart_items');
-const customerEmail = context.getInput<string>('customer_email');
-
-// Get a nested object
-const paymentInfo = context.getInput<PaymentInfo>('payment_info');
+export const ValidateCartHandler = defineHandler(
+  'Ecommerce.StepHandlers.ValidateCartHandler',
+  { inputs: { cartItems: 'cart_items' } },
+  async ({ cartItems }) => svc.validateCartItems(cartItems as CartItem[] | undefined),
+);
 ```
 
-## Accessing Dependency Results
+The callback receives `cartItems` directly — no need to parse raw JSON.
 
-Use `getDependencyResult()` to read results from upstream steps. The return value
-is auto-unwrapped — you get the result object directly:
+## Working with Dependencies
+
+The `depends` config injects results from upstream steps. Each entry maps a camelCase parameter name to the upstream step name:
 
 ```typescript
-// Get the full result from an upstream step
-const cartResult = context.getDependencyResult('validate_cart') as Record<string, unknown>;
-const total = cartResult.total as number;
+export const ProcessPaymentHandler = defineHandler(
+  'Ecommerce.StepHandlers.ProcessPaymentHandler',
+  {
+    depends: { cartResult: 'validate_cart' },
+    inputs: { paymentInfo: 'payment_info' },
+  },
+  async ({ cartResult, paymentInfo }) =>
+    svc.processPayment(
+      cartResult as Record<string, unknown>,
+      paymentInfo as PaymentInfo | undefined,
+    ),
+);
+```
 
-// Combine data from multiple upstream steps
-const paymentResult = context.getDependencyResult('process_payment') as Record<string, unknown>;
-const inventoryResult = context.getDependencyResult('update_inventory') as Record<string, unknown>;
+Handlers can reference **any ancestor step** in the DAG — not just direct predecessors. Here's a convergence handler that accesses three upstream steps plus task inputs:
+
+```typescript
+export const CreateOrderHandler = defineHandler(
+  'Ecommerce.StepHandlers.CreateOrderHandler',
+  {
+    depends: {
+      cartResult: 'validate_cart',
+      paymentResult: 'process_payment',
+      inventoryResult: 'update_inventory',
+    },
+    inputs: { customerEmail: 'customer_email' },
+  },
+  async ({ cartResult, paymentResult, inventoryResult, customerEmail }) =>
+    svc.createOrder(
+      cartResult as Record<string, unknown>,
+      paymentResult as Record<string, unknown>,
+      inventoryResult as Record<string, unknown>,
+      customerEmail as string | undefined,
+    ),
+);
+```
+
+## Multi-Step Example: Data Pipeline
+
+The data pipeline workflow demonstrates a parallel DAG — three independent extract branches, each feeding its own transform, converging at aggregation:
+
+```text
+extract_sales    extract_inventory    extract_customers
+     │                  │                    │
+     ▼                  ▼                    ▼
+transform_sales  transform_inventory  transform_customers
+     │                  │                    │
+     └──────────────────┼────────────────────┘
+                        ▼
+               aggregate_metrics
+                        │
+                        ▼
+              generate_insights
+```
+
+TypeScript handlers follow the same concise pattern:
+
+```typescript
+import { defineHandler } from '@tasker-systems/tasker';
+import type {
+  PipelineExtractSalesResult,
+  PipelineTransformSalesResult,
+  PipelineTransformInventoryResult,
+  PipelineTransformCustomersResult,
+} from '../services/types';
+import * as svc from '../services/data_pipeline';
+
+// Extract — no dependencies, runs in parallel
+export const ExtractSalesDataHandler = defineHandler(
+  'DataPipeline.StepHandlers.ExtractSalesDataHandler',
+  { inputs: { source: 'source', dateRangeStart: 'date_range_start' } },
+  async ({ source, dateRangeStart }) =>
+    svc.extractSalesData(source as string, dateRangeStart as string | undefined),
+);
+
+// Transform — depends on one extract branch
+export const TransformSalesHandler = defineHandler(
+  'DataPipeline.StepHandlers.TransformSalesHandler',
+  { depends: { salesData: 'extract_sales_data' } },
+  async ({ salesData }) =>
+    svc.transformSales(salesData as PipelineExtractSalesResult),
+);
+
+// Aggregate — converges three transform branches
+export const AggregateMetricsHandler = defineHandler(
+  'DataPipeline.StepHandlers.AggregateMetricsHandler',
+  {
+    depends: {
+      salesTransform: 'transform_sales',
+      inventoryTransform: 'transform_inventory',
+      customersTransform: 'transform_customers',
+    },
+  },
+  async ({ salesTransform, inventoryTransform, customersTransform }) =>
+    svc.aggregateMetrics(
+      salesTransform as PipelineTransformSalesResult,
+      inventoryTransform as PipelineTransformInventoryResult,
+      customersTransform as PipelineTransformCustomersResult,
+    ),
+);
 ```
 
 ## Error Handling
 
-Return structured failures with error type and retryable flag:
+Throw `PermanentError` or `RetryableError` from your handler or service functions:
 
 ```typescript
+import { PermanentError, RetryableError } from '@tasker-systems/tasker';
+
 // Non-retryable validation failure
-return this.failure(
-  'Transaction exceeds single-transaction limit',
-  ErrorType.VALIDATION_ERROR,
-  false,
-);
+throw new PermanentError('Payment declined: insufficient funds', 'PAYMENT_DECLINED');
 
 // Retryable transient failure
-return this.failure(
-  'Payment gateway temporarily unavailable',
-  ErrorType.RETRYABLE_ERROR,
-  true,
-);
-
-// Permanent business logic failure
-return this.failure(
-  'Customer email is required but was not provided',
-  ErrorType.PERMANENT_ERROR,
-  false,
-);
+throw new RetryableError('Payment gateway temporarily unavailable', 'GATEWAY_ERROR');
 ```
-
-Error types available via the `ErrorType` enum:
-
-- `ErrorType.VALIDATION_ERROR` — Bad input data (non-retryable)
-- `ErrorType.PERMANENT_ERROR` — Business logic rejection (non-retryable)
-- `ErrorType.RETRYABLE_ERROR` — Transient failure (retryable)
-- `ErrorType.HANDLER_ERROR` — Internal handler error
-
-## Task Template Configuration
-
-Generate a task template with `tasker-ctl`:
-
-```bash
-tasker-ctl template generate task_template \
-  --language typescript \
-  --param name=EcommerceOrderProcessing \
-  --param namespace=ecommerce \
-  --param handler_callable=Ecommerce.OrderProcessingHandler
-```
-
-This generates a YAML file defining the workflow. Here is a multi-step example from
-the ecommerce example app:
-
-```yaml
-name: ecommerce_order_processing
-namespace_name: ecommerce_ts
-version: 1.0.0
-description: "Complete e-commerce order processing workflow"
-metadata:
-  author: Bun Example Application
-  tags:
-    - namespace:ecommerce
-    - pattern:order_processing
-    - language:typescript
-task_handler:
-  callable: Ecommerce.OrderProcessingHandler
-  initialization: {}
-system_dependencies:
-  primary: default
-  secondary: []
-input_schema:
-  type: object
-  required:
-    - cart_items
-    - customer_email
-  properties:
-    cart_items:
-      type: array
-      items:
-        type: object
-        required: [sku, name, price, quantity]
-    customer_email:
-      type: string
-      format: email
-steps:
-  - name: validate_cart
-    description: "Validate cart items, calculate totals"
-    handler:
-      callable: Ecommerce.StepHandlers.ValidateCartHandler
-    dependencies: []
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: process_payment
-    description: "Process customer payment"
-    handler:
-      callable: Ecommerce.StepHandlers.ProcessPaymentHandler
-    dependencies:
-      - validate_cart
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: update_inventory
-    description: "Reserve inventory for order items"
-    handler:
-      callable: Ecommerce.StepHandlers.UpdateInventoryHandler
-    dependencies:
-      - process_payment
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: create_order
-    description: "Create order record"
-    handler:
-      callable: Ecommerce.StepHandlers.CreateOrderHandler
-    dependencies:
-      - update_inventory
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-
-  - name: send_confirmation
-    description: "Send order confirmation email"
-    handler:
-      callable: Ecommerce.StepHandlers.SendConfirmationHandler
-    dependencies:
-      - create_order
-    retry:
-      retryable: true
-      max_attempts: 2
-      backoff: exponential
-      backoff_base_ms: 100
-      max_backoff_ms: 5000
-```
-
-Key fields:
-
-- **`metadata`** — Tags, authorship, and documentation links
-- **`task_handler`** — The top-level handler and initialization config
-- **`system_dependencies`** — External service connections the workflow requires
-- **`input_schema`** — JSON Schema validating task input before execution
-- **`steps[].handler.callable`** — Dot-separated handler name (e.g., `Ecommerce.StepHandlers.ValidateCartHandler`)
-- **`steps[].dependencies`** — DAG edges defining execution order
-- **`steps[].retry`** — Per-step retry policy with backoff
-
-## Handler Variants
-
-### API Handler (`step_handler_api`)
-
-```bash
-tasker-ctl template generate step_handler_api \
-  --language typescript \
-  --param name=FetchUser \
-  --param base_url=https://api.example.com
-```
-
-Generates a handler that extends `ApiHandler`, providing `get`, `post`, `put`, `delete`
-HTTP methods with automatic error classification using the native `fetch` API.
-
-### Decision Handler (`step_handler_decision`)
-
-```bash
-tasker-ctl template generate step_handler_decision \
-  --language typescript \
-  --param name=RouteOrder
-```
-
-Generates a handler that extends `DecisionHandler`, providing `decisionSuccess()` for
-routing workflows to different downstream step sets based on runtime conditions.
-
-### Batchable Handler (`step_handler_batchable`)
-
-```bash
-tasker-ctl template generate step_handler_batchable \
-  --language typescript \
-  --param name=ProcessRecords
-```
-
-Generates a handler that extends `BatchableStepHandler` with an Analyzer/Worker pattern.
-In analyzer mode it divides work into cursor ranges; in worker mode it processes
-individual batches in parallel.
 
 ## Testing
 
-The template generates a Vitest test file alongside the handler:
+DSL handlers are exported constants — test them with Vitest by calling the handler's async callback directly, or by testing the service functions:
 
 ```typescript
 import { describe, it, expect, vi } from 'vitest';
-import { ValidateCartHandler } from '../validate-cart-handler';
+import * as svc from '../services/ecommerce';
 
 describe('ValidateCartHandler', () => {
-  const handler = new ValidateCartHandler();
+  it('delegates to service', async () => {
+    const mockResult = { validated_items: [], total: 64.79 };
+    vi.spyOn(svc, 'validateCartItems').mockResolvedValue(mockResult);
 
-  it('validates cart and returns totals', async () => {
-    const context = {
-      taskUuid: crypto.randomUUID(),
-      stepUuid: crypto.randomUUID(),
-      inputData: {
-        cart_items: [
-          { sku: 'SKU-001', name: 'Widget', price: 29.99, quantity: 2 },
-        ],
-      },
-      dependencyResults: {},
-      stepConfig: {},
-      stepInputs: {},
-      retryCount: 0,
-      maxRetries: 3,
-      getInput: vi.fn((key: string) =>
-        key === 'cart_items'
-          ? [{ sku: 'SKU-001', name: 'Widget', price: 29.99, quantity: 2 }]
-          : undefined
-      ),
-      getDependencyResult: vi.fn(),
-    } as any;
+    const cartItems = [{ sku: 'SKU-001', name: 'Widget', price: 29.99, quantity: 2 }];
+    const result = await svc.validateCartItems(cartItems);
 
-    const result = await handler.call(context);
-
-    expect(result.success).toBe(true);
-    expect(result.result?.total).toBeGreaterThan(0);
+    expect(result.total).toBe(64.79);
   });
 });
 ```
 
-Test handlers that use dependency results by configuring `getDependencyResult`:
+For handlers with dependencies, test the service functions with typed arguments:
 
 ```typescript
-const contextWithDeps = {
-  // ...base context fields
-  getInput: vi.fn((key: string) =>
-    key === 'customer_email' ? 'test@example.com' : undefined
-  ),
-  getDependencyResult: vi.fn((step: string) => ({
-    validate_cart: { total: 64.79, validated_items: [] },
-    process_payment: { payment_id: 'pay_abc', transaction_id: 'txn_xyz' },
-    update_inventory: { updated_products: [], inventory_log_id: 'log_123' },
-  }[step])),
-} as any;
+describe('CreateOrderHandler', () => {
+  it('creates order from upstream data', async () => {
+    const mockResult = { order_id: 'ORD-001' };
+    vi.spyOn(svc, 'createOrder').mockResolvedValue(mockResult);
+
+    const result = await svc.createOrder(
+      { total: 64.79, validated_items: [] },
+      { payment_id: 'pay_abc', transaction_id: 'txn_xyz' },
+      { inventory_log_id: 'log_123' },
+      'test@example.com',
+    );
+
+    expect(result.order_id).toBe('ORD-001');
+  });
+});
 ```
+
+Because handlers delegate to service functions, you can test the services directly without any Tasker infrastructure.
+
+## Handler Variants
+
+### API Handler
+
+Adds HTTP client methods with error classification using the native `fetch` API. Extends `ApiHandler` with the class-based pattern. See [Class-Based Handlers — API Handler](../reference/class-based-handlers.md#api-handler).
+
+### Decision Handler
+
+Adds workflow routing with `decisionSuccess()` for activating downstream step sets. Extends `DecisionHandler` with the class-based pattern. See [Conditional Workflows](../guides/conditional-workflows.md).
+
+### Batchable Handler
+
+Adds batch processing with Analyzer/Worker pattern using `BatchableStepHandler`. See [Class-Based Handlers — Batchable Handler](../reference/class-based-handlers.md#batchable-handler) and [Batch Processing](../guides/batch-processing.md).
+
+## Class-Based Alternative
+
+If you prefer class inheritance, all handler types support a class-based pattern where you extend `StepHandler` and implement `async call(context)`. See [Class-Based Handlers](../reference/class-based-handlers.md) for the full reference.
 
 ## Next Steps
 
-- See the [Quick Start Guide](../guides/quick-start.md) for running the full workflow end-to-end
-- See [Architecture](../architecture/index.md) for system design details
-- Browse the [Bun example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app) for complete handler implementations
+- [Your First Workflow](first-workflow.md) — Build a multi-step DAG end-to-end
+- [Architecture](../architecture/index.md) — System design details
+- [Bun example app](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app) — Complete working implementation

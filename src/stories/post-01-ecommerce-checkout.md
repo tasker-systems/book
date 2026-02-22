@@ -2,6 +2,8 @@
 
 *How workflow orchestration turns a fragile checkout pipeline into a resilient, observable process.*
 
+> **Handler examples** use Python DSL syntax. See [Class-Based Handlers](../reference/class-based-handlers.md) for the class-based alternative. Full implementations in all four languages are linked at the bottom.
+
 ## The Problem
 
 Your checkout flow works — most of the time. A customer adds items to their cart, enters payment details, and clicks "Place Order." Behind the scenes, your application validates the cart, charges the payment gateway, reserves inventory, creates the order record, and fires off a confirmation email. Five steps, all wired together in a single controller action.
@@ -104,179 +106,73 @@ The `dependencies` field creates a linear pipeline: `validate_cart` -> `process_
 
 ### Step Handlers
 
-Each step handler receives a **context** object that provides access to the task's input data and the results of upstream steps. Handlers return a success result or raise typed errors that tell the orchestrator whether to retry.
+Each handler is a thin DSL wrapper: it declares a typed input model, then delegates to a service function. The orchestrator handles sequencing, retries, and error classification.
 
 #### ValidateCartHandler — Input Validation and Pricing
 
-**Ruby (Rails)**
+**Type definition** (the contract):
 
-```ruby
-class ValidateCartHandler < TaskerCore::StepHandler::Base
-  TAX_RATE = 0.08
-  SHIPPING_THRESHOLD = 75.00
-  SHIPPING_COST = 9.99
+```python
+# app/services/types.py
+class EcommerceOrderInput(BaseModel):
+    cart_items: list[dict[str, Any]] | None = None
+    customer_email: str | None = None
+    payment_token: str | None = None
+```
 
-  def call(context)
-    cart_items = context.get_input('cart_items')
-    customer_email = context.get_input('customer_email')
+**Handler** (DSL declaration + service delegation):
 
-    raise TaskerCore::Errors::PermanentError.new(
-      'Cart is empty', error_code: 'EMPTY_CART'
-    ) if cart_items.nil? || cart_items.empty?
+```python
+# app/handlers/ecommerce.py
+from tasker_core.step_handler.functional import step_handler, inputs
+from app.services.types import EcommerceOrderInput
+from app.services import ecommerce as svc
 
-    validated_items = []
-    subtotal = 0.0
-
-    cart_items.each do |item|
-      quantity = item['quantity'].to_i
-      price    = item['unit_price'].to_f
-
-      raise TaskerCore::Errors::PermanentError.new(
-        "Invalid quantity for #{item['sku']}: #{quantity}",
-        error_code: 'INVALID_QUANTITY'
-      ) if quantity < 1 || quantity > 100
-
-      line_total = (quantity * price).round(2)
-      subtotal += line_total
-      validated_items << { sku: item['sku'], quantity: quantity,
-                           unit_price: price, line_total: line_total }
-    end
-
-    tax = (subtotal * TAX_RATE).round(2)
-    shipping = subtotal >= SHIPPING_THRESHOLD ? 0.0 : SHIPPING_COST
-    total = (subtotal + tax + shipping).round(2)
-
-    TaskerCore::Types::StepHandlerCallResult.success(
-      result: { validated_items: validated_items, subtotal: subtotal,
-                tax: tax, shipping: shipping, total: total }
+@step_handler("ecommerce_validate_cart")
+@inputs(EcommerceOrderInput)
+def validate_cart(inputs: EcommerceOrderInput, context):
+    return svc.validate_cart_items(
+        cart_items=inputs.cart_items,
+        customer_email=inputs.customer_email,
     )
-  end
-end
 ```
 
-**TypeScript (Bun/Hono)**
+The `@inputs` decorator extracts fields from the task's submitted context and validates them against the Pydantic model. Invalid data raises a **permanent error** — there's no point retrying a request with an empty cart. The service function (`svc.validate_cart_items`) contains the business logic: price calculations, tax, shipping thresholds.
 
-```typescript
-export class ValidateCartHandler extends StepHandler {
-  static handlerName = 'Ecommerce.StepHandlers.ValidateCartHandler';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    const cartItems = context.getInput<CartItem[]>('cart_items');
-
-    if (!cartItems || cartItems.length === 0) {
-      return this.failure('Cart is empty or missing', ErrorType.VALIDATION_ERROR, false);
-    }
-
-    const validatedItems: CartItem[] = [];
-    for (const item of cartItems) {
-      if (item.price <= 0 || !Number.isInteger(item.quantity) || item.quantity <= 0) {
-        continue; // skip invalid items
-      }
-      validatedItems.push(item);
-    }
-
-    const subtotal = validatedItems.reduce(
-      (sum, item) => sum + item.price * item.quantity, 0
-    );
-    const tax = Math.round(subtotal * 0.0875 * 100) / 100;
-    const shipping = subtotal >= 75.0 ? 0 : 9.99;
-    const total = Math.round((subtotal + tax + shipping) * 100) / 100;
-
-    return this.success({
-      validated_items: validatedItems,
-      subtotal, tax, shipping, total,
-      free_shipping: subtotal >= 75.0,
-    });
-  }
-}
-```
-
-Both implementations use `context.getInput()` (Ruby: `get_input`) to read from the task's initial input. Invalid data raises a **permanent error** — there's no point retrying a request with an empty cart.
-
-> **Full implementations**: [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/ecommerce/validate_cart_handler.rb) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/ecommerce.ts)
+> **Full implementations**: [FastAPI](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app/app/handlers/ecommerce.py) | [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/ecommerce/) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/ecommerce.ts)
 
 #### ProcessPaymentHandler — Dependency Access and Error Classification
 
-The payment handler demonstrates two critical patterns: reading results from an upstream step, and classifying errors so the orchestrator knows whether to retry.
+The payment handler demonstrates two critical patterns: reading results from an upstream step via `@depends_on`, and classifying errors so the orchestrator knows whether to retry.
 
-**Ruby (Rails)**
+```python
+from tasker_core.step_handler.functional import step_handler, depends_on, inputs
+from tasker_core import PermanentError, RetryableError
+from app.services.types import EcommerceOrderInput, EcommerceValidateCartResult
+from app.services import ecommerce as svc
 
-```ruby
-class ProcessPaymentHandler < TaskerCore::StepHandler::Base
-  DECLINED_TOKENS = %w[tok_test_declined tok_insufficient_funds tok_expired].freeze
-  GATEWAY_ERROR_TOKENS = %w[tok_gateway_error tok_timeout].freeze
-
-  def call(context)
-    payment_info = context.get_input('payment_info')
-    total = context.get_dependency_field('validate_cart', 'total')
-
-    raise TaskerCore::Errors::PermanentError.new(
-      'Payment token is required', error_code: 'MISSING_TOKEN'
-    ) if payment_info[:token].blank?
-
-    if DECLINED_TOKENS.include?(payment_info[:token])
-      raise TaskerCore::Errors::PermanentError.new(
-        'Payment declined', error_code: 'PAYMENT_DECLINED'
-      )
-    end
-
-    if GATEWAY_ERROR_TOKENS.include?(payment_info[:token])
-      raise TaskerCore::Errors::RetryableError.new(
-        'Payment gateway temporarily unavailable'
-      )
-    end
-
-    # Process payment...
-    TaskerCore::Types::StepHandlerCallResult.success(
-      result: { payment_id: "pay_#{SecureRandom.hex(12)}",
-                amount_charged: total, status: 'completed' }
+@step_handler("ecommerce_process_payment")
+@depends_on(cart_result=("validate_cart", EcommerceValidateCartResult))
+@inputs(EcommerceOrderInput)
+def process_payment(
+    cart_result: EcommerceValidateCartResult,
+    inputs: EcommerceOrderInput,
+    context,
+):
+    return svc.process_payment(
+        cart_result=cart_result,
+        payment_token=inputs.payment_token,
     )
-  end
-end
 ```
 
-**TypeScript (Bun/Hono)**
+The `@depends_on` decorator declares that this handler needs the result from `validate_cart`, typed as `EcommerceValidateCartResult`. The orchestrator injects the validated, typed result directly into the function signature — no manual parsing or `get_dependency_result()` calls.
 
-```typescript
-export class ProcessPaymentHandler extends StepHandler {
-  static handlerName = 'Ecommerce.StepHandlers.ProcessPaymentHandler';
-
-  async call(context: StepContext): Promise<StepHandlerResult> {
-    const paymentInfo = context.getInput<PaymentInfo>('payment_info');
-    const cartResult = context.getDependencyResult('validate_cart') as Record<string, unknown>;
-
-    if (!cartResult) {
-      return this.failure('Missing cart validation result', ErrorType.HANDLER_ERROR, true);
-    }
-
-    const total = cartResult.total as number;
-
-    if (total > 10000) {
-      return this.failure(
-        'Transaction exceeds single-transaction limit',
-        ErrorType.VALIDATION_ERROR, false  // permanent — don't retry
-      );
-    }
-
-    const transactionId = crypto.randomUUID();
-    return this.success({
-      payment_id: `pay_${crypto.randomUUID().replace(/-/g, '').substring(0, 12)}`,
-      transaction_id: transactionId,
-      amount_charged: total,
-      status: 'succeeded',
-    });
-  }
-}
-```
-
-The key pattern here is **error classification**:
+The service function classifies errors:
 
 - **PermanentError** (declined card, invalid data): The orchestrator marks the step as failed and stops. No retry will fix a declined card.
 - **RetryableError** (gateway timeout, network blip): The orchestrator retries with exponential backoff up to `max_attempts`.
 
-The Ruby handler uses `get_dependency_field('validate_cart', 'total')` to pull a specific field from the upstream step's result. The TypeScript version uses `getDependencyResult('validate_cart')` to get the full result object. Both patterns are part of the cross-language standard API (TAS-137).
-
-> **Full implementations**: [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/ecommerce/process_payment_handler.rb) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/ecommerce.ts)
+> **Full implementations**: [FastAPI](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/fastapi-app/app/handlers/ecommerce.py) | [Rails](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/rails-app/app/handlers/ecommerce/) | [Bun/Hono](https://github.com/tasker-systems/tasker-contrib/tree/main/examples/bun-app/src/handlers/ecommerce.ts)
 
 ### Creating a Task
 
@@ -347,7 +243,7 @@ Both implementations follow the same pattern: create a domain record, submit the
 ## Key Concepts
 
 - **Linear dependencies**: Each step declares what it depends on. The orchestrator guarantees execution order without you writing sequencing logic.
-- **`getInput()` / `getDependencyResult()`**: A cross-language API for accessing task inputs and upstream step results. Available in Ruby, TypeScript, Python, and Rust.
+- **Typed inputs via DSL**: `@inputs` extracts fields from the task context into a validated Pydantic model. `@depends_on` injects upstream step results as typed parameters. No manual parsing needed.
 - **Permanent vs. retryable errors**: Handlers classify failures so the orchestrator can retry transient issues (gateway timeouts) while immediately failing on business errors (declined cards).
 - **Task creation via FFI client**: Your application submits work through a client that communicates with the Rust orchestration core. The same workflow template runs regardless of which language your handlers are written in.
 

@@ -1,5 +1,77 @@
 /* Tasker Documentation - Custom Theme Overrides */
 
+/* ============================================================
+   Rust theme customization
+   - Lighter content area (less smokey)
+   - Steel-blue sidebar (between Rust's tan and Navy's dark)
+   ============================================================ */
+
+.rust {
+    /* Content area: cleaner, lighter background */
+    --bg: #faf9f7;
+    --fg: #333;
+
+    /* Sidebar: soft steel-blue */
+    --sidebar-bg: #3b5a80;
+    --sidebar-fg: #e8edf3;
+    --sidebar-non-existant: #9ab3cf;
+    --sidebar-active: #ffffff;
+    --sidebar-spacer: #4a6d94;
+
+    /* Links: complement the blue sidebar */
+    --links: #2b6cb0;
+
+    /* Table and border colors: soften to match lighter bg */
+    --table-border-color: #d6d3ce;
+    --table-header-bg: #efeee9;
+    --table-alternate-bg: #f5f4f0;
+
+    /* Searchbar: keep it subtle */
+    --searchbar-border-color: #c8c5be;
+    --searchbar-bg: #ffffff;
+    --searchbar-fg: #333;
+    --searchbar-shadow-color: rgba(0, 0, 0, 0.05);
+
+    /* Section header border: theme-consistent blue instead of rust-orange */
+    --sidebar-header-border-color: #7eb8e0;
+}
+
+/* ============================================================
+   Navy theme customization (dark mode)
+   - Softer content background (less stark)
+   - Same accent language as Rust customization
+   ============================================================ */
+
+.navy {
+    /* Content area: slightly warmer dark, less pure black-blue */
+    --bg: #1e2a3a;
+    --fg: #c8d1dc;
+
+    /* Sidebar: deeper blue, distinct from content */
+    --sidebar-bg: #182030;
+    --sidebar-fg: #a8b8cc;
+    --sidebar-non-existant: #5a6f88;
+    --sidebar-active: #e0e8f0;
+    --sidebar-spacer: #2a3a50;
+
+    /* Links: bright enough to read on dark bg */
+    --links: #6db3f2;
+
+    /* Section header border: same accent as Rust theme */
+    --sidebar-header-border-color: #7eb8e0;
+
+    /* Table colors: subtle contrast */
+    --table-border-color: #2c3e55;
+    --table-header-bg: #243044;
+    --table-alternate-bg: #1a2636;
+
+    /* Searchbar */
+    --searchbar-border-color: #2c3e55;
+    --searchbar-bg: #243044;
+    --searchbar-fg: #c8d1dc;
+    --searchbar-shadow-color: rgba(0, 0, 0, 0.3);
+}
+
 /* Slightly wider content area */
 .content {
     max-width: 900px;

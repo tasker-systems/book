@@ -150,7 +150,7 @@ tasker-ctl template generate step_handler \
   --param name=ProcessOrder
 ```
 
-This generates `process_order_handler.py` and `tests/test_process_order_handler.py` with the standard Tasker handler contract already implemented.
+This generates `process_order_handler.py` and `tests/test_process_order_handler.py` using the DSL pattern — a decorated function with typed inputs that delegates to a service. See [Your First Handler](first-handler.md) for a walkthrough of the generated code.
 
 ### 4. Generate a task template
 

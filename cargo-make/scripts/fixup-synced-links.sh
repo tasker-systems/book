@@ -160,16 +160,16 @@ fixup "guides" \
     '](../reference/task-and-step-readiness-and-execution.md' \
     "guides/: task-and-step-readiness-and-execution.md -> ../reference/"
 
-# Also fix bare observability/README.md and benchmarks/README.md refs from guides/
+# Also fix bare observability/README.md and benchmarks/index.md refs from guides/
 fixup "guides" \
-    '](observability/README.md' \
-    '](../observability/README.md' \
+    '](observability/index.md' \
+    '](../observability/index.md' \
     "guides/: observability/README.md -> ../observability/README.md"
 
 fixup "guides" \
-    '](benchmarks/README.md' \
-    '](../benchmarks/README.md' \
-    "guides/: benchmarks/README.md -> ../benchmarks/README.md"
+    '](benchmarks/index.md' \
+    '](../benchmarks/index.md' \
+    "guides/: benchmarks/index.md -> ../benchmarks/index.md"
 
 # =========================================================================
 # 5. From architecture/: sub-paths that should be sibling-relative
@@ -181,8 +181,8 @@ fixup "guides" \
 #    configuration-management.md -> ../guides/configuration-management.md
 # =========================================================================
 fixup "architecture" \
-    '](observability/README.md' \
-    '](../observability/README.md' \
+    '](observability/index.md' \
+    '](../observability/index.md' \
     "architecture/: observability/README.md -> ../observability/"
 
 fixup "architecture" \
@@ -257,7 +257,7 @@ fixup "reference" \
 
 fixup "reference" \
     '](./observability/README.md' \
-    '](../observability/README.md' \
+    '](../observability/index.md' \
     "reference/: ./observability/README.md -> ../observability/"
 
 fixup "reference" \
@@ -325,11 +325,11 @@ fixup "testing" \
 #     Remove or redirect links that point to files never synced/created
 # =========================================================================
 
-# architecture/README.md: ../CHRONOLOGY.md doesn't exist
-fixup_file "architecture/README.md" \
+# architecture/index.md: ../CHRONOLOGY.md doesn't exist
+fixup_file "architecture/index.md" \
     '](../CHRONOLOGY.md)' \
     '](../why-tasker.md)' \
-    "architecture/README.md: ../CHRONOLOGY.md -> ../why-tasker.md"
+    "architecture/index.md: ../CHRONOLOGY.md -> ../why-tasker.md"
 
 # why-tasker.md: CHRONOLOGY.md doesn't exist
 fixup_file "why-tasker.md" \
@@ -355,9 +355,9 @@ fixup "benchmarks" \
 # 14. From architecture/: bare benchmarks/ ref needs ../
 # =========================================================================
 fixup "architecture" \
-    '](benchmarks/README.md' \
-    '](../benchmarks/README.md' \
-    "architecture/: benchmarks/README.md -> ../benchmarks/"
+    '](benchmarks/index.md' \
+    '](../benchmarks/index.md' \
+    "architecture/: benchmarks/index.md -> ../benchmarks/"
 
 # =========================================================================
 # 15. From guides/: testing/ ref needs ../
@@ -409,16 +409,16 @@ fixup "auth" \
 # =========================================================================
 
 # sql-benchmarks.md never existed in book
-fixup_file "observability/README.md" \
+fixup_file "observability/index.md" \
     '](../benchmarks/sql-benchmarks.md)' \
-    '](../benchmarks/README.md)' \
-    "observability/README.md: sql-benchmarks.md -> benchmarks/README.md"
+    '](../benchmarks/index.md)' \
+    "observability/index.md: sql-benchmarks.md -> benchmarks/index.md"
 
 # VERIFICATION_RESULTS.md never existed
-fixup_file "observability/README.md" \
+fixup_file "observability/index.md" \
     '](./VERIFICATION_RESULTS.md)' \
     '](metrics-verification.md)' \
-    "observability/README.md: VERIFICATION_RESULTS.md -> metrics-verification.md"
+    "observability/index.md: VERIFICATION_RESULTS.md -> metrics-verification.md"
 
 # phase-5.4-distributed-benchmarks-plan.md never existed
 fixup "observability" \
@@ -451,34 +451,6 @@ for section in architecture building guides observability reference workers; do
         '](../guides/configuration-management.md' \
         "${section}/: ../operations/checkpoint-operations.md -> ../guides/configuration-management.md (operations removed)"
 done
-
-# =========================================================================
-# 19. README.md → index.md in all content links
-#     mdBook converts README.md to index.html for chapters, but does NOT
-#     rewrite inline markdown links — they render as README.html (404).
-#     SUMMARY.md must keep README.md (mdBook requires it).
-# =========================================================================
-echo "Fixing README.md -> index.md in inline links..."
-readme_fixed=0
-while IFS= read -r -d '' file; do
-    # Skip SUMMARY.md — mdBook needs README.md there
-    if [[ "${file}" == *"SUMMARY.md" ]]; then
-        continue
-    fi
-    # Only fix markdown link targets ](path/README.md), not backtick refs
-    if grep -q '](.*README\.md' "${file}" 2>/dev/null; then
-        sed_i 's|](\(\.\.\/\)README\.md|](\1index.md|g' "${file}"
-        sed_i 's|](\([^)]*\)/README\.md)|](\1/index.md)|g' "${file}"
-        sed_i 's|](README\.md)|](index.md)|g' "${file}"
-        sed_i 's|](README\.md#\([^)]*\))|](index.md#\1)|g' "${file}"
-        readme_fixed=$((readme_fixed + 1))
-    fi
-done < <(find "${SRC_DIR}" -name '*.md' -print0)
-
-if [[ ${readme_fixed} -gt 0 ]]; then
-    fixed=$((fixed + readme_fixed))
-    echo "  README.md -> index.md (${readme_fixed} files)"
-fi
 
 # ---------------------------------------------------------------------------
 # Summary
