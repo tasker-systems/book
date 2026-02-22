@@ -1,6 +1,6 @@
 # Managing Complexity in Dynamic Workflow Planning
 
-*Complexity grounded in simplicity, for humans, LLMs, and observability systems*
+*Complexity grounded in simplicity, for humans, LLMs, and observability systems — and how compile-time enforcement reduces runtime surprises*
 
 ---
 
@@ -36,7 +36,7 @@ Operators need to understand what the system is doing, why it's doing it, and wh
 
 The LLM planner needs to understand what capabilities are available, what the problem context is, and what constraints apply. For effective planning, this means:
 
-- **Clear capability descriptions.** The handler catalog must be described in terms the LLM can reason about — not implementation details, but semantic capabilities, input/output contracts, and composition patterns.
+- **Clear capability descriptions.** The action grammar and handler catalog must be described in terms the LLM can reason about — not implementation details, but semantic capabilities, input/output contracts, and composition patterns. Because capability schemas are derived from grammar composition types (not hand-authored), they are always accurate.
 - **Bounded context.** The information provided to the planner must be sufficient for good decisions but not so voluminous that it degrades reasoning quality. This is a context window management problem with direct impact on planning quality.
 - **Structured feedback.** When a plan is invalid, the validation diagnostics must be actionable by the LLM in a retry attempt. "Handler 'foo' not found" is useful. "Validation failed" is not.
 
@@ -58,9 +58,11 @@ Observability infrastructure needs to ingest, correlate, and present the telemet
 
 ### Principle 1: The Step Remains the Atom
 
-Every capability in dynamic workflow planning is expressed through steps. A planning step is a step. A catalog handler step is a step. A convergence step is a step. Each has the same lifecycle, the same state machine, the same observability contract.
+Every capability in dynamic workflow planning is expressed through steps. A planning step is a step. A catalog handler step (composed from action grammar primitives) is a step. A convergence step is a step. Each has the same lifecycle, the same state machine, the same observability contract.
 
-**Implication:** No new top-level concepts. No "planning phase" object separate from steps. No "fragment execution" lifecycle separate from step execution. The DAG is the DAG, whether its topology was determined by a template or a planner.
+The action grammar layer adds compositional depth *within* a step — a catalog handler may be composed from Acquire → Transform → Validate primitives — but from the orchestration layer's perspective, it is still a single step with a single lifecycle. The grammar composition is an implementation detail of the handler, not a new structural concept in the workflow.
+
+**Implication:** No new top-level concepts. No "planning phase" object separate from steps. No "fragment execution" lifecycle separate from step execution. No "grammar composition" lifecycle visible to the orchestrator. The DAG is the DAG, whether its topology was determined by a template or a planner.
 
 **What this means practically:**
 
@@ -316,7 +318,9 @@ These are specific patterns that introduce complication without corresponding co
 | Fragment schema coupled to Tasker internals | LLM must understand orchestration mechanics | Fragment schema expresses intent; materialization is the system's job |
 | Budget controls scattered across configuration | No single place to understand resource limits | Budget hierarchy in task template, visible and auditable |
 | Context accumulation that silently drops information | Planning quality degrades mysteriously | Explicit summarization steps with configurable strategies |
-| Capability schema that describes implementation | LLM reasons about wrong abstractions | Capability schema describes *what*, never *how* |
+| Capability schema that describes implementation | LLM reasons about wrong abstractions | Capability schema describes *what*, never *how*. Derived from grammar types, not hand-authored |
+| Action grammar internals exposed to operators | Operators must understand Rust trait composition | Grammar compositions are opaque to the operator; they see "http_request handler" not "Acquire → Transform → Validate" |
+| Runtime type validation duplicating compile-time checks | Wasted cycles and confusing error messages | Grammar composition correctness is verified at compile time; runtime validates only LLM-generated fragment references |
 
 ---
 
@@ -328,15 +332,18 @@ Every system has a complexity budget — the amount of complexity humans can man
 
 - One new step type (planning step)
 - One new concept (workflow fragments)
+- One new compositional layer (action grammar primitives — but invisible to operators)
 - One new metadata layer (planning provenance)
 - One new resource dimension (planning budgets)
+- One new trust distinction (developer-authored handlers vs. system-invoked grammar compositions)
 
 **What we get:**
 
 - Workflows that adapt to their inputs
 - Multi-phase problem solving with accumulated context
-- Composition of generic capabilities without custom code
-- Gradual automation of workflow design
+- Composition of generic capabilities without custom code, with compile-time correctness guarantees
+- Gradual automation of workflow design — from developer tooling (Phase 0) through LLM-planned workflows (Phase 2-3)
+- A type system for workflow actions that makes the catalog extensible without sacrificing safety
 
 **What we protect:**
 
@@ -346,8 +353,14 @@ Every system has a complexity budget — the amount of complexity humans can man
 - Operator investigation workflows (extended, not replaced)
 - Template as safety contract (strengthened, not weakened)
 
+**What we actively reduce:**
+
+- Runtime type errors in handler compositions (caught at compile time by the grammar's type system)
+- Capability schema drift from implementation (schemas derived from types, not hand-maintained)
+- Configuration-driven failure modes (grammar compositions are verified before they can be referenced)
+
 The complexity budget is balanced when the new capabilities justify the new concepts, and the existing foundations are preserved. This document's purpose is to ensure we stay within budget.
 
 ---
 
-*This document applies to all phases of the dynamic workflow planning initiative. It should be reviewed and updated as each phase is implemented and operational experience reveals new complexity management needs.*
+*This document applies to all phases of the generative workflow initiative. It should be reviewed and updated as each phase is implemented and operational experience reveals new complexity management needs.*
