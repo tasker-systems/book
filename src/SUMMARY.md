@@ -120,9 +120,10 @@
   - [02 Technical Approach](vision/02-technical-approach.md)
   - [03 Phase 0 Foundation](vision/03-phase-0-foundation.md)
   - [04 Phase 1 Action Grammars](vision/04-phase-1-action-grammars.md)
-  - [05 Phase 2 Planning Interface](vision/05-phase-2-planning-interface.md)
-  - [06 Phase 3 Recursive Planning](vision/06-phase-3-recursive-planning.md)
-  - [07 Complexity Management](vision/07-complexity-management.md)
+  - [05 Agent Orchestration](vision/05-agent-orchestration.md)
+  - [06 Phase 2 Planning Interface](vision/06-phase-2-planning-interface.md)
+  - [07 Phase 3 Recursive Planning](vision/07-phase-3-recursive-planning.md)
+  - [08 Complexity Management](vision/08-complexity-management.md)
 
 ---
 
