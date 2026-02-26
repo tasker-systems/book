@@ -2,6 +2,20 @@
 
 `tasker-ctl` is the command-line tool for managing Tasker workflows, generating project scaffolding, and working with configuration. This guide covers the developer-facing features for bootstrapping new projects.
 
+## Installation
+
+Install from [crates.io](https://crates.io/crates/tasker-ctl):
+
+```bash
+cargo install tasker-ctl
+```
+
+Or with [cargo-binstall](https://github.com/cargo-bins/cargo-binstall) (uses prebuilt binaries when available):
+
+```bash
+cargo binstall tasker-ctl
+```
+
 ## Initialize Your Project
 
 Run `tasker-ctl init` to create a `.tasker-ctl.toml` configuration file in your project directory:
