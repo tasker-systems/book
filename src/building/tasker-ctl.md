@@ -49,9 +49,9 @@ Get detailed information about a template:
 tasker-ctl template info step_handler --language ruby
 ```
 
-## Generate Code
+## Generate Code from Scaffolding Templates
 
-Generate a step handler from a template:
+Generate a step handler from a scaffolding template:
 
 ```bash
 tasker-ctl template generate step_handler \
@@ -61,6 +61,122 @@ tasker-ctl template generate step_handler \
 ```
 
 This creates handler files using the naming conventions and patterns for your chosen language. Template parameters (like `name`) are transformed automatically — `ProcessPayment` becomes `process_payment` for file names and `ProcessPaymentHandler` for class names.
+
+## Generate Typed Code from Task Templates
+
+The `generate` command reads your task template YAML files and produces typed code — result models and handler scaffolds — in any supported language. This keeps your handler code aligned with the schemas defined in your templates.
+
+```text
+tasker-ctl generate <COMMAND>
+
+Commands:
+  types    Generate typed result models from step result_schema definitions
+  handler  Generate handler scaffolds with typed dependency wiring
+```
+
+### Generate Types
+
+Generate typed result models from the `result_schema` defined on each step in a task template:
+
+```bash
+tasker-ctl generate types \
+  --template config/tasker/templates/ecommerce_order_processing.yaml \
+  --language typescript
+```
+
+This reads each step's `result_schema` and produces language-idiomatic types. For TypeScript, you get Zod schemas with inferred types:
+
+```typescript
+export const EcommerceValidateCartResultSchema = z.object({
+  free_shipping: z.boolean(),
+  item_count: z.number().int(),
+  subtotal: z.number(),
+  tax: z.number(),
+  total: z.number(),
+  validated_items: z.array(EcommerceValidateCartResultValidatedItemsSchema),
+  validation_id: z.string(),
+  // ...
+}).passthrough();
+
+export type EcommerceValidateCartResult = z.infer<typeof EcommerceValidateCartResultSchema>;
+```
+
+For Python, you get Pydantic models:
+
+```python
+class EcommerceValidateCartResult(BaseModel):
+    free_shipping: bool
+    item_count: int
+    subtotal: float
+    total: float
+    validated_items: list[EcommerceValidateCartResultValidatedItems]
+    validation_id: str
+```
+
+To generate types for a single step:
+
+```bash
+tasker-ctl generate types \
+  --template config/tasker/templates/ecommerce_order_processing.yaml \
+  --language python \
+  --step validate_cart
+```
+
+Supported languages: `typescript` (`ts`), `python` (`py`), `ruby` (`rb`), `rust` (`rs`).
+
+### Generate Handlers
+
+Generate handler scaffolds with typed dependency wiring:
+
+```bash
+tasker-ctl generate handler \
+  --template config/tasker/templates/ecommerce_order_processing.yaml \
+  --language typescript \
+  --step process_payment
+```
+
+The generator reads the step's `dependencies` from the template and wires them into the handler scaffold:
+
+```typescript
+export const ProcessPaymentHandler = defineHandler(
+  'Ecommerce::StepHandlers::ProcessPaymentHandler',
+  {
+    depends: {
+      validateCartResult: 'validate_cart'
+    },
+  },
+  async ({ validateCartResult, context }) => {
+    // validateCartResult: ValidateCartResult (typed)
+    // TODO: implement handler logic
+    return {
+      amount_charged: 0,
+      authorization_code: "",
+      currency: "",
+      // ...
+    };
+  }
+);
+```
+
+The return value stub matches the step's `result_schema`, so you can fill in real logic and the shape is already correct.
+
+To generate handlers for all steps at once, omit `--step`. Add `--with-tests` to also generate test scaffolds:
+
+```bash
+tasker-ctl generate handler \
+  --template config/tasker/templates/ecommerce_order_processing.yaml \
+  --language typescript \
+  --with-tests
+```
+
+Use `--output` to write to a file instead of stdout:
+
+```bash
+tasker-ctl generate types \
+  --template config/tasker/templates/ecommerce_order_processing.yaml \
+  --language typescript \
+  --output src/services/types.ts
+```
 
 ## Generate Configuration
 
@@ -104,19 +220,23 @@ tasker-ctl init
 # 2. Fetch community templates
 tasker-ctl remote update
 
-# 3. Generate a step handler
+# 3. Scaffold a step handler from a template
 tasker-ctl template generate step_handler --language python --param name=ValidateOrder
 
-# 4. Generate a task template
+# 4. Scaffold a task template
 tasker-ctl template generate task_template --language python \
   --param name=OrderProcessing \
   --param namespace=default \
   --param handler_callable=handlers.validate_order_handler.ValidateOrderHandler
 
-# 5. Generate infrastructure (uses --plugin for ops templates)
+# 5. Generate typed code from your task template
+tasker-ctl generate types --template config/tasker/templates/order_processing.yaml --language python
+tasker-ctl generate handler --template config/tasker/templates/order_processing.yaml --language python
+
+# 6. Generate infrastructure (uses --plugin for ops templates)
 tasker-ctl template generate docker_compose --plugin tasker-contrib-ops --param name=myproject
 
-# 6. Generate environment-specific config (merges base + environment overrides)
+# 7. Generate environment-specific config (merges base + environment overrides)
 tasker-ctl config generate --remote tasker-contrib \
   --context worker --environment development --output config/worker.toml
 ```

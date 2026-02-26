@@ -19,6 +19,7 @@
 #   3  Infrastructure Generation (docker_compose, config from base)
 #   4  Start Services (docker compose up, health checks)
 #   5  Template Generation — All Languages
+#   5b Code Generation from Task Templates (TAS-280)
 #   6  Path A Verification (example apps)
 #   7  Cleanup
 #   8  Report
@@ -649,6 +650,100 @@ EOF
             echo ""
             record_result "template-$lang" "OK"
         done
+
+        prompt_continue
+    fi
+fi
+
+# ═══════════════════════════════════════════════════════════════════════════
+# Section 5b: Code Generation from Task Templates (TAS-280)
+# Maps to: building/tasker-ctl.md "Generate Typed Code" section
+# ═══════════════════════════════════════════════════════════════════════════
+
+if should_run 5b; then
+    header "Section 5b: Code Generation from Task Templates"
+
+    if ! command -v "$TASKER_CTL" &>/dev/null; then
+        fail "tasker-ctl not found — skipping"
+        record_result "codegen" "SKIPPED"
+    else
+        # Use a real template from tasker-contrib examples
+        CODEGEN_TEMPLATE=""
+        for candidate in \
+            "$CONTRIB_DIR/examples/axum-app/config/templates/ecommerce_order_processing.yaml" \
+            "$CONTRIB_DIR/examples/rails-app/config/tasker/templates/ecommerce_order_processing.yaml"; do
+            if [[ -f "$candidate" ]]; then
+                CODEGEN_TEMPLATE="$candidate"
+                break
+            fi
+        done
+
+        if [[ -z "$CODEGEN_TEMPLATE" ]]; then
+            warn "No ecommerce template found in tasker-contrib — skipping codegen"
+            record_result "codegen" "SKIPPED"
+        else
+            ok "Using template: $(basename "$CODEGEN_TEMPLATE")"
+            codegen_out="${WORK_DIR:-$(mktemp -d)}/codegen"
+            mkdir -p "$codegen_out"
+
+            subheader "Generate Types (all steps)"
+            for lang in python ruby typescript rust; do
+                ext_suffix=""
+                case $lang in
+                    python) ext_suffix=".py" ;; ruby) ext_suffix=".rb" ;;
+                    typescript) ext_suffix=".ts" ;; rust) ext_suffix=".rs" ;;
+                esac
+
+                outfile="$codegen_out/types_${lang}${ext_suffix}"
+                echo -e "  ${CYAN}$lang${NC}"
+                if "$TASKER_CTL" generate types \
+                    --template "$CODEGEN_TEMPLATE" \
+                    --language "$lang" \
+                    --output "$outfile" 2>/dev/null; then
+                    ok "types ($lang) → $(basename "$outfile")"
+                    capture "codegen-types-$lang$ext_suffix" cat "$outfile"
+                else
+                    fail "types ($lang)"
+                fi
+            done
+
+            subheader "Generate Types (single step)"
+            run_cmd "types --step validate_cart (typescript)" \
+                "$TASKER_CTL" generate types \
+                --template "$CODEGEN_TEMPLATE" \
+                --language typescript \
+                --step validate_cart || true
+
+            subheader "Generate Handlers (all steps)"
+            for lang in python ruby typescript rust; do
+                ext_suffix=""
+                case $lang in
+                    python) ext_suffix=".py" ;; ruby) ext_suffix=".rb" ;;
+                    typescript) ext_suffix=".ts" ;; rust) ext_suffix=".rs" ;;
+                esac
+
+                outfile="$codegen_out/handlers_${lang}${ext_suffix}"
+                echo -e "  ${CYAN}$lang${NC}"
+                if "$TASKER_CTL" generate handler \
+                    --template "$CODEGEN_TEMPLATE" \
+                    --language "$lang" \
+                    --output "$outfile" 2>/dev/null; then
+                    ok "handler ($lang) → $(basename "$outfile")"
+                    capture "codegen-handler-$lang$ext_suffix" cat "$outfile"
+                else
+                    fail "handler ($lang)"
+                fi
+            done
+
+            subheader "Generate Handler (single step with dependency)"
+            run_cmd "handler --step process_payment (typescript)" \
+                "$TASKER_CTL" generate handler \
+                --template "$CODEGEN_TEMPLATE" \
+                --language typescript \
+                --step process_payment || true
+
+            record_result "codegen" "OK"
+        fi
 
         prompt_continue
     fi
